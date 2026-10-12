@@ -92,6 +92,15 @@ function parseStudents(rows){
   if(cl&&!classes.includes(cl))classes.push(cl);
  }
  if(!students.length)throw Error("Không tìm thấy học sinh hợp lệ trong file Excel.");
+ // Sắp xếp trước khi đóng gói QR, nhưng giữ nguyên chuỗi SBD (kể cả số 0 đầu).
+ students.sort(function(a,b){
+  var sa=a.candidate_no,sb=b.candidate_no,an=/^[0-9]+$/.test(sa),bn=/^[0-9]+$/.test(sb);
+  if(an&&bn){var na=sa.replace(/^0+(?=\d)/,""),nb=sb.replace(/^0+(?=\d)/,"");
+   return na.length-nb.length||na.localeCompare(nb)||sa.localeCompare(sb)||a.full_name.localeCompare(b.full_name,"vi");
+  }
+  if(an!==bn)return an?-1:1;
+  return sa.localeCompare(sb,"vi",{numeric:true})||a.full_name.localeCompare(b.full_name,"vi");
+ });
  if(students.length>500)throw Error("Danh sách vượt 500 học sinh. Hãy chia thành nhiều bộ QR.");
  var warnings=[];
  if(dup)warnings.push("Bỏ qua "+dup+" SBD trùng trong file.");
