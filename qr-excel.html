@@ -40,15 +40,15 @@ header{background:#fff;border-bottom:1px solid var(--border)}.nav{max-width:1080
 <div class="privacy"><strong>Riêng tư:</strong> trang không tải file Excel hoặc nội dung QR lên máy chủ. Mã QR có thể chứa họ tên, SBD, số Zalo phụ huynh: chỉ hiển thị và quét trong môi trường tin cậy; không đăng hình QR công khai. Trang dùng thư viện JavaScript từ CDN để đọc Excel và tạo QR.</div>
 </section>
 <aside>
-<section class="panel"><h2>2. Quét mã vào ChấmPro</h2><p class="hint">Website sẽ hiển thị từng QR theo thứ tự. Nếu nhiều mã, phải quét đủ tất cả mã cùng bộ.</p>
-<div class="kpi"><div><strong id="recordCount">0</strong><small id="countLabel">Học sinh</small></div><div><strong id="qrCount">0</strong><small>Mã QR cần quét</small></div></div>
+<section class="panel"><h2>2. Quét mã vào ChấmPro</h2><p class="hint">Mỗi bộ Excel chỉ tạo một QR nếu dữ liệu nén nằm trong dung lượng QR. Quét một lần trong ứng dụng ChấmPro.</p>
+<div class="kpi"><div><strong id="recordCount">0</strong><small id="countLabel">Học sinh</small></div><div><strong id="qrCount">0</strong><small>Mã QR</small></div></div>
 <div id="qrResults" class="hide">
-<div class="qrwrap"><div class="qrtitle" id="qrHeading">QR 1</div><div class="qr" id="qrImage"></div><div class="qrcontrols"><button type="button" class="secondary" id="prevQR">← Trước</button><span class="qrpage" id="qrProgress"></span><button type="button" class="secondary" id="nextQR">Tiếp →</button></div><div class="actions" style="justify-content:center"><button type="button" class="primary" id="downloadQR">↓ Lưu QR hiện tại (PNG)</button></div></div>
+<div class="qrwrap"><div class="qrtitle" id="qrHeading">Một QR</div><div class="qr" id="qrImage"></div><div class="qrcontrols"><span class="qrpage" id="qrProgress">Một mã · Quét một lần</span></div><div class="actions" style="justify-content:center"><button type="button" class="primary" id="downloadQR">↓ Lưu QR hiện tại (PNG)</button></div></div>
 <div class="success" id="qrReady"></div>
 </div>
 <div id="qrEmpty" class="notice">Chọn file Excel rồi nhấn <strong>Tạo mã QR</strong> để bắt đầu.</div>
-<h3 style="margin:24px 0 7px;font-size:16px">Hướng dẫn trên điện thoại</h3><ol class="steps"><li>Mở ứng dụng ChấmPro và đăng nhập.</li><li>Vào lớp học để quét <strong>QR danh sách học sinh</strong>, hoặc vào bài kiểm tra để quét <strong>QR đáp án Web</strong>.</li><li>Quét lần lượt đủ các QR mà website tạo. Có thể quét không theo thứ tự.</li><li>Kiểm tra thông tin xác nhận, nhấn <strong>Nhập</strong>. Với đáp án, kiểm tra lại trước khi chấm.</li></ol>
-<div class="notice warn">Không dùng màn hình “QR đáp án” kiểu cũ cho bộ QR nhiều phần. Cần chọn chức năng <strong>QR Web</strong> trong ChấmPro.</div>
+<h3 style="margin:24px 0 7px;font-size:16px">Hướng dẫn trên điện thoại</h3><ol class="steps"><li>Mở ứng dụng ChấmPro và đăng nhập.</li><li>Vào lớp học để quét <strong>QR danh sách học sinh</strong>, hoặc vào bài kiểm tra để quét <strong>QR đáp án Web</strong>.</li><li>Đưa mã QR duy nhất trên website vào khung camera và quét một lần.</li><li>Kiểm tra thông tin xác nhận, nhấn <strong>Nhập</strong>. Với đáp án, kiểm tra lại trước khi chấm.</li></ol>
+<div class="notice warn">Hãy chọn chức năng <strong>QR Web</strong> trong ChấmPro, không dùng màn hình quét QR đáp án kiểu cũ.</div>
 </section>
 </aside>
 </main><footer class="footer">© Bản quyền thuộc về Mr Hiển · ChấmPro · Công cụ QR cho ứng dụng 1.4.15</footer>
@@ -61,7 +61,7 @@ header{background:#fff;border-bottom:1px solid var(--border)}.nav{max-width:1080
 var mode="students", fileInput=document.getElementById("excelFile"), fileName=document.getElementById("fileName");
 var status=document.getElementById("status"), preview=document.getElementById("preview");
 var qrResults=document.getElementById("qrResults"), qrEmpty=document.getElementById("qrEmpty");
-var qrParts=[],qrIndex=0, lastType="",MAX_RAW=2*1024*1024,CHUNK=430, MAX_FILE=5*1024*1024;
+var qrParts=[],qrIndex=0, lastType="",MAX_RAW=2*1024*1024,MAX_QR_BYTES=2200, MAX_FILE=5*1024*1024;
 function $(id){return document.getElementById(id)}
 function clean(v){if(v===undefined||v===null)return"";var s=String(v).trim();return s.endsWith(".0")&&/^\d+\.0$/.test(s)?s.slice(0,-2):s}
 function low(v){return clean(v).toLocaleLowerCase("vi-VN").replace(/\s+/g," ")}
@@ -156,21 +156,31 @@ function base64url(bytes){var s="",step=16384;for(var i=0;i<bytes.length;i+=step
 function hex(bytes){return Array.from(new Uint8Array(bytes)).map(function(b){return b.toString(16).padStart(2,"0")}).join("")}
 function makeSetId(){var x=new Uint8Array(10);crypto.getRandomValues(x);return hex(x)}
 async function makeQR(payload){
- var raw=new TextEncoder().encode(JSON.stringify(payload));if(raw.length>MAX_RAW)throw Error("Dữ liệu vượt giới hạn 2 MB. Hãy chia nhỏ file Excel.");
- var compressed=pako.gzip(raw,{level:9}),encoded=base64url(compressed),hash=hex(await crypto.subtle.digest("SHA-256",compressed)),setId=makeSetId(),total=Math.ceil(encoded.length/CHUNK);
- if(total>150)throw Error("Dữ liệu tạo "+total+" QR, quá nhiều để quét. Hãy chia nhỏ file.");
- var result=[];for(var n=0;n<total;n++){result.push(JSON.stringify({cp:1,set:setId,seq:n+1,total:total,type:payload.type,sha256:hash,data:encoded.slice(n*CHUNK,(n+1)*CHUNK)}))}return result;
+ var raw=new TextEncoder().encode(JSON.stringify(payload));
+ if(raw.length>MAX_RAW)throw Error("Dữ liệu vượt giới hạn 2 MB. Hãy chia nhỏ file Excel.");
+ var compressed=pako.gzip(raw,{level:9});
+ var encoded=base64url(compressed);
+ var hash=hex(await crypto.subtle.digest("SHA-256",compressed));
+ var q=JSON.stringify({cp:1,set:makeSetId(),seq:1,total:1,type:payload.type,sha256:hash,data:encoded});
+ var bytes=new TextEncoder().encode(q).length;
+ // A QR symbol has a finite capacity; do not silently truncate personal data or make an unscannable QR.
+ if(bytes>MAX_QR_BYTES)throw Error("File Excel này cần "+bytes+" byte QR, vượt mức "+MAX_QR_BYTES+" byte để quét một lần ổn định. Không thể nhét đủ dữ liệu vào một mã QR mà vẫn bảo đảm quét được. Vui lòng nhập Excel trực tiếp trong ChấmPro, dùng file ít dòng hơn hoặc chọn giải pháp QR một lần bằng liên kết dữ liệu trên máy chủ.");
+ return [q];
 }
 function showQR(){
  var area=$("qrImage");area.replaceChildren();if(!qrParts.length)return;
- try{new QRCode(area,{text:qrParts[qrIndex],width:350,height:350,colorDark:"#0a1830",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M})}
+ try{
+  var bytes=new TextEncoder().encode(qrParts[qrIndex]).length;
+  var side=bytes>1500?720:(bytes>850?600:480);
+  new QRCode(area,{text:qrParts[qrIndex],width:side,height:side,colorDark:"#0a1830",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M});
+ }
  catch(err){fail("Không hiển thị được QR: "+err.message);return}
- $("qrHeading").textContent=(lastType==="students"?"Danh sách học sinh":"Bộ đáp án")+" · Mã "+(qrIndex+1)+"/"+qrParts.length;
- $("qrProgress").textContent=(qrIndex+1)+" / "+qrParts.length;
- $("prevQR").disabled=qrIndex===0;$("nextQR").disabled=qrIndex>=qrParts.length-1;
+ $("qrHeading").textContent=(lastType==="students"?"Danh sách học sinh":"Bộ đáp án")+" · Mã QR duy nhất";
+ $("qrProgress").textContent="Quét một lần";
+ 
 }
-$("prevQR").addEventListener("click",function(){if(qrIndex>0){qrIndex--;showQR()}});
-$("nextQR").addEventListener("click",function(){if(qrIndex<qrParts.length-1){qrIndex++;showQR()}});
+
+
 $("downloadQR").addEventListener("click",function(){
  var canvas=$("qrImage").querySelector("canvas"),img=$("qrImage").querySelector("img");
  try{var src=canvas&&canvas.width?canvas.toDataURL("image/png"):img&&img.src;if(!src)throw Error("QR chưa hiển thị");
@@ -190,7 +200,7 @@ $("createQR").addEventListener("click",async function(){
   qrParts=await makeQR(result.payload);qrIndex=0;lastType=mode;
   $("recordCount").textContent=result.number;$("qrCount").textContent=qrParts.length;
   qrEmpty.classList.add("hide");qrResults.classList.remove("hide");
-  $("qrReady").textContent="Đã tạo "+qrParts.length+" mã QR cho "+result.number+(mode==="students"?" học sinh.":" mã đề.")+" Mở ChấmPro và quét đủ các mã trước khi xác nhận nhập.";
+  $("qrReady").textContent="Đã tạo 1 mã QR cho "+result.number+(mode==="students"?" học sinh.":" mã đề.")+" Mở ChấmPro, chọn QR Web và quét một lần để xác nhận nhập.";
   showQR();renderPreview(result.preview);success("Đã tạo mã QR thành công."+ (result.warnings.length?"\n"+result.warnings.join("\n"):""));
  }catch(e){fail("Không tạo được QR: "+(e&&e.message?e.message:String(e)))}
  finally{button.disabled=false}
