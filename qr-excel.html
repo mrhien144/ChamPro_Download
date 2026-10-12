@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#10244d">
+<meta name="description" content="Tạo mã QR ChấmPro từ file Excel danh sách học sinh hoặc đáp án. Xử lý dữ liệu trực tiếp trong trình duyệt.">
+<title>Tạo QR từ Excel | ChấmPro</title>
+<style>
+:root{--ink:#112342;--muted:#5c6d89;--blue:#2455d8;--green:#087f69;--paper:#fff;--border:#dce5f4;--background:#f4f7fc}
+*{box-sizing:border-box}body{margin:0;background:var(--background);font:15px/1.65 system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;color:var(--ink)}
+a{color:inherit;text-decoration:none}button,input,select{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.47}button:focus-visible,input:focus-visible,a:focus-visible,select:focus-visible{outline:3px solid #89baff;outline-offset:2px}
+.top{height:5px;background:linear-gradient(90deg,#31deb5,#3d89f5,#8764f1)}
+header{background:#fff;border-bottom:1px solid var(--border)}.nav{max-width:1080px;margin:auto;padding:17px 22px;display:flex;justify-content:space-between;align-items:center;gap:16px}
+.logo{font-size:22px;font-weight:900;display:flex;align-items:center;gap:10px;letter-spacing:-.6px}.icon{width:38px;height:38px;background:#1c4bb3;color:#fff;border-radius:12px;display:grid;place-items:center;font-weight:900;font-size:23px}
+.back{color:#3553a2;font-size:13px;font-weight:750}.wrap{max-width:1080px;margin:auto;padding:0 22px}.hero{background:linear-gradient(135deg,#102449,#183977);color:#fff;padding:48px 0 54px}.hero h1{font-size:clamp(30px,4vw,44px);line-height:1.2;margin:11px 0 14px;letter-spacing:-1.1px}.hero p{color:#d7e6ff;max-width:760px;margin:0}.kicker{color:#73ecce;font-size:12px;font-weight:850;letter-spacing:2px;text-transform:uppercase}.main{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr);gap:20px;margin-top:-26px;position:relative;padding-bottom:48px}.panel{background:#fff;border:1px solid var(--border);border-radius:19px;padding:26px;box-shadow:0 15px 32px #1634610b}.panel h2{font-size:21px;letter-spacing:-.5px;margin:0 0 8px}.hint{color:var(--muted);font-size:13px;margin:4px 0 16px}.tabs{display:flex;gap:9px;margin:19px 0 20px}.tab{flex:1;border:1px solid var(--border);border-radius:12px;padding:11px;background:#f8faff;color:#476087;font-weight:790}.tab.active{background:#eaf2ff;color:#1749b1;border-color:#7bacf8}.label{display:block;font-weight:790;margin:15px 0 7px;font-size:13px}.upload{display:block;border:2px dashed #a8bee8;border-radius:14px;background:#f8fbff;padding:23px 15px;cursor:pointer;text-align:center}.upload:hover{border-color:#3c78ed}.upload strong{display:block;color:#1c4ebb;font-size:15px}.upload small{color:#667a96;font-size:12px}.upload input{display:none}.filename{font-size:13px;margin-top:9px;color:#415977;overflow-wrap:anywhere}.row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.row.two{grid-template-columns:repeat(2,1fr)}input[type=number],input[type=text]{width:100%;border:1px solid #cdd9eb;border-radius:10px;padding:10px 12px;min-width:0;background:#fff;color:#132c54}.primary{background:#2459df;color:white;border:none;border-radius:11px;padding:12px 20px;font-weight:850}.primary:hover{background:#1746b7}.secondary{background:#f1f5fc;color:#2452a4;border:1px solid #d3e0f4;border-radius:11px;padding:11px 15px;font-weight:790}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:19px}.hide{display:none!important}.notice{background:#eff6ff;color:#35527e;border:1px solid #cddffc;border-radius:11px;padding:12px 14px;font-size:12px;margin-top:14px}.notice.warn{background:#fff8e9;color:#815d19;border-color:#f2deae}.error{background:#fff0f0;border:1px solid #f5b9bd;color:#ae2a35;border-radius:11px;padding:11px 13px;margin-top:15px;white-space:pre-wrap;font-size:13px}.success{background:#eaf9f3;border:1px solid #b4e9d4;color:#126d54;border-radius:11px;padding:11px 13px;margin-top:14px;font-size:13px;white-space:pre-wrap}.preview{margin:16px 0 0;max-height:210px;overflow:auto}.preview table{border-collapse:collapse;width:100%;font-size:12px}.preview th,.preview td{border-bottom:1px solid #e9edf5;padding:7px 8px;text-align:left;white-space:nowrap}.preview th{background:#f3f7fd}.qrwrap{background:#f4f8ff;border:1px solid #e0eaf9;border-radius:16px;text-align:center;padding:22px 8px;margin-top:20px}.qr{display:flex;justify-content:center;align-items:center;min-height:320px}.qr img,.qr canvas{display:block;max-width:100%;height:auto!important;border:12px solid #fff;border-radius:6px;box-shadow:0 6px 22px #1e386023}.qrtitle{font-weight:900;margin:7px 0}.muted{font-size:13px;color:#617591}.qrcontrols{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px;margin-top:13px}.qrpage{font-size:13px;font-weight:850;color:#244481}.steps{padding-left:20px;color:#435674;font-size:14px}.steps li{margin:9px 0}.small{font-size:12px;color:#617391}.kpi{display:grid;grid-template-columns:1fr 1fr;gap:11px}.kpi>div{border:1px solid #e1e9f4;background:#fafcff;border-radius:11px;padding:12px}.kpi strong{font-size:22px;color:#204baf;display:block}.kpi small{font-size:12px;color:#617391}.footer{text-align:center;color:#70819a;font-size:12px;padding:20px}.loader{color:#2c61bb;font-weight:750;font-size:13px}.files{margin:10px 0;font-size:12px}.files a{color:#2455d8;text-decoration:underline;text-underline-offset:3px}.privacy{border-top:1px solid #e7edf7;margin-top:19px;padding-top:15px;font-size:12px;color:#60738c}
+@media(max-width:850px){.main{grid-template-columns:1fr}.panel{padding:19px}.hero{padding:33px 0 48px}.qr{min-height:290px}}@media(max-width:440px){.row{grid-template-columns:repeat(3,minmax(0,1fr))}.wrap{padding:0 15px}.nav{padding:14px 15px}.back{font-size:12px}.panel{border-radius:15px}.qr img,.qr canvas{width:min(330px,100%)!important}.qr{min-height:310px}}
+</style>
+</head>
+<body><div class="top"></div>
+<header><nav class="nav"><a class="logo" href="./"><span class="icon">✓</span>ChấmPro</a><a class="back" href="./">← Trang tải ứng dụng</a></nav></header>
+<section class="hero"><div class="wrap"><span class="kicker">Công cụ dành cho giáo viên</span><h1>Tạo mã QR từ Excel</h1><p>Chọn đúng file mẫu ChấmPro, kiểm tra dữ liệu và tạo một hoặc nhiều mã QR để nhập vào ứng dụng bằng camera.</p></div></section>
+<main class="wrap main">
+<section class="panel" aria-label="Tạo mã QR">
+<h2>1. Chọn loại dữ liệu và file Excel</h2><p class="hint">Hỗ trợ file .xlsx theo mẫu tải từ ChấmPro. Nội dung được xử lý tại trình duyệt, không gửi file lên Backend.</p>
+<div class="tabs"><button type="button" class="tab active" id="studentTab">👥 Danh sách học sinh</button><button type="button" class="tab" id="answerTab">☑ Đáp án bài kiểm tra</button></div>
+<label class="upload" for="excelFile"><strong>↑ Bấm để chọn file Excel (.xlsx)</strong><small id="uploadHint">Mẫu có Số báo danh, Họ và tên, Lớp và SĐT/Zalo PH 1/2</small><input id="excelFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
+<p class="filename" id="fileName">Chưa chọn file</p>
+<div id="answerOptions" class="hide">
+<div class="label">Số câu của bài kiểm tra đã tạo trong ứng dụng</div><div class="row">
+<div><label for="partI" class="label">Phần I</label><input id="partI" type="number" min="0" max="120" value="18"></div>
+<div><label for="partII" class="label">Phần II</label><input id="partII" type="number" min="0" max="8" value="4"></div>
+<div><label for="partIII" class="label">Phần III</label><input id="partIII" type="number" min="0" max="6" value="6"></div>
+</div>
+<div class="notice warn">Số câu I–II–III phải khớp chính xác bài kiểm tra trong ChấmPro. Nếu dùng phiếu 120 câu, nhập 120 – 0 – 0. Mã đề hỗ trợ 3 hoặc 4 chữ số, tự xác định từ tiêu đề cột Excel.</div>
+</div>
+<div class="actions"><button id="createQR" class="primary" type="button">Tạo mã QR</button><button id="resetQR" class="secondary" type="button">Xóa kết quả</button></div>
+<div id="status" role="status" aria-live="polite"></div>
+<div id="preview" class="preview hide"></div>
+<div class="files">Bạn có thể tải mẫu ngay trong ứng dụng ChấmPro, hoặc <a href="https://api.mrhien.com/templates/students.xlsx" target="_blank" rel="noopener">mẫu danh sách học sinh</a> / <a href="https://api.mrhien.com/templates/answers.xlsx" target="_blank" rel="noopener">mẫu đáp án minh họa</a>.</div>
+<div class="privacy"><strong>Riêng tư:</strong> trang không tải file Excel hoặc nội dung QR lên máy chủ. Mã QR có thể chứa họ tên, SBD, số Zalo phụ huynh: chỉ hiển thị và quét trong môi trường tin cậy; không đăng hình QR công khai. Trang dùng thư viện JavaScript từ CDN để đọc Excel và tạo QR.</div>
+</section>
+<aside>
+<section class="panel"><h2>2. Quét mã vào ChấmPro</h2><p class="hint">Website sẽ hiển thị từng QR theo thứ tự. Nếu nhiều mã, phải quét đủ tất cả mã cùng bộ.</p>
+<div class="kpi"><div><strong id="recordCount">0</strong><small id="countLabel">Học sinh</small></div><div><strong id="qrCount">0</strong><small>Mã QR cần quét</small></div></div>
+<div id="qrResults" class="hide">
+<div class="qrwrap"><div class="qrtitle" id="qrHeading">QR 1</div><div class="qr" id="qrImage"></div><div class="qrcontrols"><button type="button" class="secondary" id="prevQR">← Trước</button><span class="qrpage" id="qrProgress"></span><button type="button" class="secondary" id="nextQR">Tiếp →</button></div><div class="actions" style="justify-content:center"><button type="button" class="primary" id="downloadQR">↓ Lưu QR hiện tại (PNG)</button></div></div>
+<div class="success" id="qrReady"></div>
+</div>
+<div id="qrEmpty" class="notice">Chọn file Excel rồi nhấn <strong>Tạo mã QR</strong> để bắt đầu.</div>
+<h3 style="margin:24px 0 7px;font-size:16px">Hướng dẫn trên điện thoại</h3><ol class="steps"><li>Mở ứng dụng ChấmPro và đăng nhập.</li><li>Vào lớp học để quét <strong>QR danh sách học sinh</strong>, hoặc vào bài kiểm tra để quét <strong>QR đáp án Web</strong>.</li><li>Quét lần lượt đủ các QR mà website tạo. Có thể quét không theo thứ tự.</li><li>Kiểm tra thông tin xác nhận, nhấn <strong>Nhập</strong>. Với đáp án, kiểm tra lại trước khi chấm.</li></ol>
+<div class="notice warn">Không dùng màn hình “QR đáp án” kiểu cũ cho bộ QR nhiều phần. Cần chọn chức năng <strong>QR Web</strong> trong ChấmPro.</div>
+</section>
+</aside>
+</main><footer class="footer">© Bản quyền thuộc về Mr Hiển · ChấmPro · Công cụ QR cho ứng dụng 1.4.15</footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+(function(){
+"use strict";
+var mode="students", fileInput=document.getElementById("excelFile"), fileName=document.getElementById("fileName");
+var status=document.getElementById("status"), preview=document.getElementById("preview");
+var qrResults=document.getElementById("qrResults"), qrEmpty=document.getElementById("qrEmpty");
+var qrParts=[],qrIndex=0, lastType="",MAX_RAW=2*1024*1024,CHUNK=430, MAX_FILE=5*1024*1024;
+function $(id){return document.getElementById(id)}
+function clean(v){if(v===undefined||v===null)return"";var s=String(v).trim();return s.endsWith(".0")&&/^\d+\.0$/.test(s)?s.slice(0,-2):s}
+function low(v){return clean(v).toLocaleLowerCase("vi-VN").replace(/\s+/g," ")}
+function rowVal(row,i){return i<0?"":clean(row[i])}
+function fail(message){status.className="error";status.textContent=message}
+function success(message){status.className="success";status.textContent=message}
+function resetResult(){qrParts=[];qrIndex=0;qrResults.classList.add("hide");qrEmpty.classList.remove("hide");preview.classList.add("hide");preview.replaceChildren();status.textContent="";status.className="";$("recordCount").textContent="0";$("qrCount").textContent="0";$("qrImage").replaceChildren()}
+function changeMode(m){mode=m;resetResult();$("studentTab").classList.toggle("active",m==="students");$("answerTab").classList.toggle("active",m==="answers");$("answerOptions").classList.toggle("hide",m!=="answers");$("uploadHint").textContent=m==="students"?"Mẫu có Số báo danh, Họ và tên, Lớp và SĐT/Zalo PH 1/2":"Mẫu DapAn: Câu\\Mã đề, các cột mã đề và đáp án 3 phần";$("countLabel").textContent=m==="students"?"Học sinh":"Mã đề";fileInput.value="";fileName.textContent="Chưa chọn file"}
+$("studentTab").addEventListener("click",function(){changeMode("students")});$("answerTab").addEventListener("click",function(){changeMode("answers")});
+fileInput.addEventListener("change",function(){resetResult();fileName.textContent=fileInput.files[0]?fileInput.files[0].name:"Chưa chọn file"});
+$("resetQR").addEventListener("click",function(){resetResult();fileInput.value="";fileName.textContent="Chưa chọn file"});
+function sheetRows(book,desired){var ws=book.Sheets[desired]||book.Sheets[book.SheetNames[0]];if(!ws)throw Error("Không tìm thấy sheet Excel");return XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:"",blankrows:false})}
+function parseStudents(rows){
+ if(!rows.length)throw Error("File danh sách học sinh trống.");
+ var h=rows[0].map(low),col=function(names){for(var n of names){var idx=h.indexOf(n);if(idx>=0)return idx}return -1};
+ var si=col(["số báo danh","sbd"]),ni=col(["họ và tên","họ tên"]),ci=col(["lớp"]),pi=col(["sđt/zalo ph 1","sđt/zalo phụ huynh","zalo ph 1","sđt ph 1"]),p2=col(["sđt/zalo ph 2","zalo ph 2","sđt ph 2"]),note=col(["ghi chú"]);
+ if(si<0||ni<0)throw Error("Thiếu cột bắt buộc “Số báo danh” hoặc “Họ và tên”. Hãy dùng mẫu ChấmPro.");
+ var students=[],classes=[],seen=new Set(),dup=0,empty=0;
+ for(var i=1;i<rows.length;i++){
+  var row=rows[i],sbd=rowVal(row,si),name=rowVal(row,ni);
+  if(!row.some(function(v){return clean(v)}))continue;
+  if(!sbd||!name){empty++;continue}
+  if(sbd.length>30||name.length>160)throw Error("Dòng "+(i+1)+": SBD hoặc họ tên quá dài.");
+  if(seen.has(sbd)){dup++;continue}seen.add(sbd);
+  var p1=rowVal(row,pi),p02=rowVal(row,p2),nt=rowVal(row,note),cl=rowVal(row,ci);
+  if(p1.length>30||p02.length>30||nt.length>500)throw Error("Dòng "+(i+1)+": SĐT hoặc ghi chú quá dài.");
+  students.push({candidate_no:sbd,full_name:name,parent_zalo_1:p1,parent_zalo_2:p02,note:nt});
+  if(cl&&!classes.includes(cl))classes.push(cl);
+ }
+ if(!students.length)throw Error("Không tìm thấy học sinh hợp lệ trong file Excel.");
+ if(students.length>500)throw Error("Danh sách vượt 500 học sinh. Hãy chia thành nhiều bộ QR.");
+ var warnings=[];
+ if(dup)warnings.push("Bỏ qua "+dup+" SBD trùng trong file.");
+ if(empty)warnings.push("Bỏ qua "+empty+" dòng thiếu SBD hoặc họ tên.");
+ if(classes.length>1)warnings.push("File có nhiều lớp: "+classes.join(", ")+". App sẽ nhập vào lớp đang chọn trên điện thoại.");
+ return {payload:{app:"ChamPro",v:1,type:"student_list",class_name:classes.length===1?classes[0]:"",students:students},number:students.length,warnings:warnings,preview:students.map(function(x){return [x.candidate_no,x.full_name,x.parent_zalo_1,x.parent_zalo_2]})};
+}
+function intCount(id,max){var raw=$(id).value;if(raw.trim()===""||!/^\d+$/.test(raw))throw Error("Số câu phải là số nguyên không âm.");var v=Number(raw);if(v<0||v>max)throw Error("Số câu "+id+" phải từ 0 đến "+max);return v}
+function parseAnswers(rows){
+ if(!rows.length)throw Error("File đáp án trống.");
+ var header=low(rows[0][0]).replace(/\s+/g,"");
+ if(!["câu\\mãđề","cau\\made","câu/mãđề","cau/made"].includes(header))throw Error('Ô A1 phải là "Câu\\Mã đề".');
+ var nI=intCount("partI",120),nII=intCount("partII",8),nIII=intCount("partIII",6),total=nI+nII+nIII;
+ if(total<1||total>120)throw Error("Cần ít nhất 1 câu và tổng không quá 120.");
+ if(nI>40&&(nII||nIII))throw Error("Phiếu 120 câu chỉ sử dụng Phần I, đặt Phần II và III bằng 0.");
+ var cols=[],seen=new Set();
+ for(var i=1;i<rows[0].length;i++){var h=rowVal(rows[0],i);if(!h)continue;if(!/^\d{1,4}$/.test(h))throw Error("Cột "+(i+1)+": mã đề phải là số 3 hoặc 4 chữ số.");cols.push({index:i,raw:h})}
+ if(!cols.length)throw Error("Không có cột mã đề trong sheet DapAn.");
+ var digits=cols.some(function(c){return c.raw.length===4})?4:3;
+ var keys={},suffixes=new Set();
+ for(var c of cols){
+  var code=c.raw.padStart(digits,"0");
+  if(code.length!==digits||seen.has(code))throw Error("Mã đề bị trùng hoặc không đúng "+digits+" chữ số: "+code);
+  seen.add(code);
+  if(digits===4){var suffix=code.slice(-3);if(suffixes.has(suffix))throw Error("Mã đề 4 chữ số có trùng 3 số cuối: "+suffix);suffixes.add(suffix)}
+  keys[code]={I:[],II:[],III:[]};
+ }
+ if(rows.length-1<total)throw Error("Excel có "+(rows.length-1)+" dòng câu hỏi, trong khi bạn nhập tổng "+total+" câu.");
+ var extras=rows.slice(total+1).filter(function(row){return row.some(function(x){return clean(x)})});
+ if(extras.length)throw Error("File còn "+extras.length+" dòng đáp án ngoài số câu đã chọn. Kiểm tra lại cấu trúc I–II–III.");
+ for(var q=0;q<total;q++){
+  var line=rows[q+1];
+  var no=rowVal(line,0);if(no&&/^\d+$/.test(no)&&Number(no)!==q+1)throw Error("Dòng "+(q+2)+" có số câu "+no+" thay vì "+(q+1)+".");
+  for(var col of cols){
+   var code=col.raw.padStart(digits,"0"),value=rowVal(line,col.index),item={award_all:false,cancelled:false};
+   if(q<nI){
+    var a=value.toUpperCase().replace(/[\s,;\/|]/g,"");
+    if(!a||!/^[ABCD]{1,4}$/.test(a))throw Error("Mã "+code+", Phần I câu "+(q+1)+": đáp án phải là A/B/C/D hoặc A,C.");
+    item.accepted=[...new Set(a.split(""))];keys[code].I.push(item);
+   }else if(q<nI+nII){
+    var a2=value.toUpperCase().replace(/TRUE/g,"Đ").replace(/FALSE/g,"S").replace(/D/g,"Đ").replace(/T/g,"Đ").replace(/F/g,"S").replace(/\s+/g,"");
+    if(!/^[ĐS]{4}$/.test(a2))throw Error("Mã "+code+", Phần II câu "+(q-nI+1)+": cần 4 ý Đ/S (ví dụ ĐSĐĐ).");
+    item.answer=a2;keys[code].II.push(item);
+   }else{
+    var accepted=value.split(/[;|]/).map(function(s){return s.trim()}).filter(Boolean);
+    if(!accepted.length)throw Error("Mã "+code+", Phần III câu "+(q-nI-nII+1)+": thiếu đáp án.");
+    item.accepted=accepted;keys[code].III.push(item);
+   }
+  }
+ }
+ return {payload:{app:"ChamPro",v:1,type:"answer_key",source_name:"ChấmPro QR Web",code_digits:digits,part_counts:{I:nI,II:nII,III:nIII},answer_keys:keys},number:cols.length,warnings:[],preview:cols.map(function(c){var x=c.raw.padStart(digits,"0"),key=keys[x];return [x,key.I.length,key.II.length,key.III.length]})};
+}
+function renderPreview(data){
+ preview.classList.remove("hide");preview.replaceChildren();
+ var table=document.createElement("table"),thead=document.createElement("thead"),tr=document.createElement("tr");
+ var hs=mode==="students"?["SBD","Họ và tên","Zalo PH 1","Zalo PH 2"]:["Mã đề","Phần I","Phần II","Phần III"];
+ for(var h of hs){var th=document.createElement("th");th.textContent=h;tr.appendChild(th)}thead.appendChild(tr);table.appendChild(thead);
+ var tbody=document.createElement("tbody");for(var row of data.slice(0,8)){var r=document.createElement("tr");for(var val of row){var td=document.createElement("td");td.textContent=String(val);r.appendChild(td)}tbody.appendChild(r)}table.appendChild(tbody);preview.appendChild(table);
+ if(data.length>8){var more=document.createElement("div");more.className="small";more.textContent="Hiển thị 8/"+data.length+" dòng.";preview.appendChild(more)}
+}
+function base64url(bytes){var s="",step=16384;for(var i=0;i<bytes.length;i+=step){s+=String.fromCharCode.apply(null,bytes.subarray(i,i+step))}return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}
+function hex(bytes){return Array.from(new Uint8Array(bytes)).map(function(b){return b.toString(16).padStart(2,"0")}).join("")}
+function makeSetId(){var x=new Uint8Array(10);crypto.getRandomValues(x);return hex(x)}
+async function makeQR(payload){
+ var raw=new TextEncoder().encode(JSON.stringify(payload));if(raw.length>MAX_RAW)throw Error("Dữ liệu vượt giới hạn 2 MB. Hãy chia nhỏ file Excel.");
+ var compressed=pako.gzip(raw,{level:9}),encoded=base64url(compressed),hash=hex(await crypto.subtle.digest("SHA-256",compressed)),setId=makeSetId(),total=Math.ceil(encoded.length/CHUNK);
+ if(total>150)throw Error("Dữ liệu tạo "+total+" QR, quá nhiều để quét. Hãy chia nhỏ file.");
+ var result=[];for(var n=0;n<total;n++){result.push(JSON.stringify({cp:1,set:setId,seq:n+1,total:total,type:payload.type,sha256:hash,data:encoded.slice(n*CHUNK,(n+1)*CHUNK)}))}return result;
+}
+function showQR(){
+ var area=$("qrImage");area.replaceChildren();if(!qrParts.length)return;
+ try{new QRCode(area,{text:qrParts[qrIndex],width:350,height:350,colorDark:"#0a1830",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M})}
+ catch(err){fail("Không hiển thị được QR: "+err.message);return}
+ $("qrHeading").textContent=(lastType==="students"?"Danh sách học sinh":"Bộ đáp án")+" · Mã "+(qrIndex+1)+"/"+qrParts.length;
+ $("qrProgress").textContent=(qrIndex+1)+" / "+qrParts.length;
+ $("prevQR").disabled=qrIndex===0;$("nextQR").disabled=qrIndex>=qrParts.length-1;
+}
+$("prevQR").addEventListener("click",function(){if(qrIndex>0){qrIndex--;showQR()}});
+$("nextQR").addEventListener("click",function(){if(qrIndex<qrParts.length-1){qrIndex++;showQR()}});
+$("downloadQR").addEventListener("click",function(){
+ var canvas=$("qrImage").querySelector("canvas"),img=$("qrImage").querySelector("img");
+ try{var src=canvas&&canvas.width?canvas.toDataURL("image/png"):img&&img.src;if(!src)throw Error("QR chưa hiển thị");
+ var a=document.createElement("a");a.download="ChamPro_QR_"+lastType+"_"+String(qrIndex+1).padStart(2,"0")+".png";a.href=src;document.body.appendChild(a);a.click();a.remove();
+ }catch(err){fail("Không lưu được QR: "+err.message)}
+});
+$("createQR").addEventListener("click",async function(){
+ var file=fileInput.files[0];resetResult();
+ if(!file){fail("Hãy chọn file Excel trước.");return}
+ if(!/\.xlsx$/i.test(file.name)){fail("Vui lòng chọn file .xlsx theo mẫu ChấmPro.");return}
+ if(file.size>MAX_FILE){fail("File vượt 5 MB.");return}
+ if(!window.XLSX||!window.pako||!window.QRCode||!window.crypto||!crypto.subtle){fail("Không tải được thư viện Excel/QR hoặc trình duyệt không hỗ trợ HTTPS. Hãy mở lại bằng Chrome có Internet.");return}
+ var button=$("createQR");button.disabled=true;status.className="loader";status.textContent="Đang đọc Excel, nén và tạo QR...";
+ try{
+  var wb=XLSX.read(new Uint8Array(await file.arrayBuffer()),{type:"array",cellDates:false,cellNF:false});
+  var result=mode==="students"?parseStudents(sheetRows(wb,"DanhSachHocSinh")):parseAnswers(sheetRows(wb,"DapAn"));
+  qrParts=await makeQR(result.payload);qrIndex=0;lastType=mode;
+  $("recordCount").textContent=result.number;$("qrCount").textContent=qrParts.length;
+  qrEmpty.classList.add("hide");qrResults.classList.remove("hide");
+  $("qrReady").textContent="Đã tạo "+qrParts.length+" mã QR cho "+result.number+(mode==="students"?" học sinh.":" mã đề.")+" Mở ChấmPro và quét đủ các mã trước khi xác nhận nhập.";
+  showQR();renderPreview(result.preview);success("Đã tạo mã QR thành công."+ (result.warnings.length?"\n"+result.warnings.join("\n"):""));
+ }catch(e){fail("Không tạo được QR: "+(e&&e.message?e.message:String(e)))}
+ finally{button.disabled=false}
+});
+})();
+</script>
+</body></html>
