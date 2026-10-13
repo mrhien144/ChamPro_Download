@@ -30,13 +30,39 @@
   .navlinks .navweb:hover{background:#dceaff;color:#163f9a}
   @media (max-width:900px){.navlinks{gap:8px}.navlinks a.navweb{display:inline-flex}}
   @media (max-width:600px){nav{gap:8px}.navlinks .navweb{font-size:12px;padding:8px 10px}.navlinks .navcta{padding:9px 10px;font-size:12px}.brand{gap:7px}}
+
+  /* ChamPro single-line header v1 */
+  header nav.shell{max-width:1380px;gap:14px}
+  header .brand{flex:0 0 auto;white-space:nowrap;font-size:21px}
+  header .navlinks{display:flex;flex:1 1 auto;min-width:0;align-items:center;justify-content:flex-end;flex-wrap:nowrap;gap:clamp(7px,1vw,16px);white-space:nowrap}
+  header .navlinks a{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;white-space:nowrap;font-size:13px;line-height:1.25}
+  header .navlinks .navweb{padding:9px 12px}
+  header .navlinks .navcta{padding:11px 14px}
+  @media(max-width:1200px){
+    header nav.shell{padding-left:14px;padding-right:14px;gap:12px}
+    header .brand{font-size:18px;gap:8px}
+    header .brandmark{width:38px;height:38px}
+    header .navlinks{justify-content:flex-start;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:12px}
+    header .navlinks::-webkit-scrollbar{display:none}
+    header .navlinks a:not(.navcta){display:inline-flex}
+    header .navlinks a{font-size:12px}
+  }
+  @media(max-width:600px){
+    header nav.shell{height:66px;padding-left:12px;padding-right:12px;gap:10px}
+    header .brand{font-size:16px;gap:7px}
+    header .brandmark{width:34px;height:34px;border-radius:10px}
+    header .navlinks{gap:11px}
+    header .navlinks a{font-size:12px}
+    header .navlinks .navweb{padding:8px 10px}
+    header .navlinks .navcta{padding:9px 11px}
+  }
   </style>
 </head>
 <body>
 <div class="topline"></div>
 <header><nav class="shell" aria-label="Điều hướng chính">
   <a class="brand" href="#dau-trang" aria-label="ChấmPro - trang chủ"><span class="brandmark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="2"/><path d="m7 12 3.4 3.4L17.5 8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>ChấmPro</a>
-  <div class="navlinks"><a href="#tinh-nang">Tính năng</a><a href="#huong-dan">Hướng dẫn</a><a href="#bang-gia">Bản quyền</a><a href="qr-excel.html">Tạo QR từ Excel</a><a class="navweb" href="/web/" aria-label="Mở ChấmPro Web">ChamPro Web</a><a href="huong-dan.html">Hướng dẫn chi tiết</a><a href="ho-tro.html">Hỗ trợ</a><a href="#hoi-dap">Hỏi đáp</a><a class="navcta" href="#tai-ung-dung">Tải ứng dụng</a></div>
+  <div class="navlinks"><a href="#tinh-nang">Tính năng</a><a href="#huong-dan">Hướng dẫn</a><a href="#bang-gia">Bản quyền</a><a href="qr-excel.html">Tạo QR</a><a class="navweb" href="/web/" aria-label="Mở ChấmPro Web">ChamPro Web</a><a href="huong-dan.html">Hướng dẫn chi tiết</a><a href="ho-tro.html">Hỗ trợ</a><a href="#hoi-dap">Hỏi đáp</a><a class="navcta" href="#tai-ung-dung">Tải ứng dụng</a></div>
 </nav></header>
 <main>
 <section class="hero" id="dau-trang"><div class="shell hero-inner">
