@@ -461,9 +461,40 @@ const flash=(msg,type='info')=>{const node=$('#message');node.innerHTML=escapeHt
 function getOptions(){return {mode:$('#mode').value,shuffleQuestions:$('#shuffleQuestions').checked,shuffleOptions:$('#shuffleOptions').checked,shuffleTF:$('#shuffleTF').checked,lockTF:$('#lockTF').value,lockRules:$('#lockRules').value,groupLocks:$('#groupLocks').value,seed:+$('#seed').value||12345,school:$('#school').value,examTitle:$('#examTitle').value,leftSubtitle:$('#leftSubtitle').value,subject:$('#subject').value,minutes:+$('#minutes').value||50}};
 function refreshSourceStructure(){const target=$('#sourceStructure');if(!target)return;if(!exam){target.textContent='Tải đề Word lên để hệ thống tự nhận số câu ở Phần I, II, III.';return}const n=exam.sections;const counts=[n.I.length,n.II.length,n.III.length];const full=counts.every(x=>x>0);const mode=$('#mode').value;target.textContent=`File Word: Phần I ${counts[0]} câu · Phần II ${counts[1]} câu · Phần III ${counts[2]} câu (tổng ${exam.total}). ${mode==='auto3'?(full?'Sẽ giữ nguyên số câu và trộn riêng từng phần.':'Chế độ 3 phần cần nhận diện đủ ba phần; kiểm tra tiêu đề PHẦN I/II/III hoặc chọn Trộn toàn bộ.'):mode==='three'?'Chế độ cố định chỉ nhận 18 / 4 / 6.':mode==='120'?'Chế độ 120 câu chỉ nhận 120 câu Phần I.':'Giữ toàn bộ câu hỏi đã nhận diện.'}`;}
 $('#mode').addEventListener('change',refreshSourceStructure);
+
+function lockTokens(){return ($('#lockRules').value||'').split(/[;,\s]+/).filter(Boolean)}
+function refreshLockPicker(){
+ const sec=$('#lockSection').value,sel=$('#lockQuestion'),old=sel.value,questions=exam?.sections?.[sec]||[];
+ sel.innerHTML=questions.length?questions.map(q=>'<option value="'+q.originalNumber+'">Câu '+q.originalNumber+'</option>').join(''):'<option value="">Chưa có câu trong phần này</option>';
+ if(questions.some(q=>String(q.originalNumber)===old))sel.value=old;
+ const num=Number(sel.value),parsed=exam?parseLockRules($('#lockRules').value,exam.sections):null;
+ $('#lockKeepQuestion').disabled=!num;
+ $('#lockKeepQuestion').checked=!!(num&&parsed?.questionLocks?.[sec].has(num));
+ const letters=sec==='I'?'ABCD':sec==='II'?'abcd':'';
+ $('#lockChoiceRow').innerHTML=letters?'<span>Giữ nguyên vị trí phương án/ý:</span>'+[...letters].map((c,i)=>'<label><input type="checkbox" data-lock-letter="'+c+'" '+(parsed?.optionLocks?.[sec]?.get(num)?.has(i)?'checked':'')+' '+(!num?'disabled':'')+'> '+c+'</label>').join(''):'<span>Phần III chỉ có thể khóa vị trí câu hỏi.</span>';
+ $('#lockRuleStatus').textContent=parsed?.errors.length?'Cần sửa ký hiệu: '+parsed.errors.join(' | '):'Áp dụng theo số câu gốc trong file Word.';
+}
+function updateLockForSelected(){
+ if(!exam)return;
+ const sec=$('#lockSection').value,n=Number($('#lockQuestion').value);if(!n)return;
+ const key=(sec+'.'+n).toUpperCase();
+ const existing=lockTokens().filter(token=>{const upper=token.toUpperCase();return upper!==key&&!(upper.startsWith(key)&&upper.length===key.length+1)});
+ if($('#lockKeepQuestion').checked)existing.push(sec+'.'+n);
+ document.querySelectorAll('[data-lock-letter]:checked').forEach(el=>existing.push(sec+'.'+n+el.dataset.lockLetter));
+ $('#lockRules').value=existing.join('; ');
+ refreshLockPicker();
+}
+$('#lockSection').addEventListener('change',refreshLockPicker);
+$('#lockQuestion').addEventListener('change',refreshLockPicker);
+$('#lockRules').addEventListener('input',refreshLockPicker);
+$('#lockKeepQuestion').addEventListener('change',updateLockForSelected);
+$('#lockChoiceRow').addEventListener('change',updateLockForSelected);
+
 function describe(){if(!exam)return;const v=validateExam(exam);$('#stats').innerHTML=`<div><strong>${v.count.reduce((a,b)=>a+b,0)}</strong><small>Tổng câu</small></div><div><strong>${v.count[0]} / ${v.count[1]} / ${v.count[2]}</strong><small>Phần I / II / III</small></div><div><strong>${v.mediaCount}</strong><small>Hình trong Word</small></div><div><strong>${v.hasOLE?'Có':'Không'}</strong><small>Đối tượng OLE/MathType</small></div>`;$('#warningList').innerHTML=v.errors.length?'<p class="warnhead">Các mục cần kiểm tra trước khi làm thử:</p><ul>'+v.errors.map(e=>'<li>'+escapeHtml(e)+'</li>').join('')+'</ul>':'<span class="good">Đã nhận diện cấu trúc và đáp án của các câu.</span>';$('#countInfo').textContent=`${v.count[0]} câu Phần I · ${v.count[1]} câu Phần II · ${v.count[2]} câu Phần III`;refreshSourceStructure();refreshLockPicker();$('#groupDetected').textContent=exam.groupLines.length?exam.groupLines.join(' | '):'Không phát hiện ngữ liệu chung tự động. Có thể khai báo thủ công.'}
 $('#file').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;flash('Đang kiểm tra cấu trúc Word...');try{exam=await loadExam(f);plans=[];codes=[];zipBlob=null;$('#downloads').hidden=true;$('#practiceArea').hidden=true;lastFile=f.name;describe();$('#loaded').hidden=false;$('#generate').disabled=false;flash(`Đã đọc ${exam.total} câu từ ${f.name}.`, 'success')}catch(err){flash(err.message,'error');$('#generate').disabled=true}});
 $('#generate').addEventListener('click',async()=>{if(!exam)return;let options=getOptions();let total=exam.total;
+ options.parsedLocks=parseLockRules(options.lockRules,exam.sections);
+ if(options.parsedLocks.errors.length){flash('Kiểm tra mục khóa: '+options.parsedLocks.errors.join(' | '),'error');return}
  if(options.mode==='auto3'&&(!exam.sections.I.length||!exam.sections.II.length||!exam.sections.III.length)){flash(`Chế độ đề 3 phần theo Word cần đủ Phần I, II và III. Đã nhận diện: ${exam.sections.I.length}/${exam.sections.II.length}/${exam.sections.III.length}. Hãy kiểm tra các tiêu đề PHẦN I/II/III trong Word hoặc chọn “Trộn toàn bộ”.`,'error');return}
  if(options.mode==='three'&&(exam.sections.I.length!==18||exam.sections.II.length!==4||exam.sections.III.length!==6)){flash(`Chế độ 18–4–6 yêu cầu đúng 18/4/6; nguồn đang có ${exam.sections.I.length}/${exam.sections.II.length}/${exam.sections.III.length}. Chọn “Trộn toàn bộ” hoặc đổi nguồn.`,'error');return}
  if(options.mode==='120'&&(total!==120||exam.sections.II.length||exam.sections.III.length)){flash(`Chế độ 120 câu yêu cầu đúng 120 câu trắc nghiệm Phần I, nguồn hiện có ${total} câu. Bạn có thể chọn “Trộn toàn bộ”.`,'error');return}
