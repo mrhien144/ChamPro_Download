@@ -86,18 +86,18 @@ function answerUnderline(token){return !!token?.under}
 function optionSegments(q){
  if(q.section!=='I')return null;
  let blocks=q.blocks,explicit='',conflict=false;
- const answerLine=/^(?:đáp\s*án|đ\/a|đa|answer|key)\s*[:：\-]\s*([A-D])\s*[.)]?\s*$/i;
+ const answerLine=/^(?:đáp\s*án(?:\s*đúng)?|đ\/a|đa|answer|key)\s*[:：\-]\s*([A-D])\s*[.)]?\s*$/i;
  blocks=blocks.filter(b=>{let m=normalize(ptext(b)).match(answerLine);if(!m)return true;if(explicit&&explicit!==m[1].toUpperCase())conflict=true;explicit=m[1].toUpperCase();return false});
- let start=blocks.findIndex((p,i)=>i>0&&(['p','tbl'].includes(local(p)))&&/^\s*A\s*[.．):]/i.test(ptext(p)));
+ let start=blocks.findIndex((p,i)=>i>0&&(['p','tbl'].includes(local(p)))&&/^\s*A\s*(?:[.．):]|[-–]\s+)/i.test(ptext(p)));
  let embeddedStart=-1;
  if(start<0&&blocks[0]&&local(blocks[0])==='p'){
-  const first=txtTokens(blocks[0]),str=first.map(x=>x.ch).join(''),rx=/(^|[^A-Za-z0-9À-ỹ])A\s*[.．):]/gi;let m;
+  const first=txtTokens(blocks[0]),str=first.map(x=>x.ch).join(''),rx=/(^|[^A-Za-z0-9À-ỹ])A\s*(?:[.．):]|[-–]\s+)/gi;let m;
   while((m=rx.exec(str))){
    const pos=m.index+m[1].length;
    if(pos<=8)continue;
    // Require all four labels in order to avoid treating DNA notation as an option.
    const suffix=str.slice(pos),parts=[...'BCD'];
-   if(!parts.every(x=>new RegExp('(?:^|\\s)'+x+'\\s*[.．):]','i').test(suffix)))continue;
+   if(!parts.every(x=>new RegExp('(?:^|\\s)'+x+'\\s*(?:[.．):]|[-–]\\s+)','i').test(suffix)))continue;
    if(str.slice(0,pos).includes('?')||str.slice(0,pos).includes(':')||first[pos]?.bold||first[pos]?.under){embeddedStart=pos;break}
   }
   if(embeddedStart>=0)start=0;
@@ -113,7 +113,7 @@ function optionSegments(q){
  const textBlocks=list.flatMap(node=>local(node)==='tbl'?find(node,'p'):[node]);
  if(textBlocks.some(node=>local(node)!=='p'))return null;
  for(const p of textBlocks)ts.push(...txtTokens(p),{ch:' ',run:null});
- const text=ts.map(t=>t.ch).join(''),rx=/(^|[^A-Za-z0-9À-ỹ])([ABCD])\s*[.．):]/gi,candidates=[];let m;
+ const text=ts.map(t=>t.ch).join(''),rx=/(^|[^A-Za-z0-9À-ỹ])([ABCD])\s*(?:[.．):]|[-–]\s+)/gi,candidates=[];let m;
  while((m=rx.exec(text))){const pos=m.index+m[1].length;candidates.push({label:m[2].toUpperCase(),start:pos,end:rx.lastIndex,bold:!!ts[pos]?.bold})}
  const matches=[];
  for(const label of 'ABCD'){
@@ -150,7 +150,7 @@ function splitTFParagraph(p){
 function tfSegments(q){
  if(q.section!=='II')return null;
  let items=[],stem=[],idx=-1,explicit='',conflict=false;
- const answerLine=/^(?:đáp\s*án|đ\/a|đa|answer|key)\s*[:：\-]\s*([ĐDSSTF01\s,;.-]{4,18})\s*$/i;
+ const answerLine=/^(?:đáp\s*án(?:\s*đúng)?|đ\/a|đa|answer|key)\s*[:：\-]\s*([ĐDSSTF01\s,;.-]{4,18})\s*$/i;
  for(const raw of q.blocks){
   const blocks=local(raw)==='p'?splitTFParagraph(raw):[raw];
   for(const b of blocks){
@@ -184,7 +184,7 @@ function shortSegments(q){
  let stem=[],answer='',conflict=false;
  for(const b of q.blocks){
   const text=normalize(ptext(b));
-  const m=text.match(/^(?:A\s*[.．):]|(?:đáp\s*án|đ\/a|đ\.a|answer|kết\s*quả)\s*[:：\-])\s*(.+)$/i);
+  const m=text.match(/^(?:A\s*[.．):]|(?:đáp\s*án(?:\s*đúng)?|đ\/a|đ\.a|answer|kết\s*quả)\s*[:：\-])\s*(.+)$/i);
   if(m){const v=m[1].trim();if(answer&&answer!==v)conflict=true;answer=v;}
   else stem.push(b);
  }
