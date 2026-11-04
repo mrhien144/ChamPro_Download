@@ -621,36 +621,14 @@ function secHeading(doc,sec,n){const txt=sec==='I'?`PHẦN I: Thí sinh trả l�
 function footerRunPr(doc){const pr=el(doc,'rPr'),f=el(doc,'rFonts'),sz=el(doc,'sz');for(const k of ['ascii','hAnsi','cs','eastAsia'])f.setAttributeNS(W,'w:'+k,'Times New Roman');sz.setAttributeNS(W,'w:val','24');pr.appendChild(f);pr.appendChild(sz);return pr;}
 async function addFooter(zip,doc,sectPr,code){
  let root=xmlParse(`<w:ftr xmlns:w="${W}" xmlns:r="${R}"></w:ftr>`),ftr=root.documentElement;
- // Two fixed-width, borderless footer cells avoid unreliable Word tab positioning.
- const table=el(root,'tbl'),tblPr=el(root,'tblPr'),tblW=el(root,'tblW');
- tblW.setAttributeNS(W,'w:w','10106');tblW.setAttributeNS(W,'w:type','dxa');tblPr.appendChild(tblW);
- const tblBorders=el(root,'tblBorders');
- for(const edge of ['top','left','bottom','right','insideH','insideV']){
-  const border=el(root,edge);border.setAttributeNS(W,'w:val','nil');tblBorders.appendChild(border);
- }
- tblPr.appendChild(tblBorders);
- const cellMargins=el(root,'tblCellMar');
- for(const edge of ['top','left','bottom','right']){
-  const margin=el(root,edge);margin.setAttributeNS(W,'w:w','0');margin.setAttributeNS(W,'w:type','dxa');cellMargins.appendChild(margin);
- }
- tblPr.appendChild(cellMargins);table.appendChild(tblPr);
- const grid=el(root,'tblGrid');
- for(const width of [5053,5053]){const gridCol=el(root,'gridCol');gridCol.setAttributeNS(W,'w:w',String(width));grid.appendChild(gridCol)}
- table.appendChild(grid);
- const tr=el(root,'tr');table.appendChild(tr);
- const footerCell=(width,alignment)=>{
-  const tc=el(root,'tc'),tcPr=el(root,'tcPr'),tcW=el(root,'tcW');
-  tcW.setAttributeNS(W,'w:w',String(width));tcW.setAttributeNS(W,'w:type','dxa');tcPr.appendChild(tcW);
-  tc.appendChild(tcPr);
-  const paragraph=makeP(root,{align:alignment,line:245,after:0});tc.appendChild(paragraph);tr.appendChild(tc);
-  return paragraph;
- };
- const leftP=footerCell(5053,'left');
- const motto=addRun(leftP,'Nên người – Tiến bộ – Thành đạt');
+ // One native Word paragraph, with a right-aligned tab inside the printable width.
+ // Avoids blank/hidden left cells from table-based footer layout.
+ const p=makeP(root,{tabs:[['right',9500]],line:245,after:0});
+ const motto=addRun(p,'Nên người – Tiến bộ – Thành đạt');
  const mottoPr=child(motto,'rPr'),mottoColor=el(root,'color');
  mottoColor.setAttributeNS(W,'w:val','888888');mottoPr.appendChild(mottoColor);
  reorderProps(mottoPr,RPR_ORDER);
- const p=footerCell(5053,'right');
+ addTab(p);
  addRun(p,'Trang ');
  function field(name){
   let r=el(root,'r'),begin=el(root,'fldChar');r.appendChild(footerRunPr(root));begin.setAttributeNS(W,'w:fldCharType','begin');r.appendChild(begin);p.appendChild(r);
@@ -658,7 +636,7 @@ async function addFooter(zip,doc,sectPr,code){
   let endr=el(root,'r'),end=el(root,'fldChar');endr.appendChild(footerRunPr(root));end.setAttributeNS(W,'w:fldCharType','end');endr.appendChild(end);p.appendChild(endr)
  }
  field('PAGE');addRun(p,'/');field('NUMPAGES');addRun(p,` – Mã đề ${code}`);
- ftr.appendChild(table);
+ ftr.appendChild(p);
  const relPath='word/_rels/document.xml.rels';let relDoc=xmlParse(await zip.file(relPath).async('string'));let rels=relDoc.documentElement,all=Array.from(rels.childNodes).filter(x=>x.nodeType===1);let used=new Set(all.map(x=>x.getAttribute('Id'))),rid=1;while(used.has('rId'+rid))rid++;let id='rId'+rid;let rel=relDoc.createElementNS(PR,'Relationship');rel.setAttribute('Id',id);rel.setAttribute('Type',R+'/footer');rel.setAttribute('Target','footer-hiensoft.xml');rels.appendChild(rel);zip.file(relPath,serialize(relDoc));zip.file('word/footer-hiensoft.xml',serialize(root));
  let ctPath='[Content_Types].xml',ctDoc=xmlParse(await zip.file(ctPath).async('string'));if(!Array.from(ctDoc.documentElement.childNodes).some(x=>x.nodeType===1&&x.getAttribute('PartName')==='/word/footer-hiensoft.xml')){let over=ctDoc.createElementNS(CT,'Override');over.setAttribute('PartName','/word/footer-hiensoft.xml');over.setAttribute('ContentType','application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml');ctDoc.documentElement.appendChild(over)}zip.file(ctPath,serialize(ctDoc));
  let fr=el(doc,'footerReference');fr.setAttributeNS(W,'w:type','default');fr.setAttributeNS(R,'r:id',id);sectPr.insertBefore(fr,sectPr.firstChild)}
