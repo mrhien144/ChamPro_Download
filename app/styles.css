@@ -150,3 +150,54 @@
  body.scan-active .camera-footer{padding:7px 11px 12px}
  body.scan-active .camera-top{padding:9px 12px}
 }
+
+/* CAMERA R4 — FILL THE PORTRAIT VIEWPORT. The Samsung rear camera supplies
+   a 4:3 landscape frame while the A4 sheet is physically upright.
+   "contain" created black bars occupying roughly half of the scan screen.
+   "cover" fills the portrait region by cropping only the lateral surplus;
+   the camera's unmodified original frame remains available to OMR. */
+#cameraSurface.camera-surface{
+  position:relative;
+  width:100%;
+  aspect-ratio:3 / 4;
+  height:auto;
+  min-height:0;
+  max-height:none;
+  overflow:hidden;
+  background:#071521;
+}
+#cameraSurface #video{
+  display:block;
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:50% 50%;
+  background:transparent;
+}
+#cameraSurface #video.rotate-landscape{
+  object-fit:cover;
+}
+#cameraSurface #captureGuide{
+  top:50%;
+  left:50%;
+  aspect-ratio:547.2756 / 793.8898;
+  border:1.5px solid #6effde66;
+  box-shadow:0 0 0 100vmax rgba(0,0,0,.04);
+}
+#captureGuide .tl,#captureGuide .tr,#captureGuide .bl,#captureGuide .br{
+  background:rgba(8,32,35,.10);
+  border:4px solid #73ffe5;
+  box-shadow:0 0 0 2px #01252e88,0 0 16px #51ffe966;
+}
+@media(max-width:760px){
+  body.scan-active #cameraSurface.camera-surface{
+    width:100%;
+    aspect-ratio:3 / 4;
+    height:auto;
+    min-height:0;
+    max-height:none;
+  }
+  body.scan-active .camera-card{width:100%;}
+}
