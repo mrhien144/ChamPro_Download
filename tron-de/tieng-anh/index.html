@@ -574,12 +574,15 @@ async function verifyDocx(blob,exam){const z=await JSZip.loadAsync(await blob.ar
  if(exam?.sourceKind==='docx'){const old=await JSZip.loadAsync(exam._originalBytes.slice(0));for(const path of Object.keys(old.files).filter(x=>/^word\/(media|embeddings)\//.test(x)))if(!z.file(path))throw Error('Word mất đối tượng nhúng: '+path);}
 }
 function excelCol(i){let s='';while(i){i--;s=String.fromCharCode(65+i%26)+s;i=Math.floor(i/26)}return s;}
-async function exportAnswersXlsx(plans){const matrix=answerMatrix(plans),rows=[['Câu',...plans.map(p=>'Mã đề '+p.code)],...matrix];const sheet=rows.map((row,i)=>`<row r="${i+1}">${row.map((v,j)=>`<c r="${excelCol(j+1)}${i+1}" t="inlineStr"><is><t>${esc(v)}</t></is></c>`).join('')}</row>`).join('');
+async function exportAnswersXlsx(exam,plans){
+ const matrix=answerMatrix(plans);
+ const originalAnswers=new Map((exam?.groups||[]).flatMap(g=>g.questions||[]).map(q=>[Number(q.number),q.answer||'']));
+ const rows=[['Câu\\Mã đề','000',...plans.map(p=>String(p.code).padStart(3,'0'))],...matrix.map(row=>[row[0],originalAnswers.get(Number(row[0]))||'',...row.slice(1)])];const sheet=rows.map((row,i)=>`<row r="${i+1}">${row.map((v,j)=>`<c r="${excelCol(j+1)}${i+1}" t="inlineStr"><is><t>${esc(v)}</t></is></c>`).join('')}</row>`).join('');
  const z=new JSZip();z.file('[Content_Types].xml',`<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`);
  z.file('_rels/.rels',`<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`);
  z.file('xl/workbook.xml',`<?xml version="1.0"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Đáp án" sheetId="1" r:id="rId1"/></sheets></workbook>`);
  z.file('xl/_rels/workbook.xml.rels',`<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`);
- z.file('xl/worksheets/sheet1.xml',`<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${excelCol(rows[0].length)}${rows.length}"/><sheetViews><sheetView workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="18"/><sheetData>${sheet}</sheetData></worksheet>`);
+ z.file('xl/worksheets/sheet1.xml',`<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${excelCol(rows[0].length)}${rows.length}"/><sheetViews><sheetView workbookViewId="0"/></sheetViews><cols><col min="1" max="1" width="16" customWidth="1"/><col min="2" max="${rows[0].length}" width="13" customWidth="1"/></cols><sheetFormatPr defaultRowHeight="18"/><sheetData>${sheet}</sheetData></worksheet>`);
  return z.generateAsync({type:'blob',compression:'DEFLATE'});
 }
 async function exportSeparateDocx(exam,plans,opts={}){const z=new JSZip();for(const plan of plans){const blob=await exportExamDocx(exam,[plan],{...opts,combined:false});z.file(`De_TiengAnh_${plan.code}.docx`,blob)}return z.generateAsync({type:'blob',compression:'DEFLATE'});}
@@ -603,7 +606,7 @@ async function exportFullPackageZip(exam,plans,{header=null,onProgress=null}={})
   if(typeof onProgress==='function')onProgress(index+1,plans.length,'word');
  }
  const answerName='Bang_Dap_An_Tat_Ca_Ma_De.xlsx';
- const xlsx=await exportAnswersXlsx(plans);
+ const xlsx=await exportAnswersXlsx(exam,plans);
  if(!xlsx.size)throw Error('Tệp đáp án Excel rỗng.');
  zip.file(answerName,xlsx);
  if(typeof onProgress==='function')onProgress(plans.length,plans.length,'excel');
