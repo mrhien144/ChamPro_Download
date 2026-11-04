@@ -128,6 +128,27 @@ function optionSegments(q){
  let start=blocks.findIndex((p,i)=>i>0&&(['p','tbl'].includes(local(p)))&&/^\s*A\s*(?:[.．):]|[-–]\s+)/i.test(ptext(p)));
  let embeddedStart=-1;
  if(start<0&&blocks[0]&&local(blocks[0])==='p'){
+  // Word can place the first option A. after a hard line break in the same
+  // paragraph as the stem (e.g. original question I.6). Split only when
+  // all A/B/C/D labels follow in their ordinary order across the blocks.
+  const first=txtTokens(blocks[0]),str=first.map(x=>x.ch).join('');
+  const aMatch=/(?:^|[^A-Za-z0-9À-ỹ])A\s*[.．):]\s*/g;
+  let match;
+  while((match=aMatch.exec(str))){
+   const at=match.index+(match[0].match(/^[^A-Za-z0-9À-ỹ]/)?1:0);
+   if(at<8)continue;
+   const after=str.slice(at)+blocks.slice(1).map(ptext).join(' ');
+   if(!['B','C','D'].every(label=>new RegExp('(?:^|\\s)'+label+'\\s*[.．):]','i').test(after)))continue;
+   const doc=blocks[0].ownerDocument;
+   const stemP=el(doc,'p'),optP=el(doc,'p'),pr=child(blocks[0],'pPr');
+   if(pr){stemP.appendChild(pr.cloneNode(true));optP.appendChild(pr.cloneNode(true))}
+   for(const run of reconstruct(doc,first.slice(0,at)))stemP.appendChild(run);
+   for(const run of reconstruct(doc,first.slice(at)))optP.appendChild(run);
+   const fake={...q,blocks:[stemP,optP,...blocks.slice(1)]};
+   return optionSegments(fake);
+  }
+ }
+ if(start<0&&blocks[0]&&local(blocks[0])==='p'){
   const first=txtTokens(blocks[0]),str=first.map(x=>x.ch).join(''),rx=/(^|[^A-Za-z0-9À-ỹ])A\s*(?:[.．):]|[-–]\s+)/gi;let m;
   while((m=rx.exec(str))){
    const pos=m.index+m[1].length;
@@ -281,7 +302,9 @@ function findQuestionNumber(text,section,expected){
  let m=t.match(/^(?:Câu(?:\s+hỏi)?|Question)\s*(?:số\s*)?(\d+)\s*[.:\)–-]\s*/i);
  if(m)return +m[1];
  // Numbered-list questions without "Câu": accept only an expected sequential number.
- m=t.match(/^(\d+)\s*[.:\)]\s+(?=\S)/);
+ // Do not turn numbered assertions inside a question into extra questions.
+ // Explicit "Câu N" headings above remain supported; Word numbering is checked separately.
+ m=null;
  return m&&+m[1]===expected?+m[1]:null;
 }
 async function loadExam(file){const bytes=await file.arrayBuffer(),zip=await JSZip.loadAsync(bytes),source=await zip.file('word/document.xml')?.async('string');if(!source)throw Error('Không tìm thấy tài liệu Word hợp lệ (.docx)');const doc=xmlParse(source),body=doc.getElementsByTagNameNS(W,'body')[0];if(!body)throw Error('DOCX thiếu body');const numberedQuestion=await readNumberedQuestions(zip);let section='I',q=null,sections={I:[],II:[],III:[]},lead=[],warnings=[],groupLines=[];let before=[],explain=false,explicitSections=new Set(),classificationNotes=[];
@@ -290,7 +313,10 @@ async function loadExam(file){const bytes=await file.arrayBuffer(),zip=await JSZ
   if(isAdministrativeText(text))continue;
   const expectedNumber=(sections[section]?.length||0)+1;
   let mNum=findQuestionNumber(text,section,expectedNumber);
-  if(mNum===null)mNum=numberedQuestion(node,expectedNumber);
+  // Bare 1), 2), 3) lines inside an existing question are numbered statements,
+  // not new questions. Prefer explicit "Câu N" headings; use Word list numbering
+  // only at a section boundary before the first recognized question.
+  if(mNum===null&&!q)mNum=numberedQuestion(node,expectedNumber);
   if(mNum!==null){q={section,originalNumber:mNum,blocks:[node],preamble:before};sections[section].push(q);before=[];explain=false;continue}
   if(/^LỜI\s+GIẢI\s*:?/i.test(text)){explain=true;if(q)q.hasExplanation=true;continue}
   if(explain)continue;
