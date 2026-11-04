@@ -137,8 +137,59 @@ function optionSegments(q){
  return {stem,options:out,answerConflict:conflict,answerSource:explicit?'explicit':'underline'};
 }
 
-function tfSegments(q){if(q.section!=='II')return null;let items=[],stem=[],idx=-1;for(const b of q.blocks){let s=normalize(ptext(b)),m=s.match(/^([abcd])\s*\)/i);if(m){idx=items.length;items.push({label:m[1].toLowerCase(),correct:false,blocks:[b]})}else if(idx>=0)items[idx].blocks.push(b);else stem.push(b)}if(items.length!==4||items.map(x=>x.label).join('')!=='abcd')return null;for(const item of items){let t=txtTokens(item.blocks[0]);let pos=t.findIndex(x=>x.ch.toLowerCase()===item.label);item.correct=pos>=0&&answerUnderline(t[pos]);item.display=normalize(item.blocks.map(ptext).join(' '))}return{stem,items}}
-function shortSegments(q){if(q.section!=='III')return null;let stem=[],answer='';for(const b of q.blocks){let text=normalize(ptext(b));if(/^A\s*[.．):]\s*/i.test(text)){answer=text.replace(/^A\s*[.．):]\s*/i,'').trim()} else stem.push(b)}return {stem,answer}}
+function splitTFParagraph(p){
+ const tokens=txtTokens(p),text=tokens.map(t=>t.ch).join('');
+ const rx=/(^|[\s;])\(?([abcd])\s*[).:\-]\s*/gi,marks=[];let m;
+ while((m=rx.exec(text))){const pos=m.index+m[1].length;marks.push({letter:m[2].toLowerCase(),start:pos})}
+ if(marks.length<2||marks.map(x=>x.letter).join('')!=='abcd')return [p];
+ const make=(a,b)=>{const out=el(p.ownerDocument,'p'),pr=child(p,'pPr');if(pr)out.appendChild(pr.cloneNode(true));for(const run of reconstruct(p.ownerDocument,tokens.slice(a,b)))out.appendChild(run);return out};
+ const parts=[];if(marks[0].start>0&&text.slice(0,marks[0].start).trim())parts.push(make(0,marks[0].start));
+ marks.forEach((mark,i)=>{let next=marks[i+1]?.start??tokens.length;const part=make(mark.start,next);part.setAttribute('data-original-underlined',String(!!tokens[mark.start]?.under));parts.push(part)});
+ return parts;
+}
+function tfSegments(q){
+ if(q.section!=='II')return null;
+ let items=[],stem=[],idx=-1,explicit='',conflict=false;
+ const answerLine=/^(?:đáp\s*án|đ\/a|đa|answer|key)\s*[:：\-]\s*([ĐDSSTF01\s,;.-]{4,18})\s*$/i;
+ for(const raw of q.blocks){
+  const blocks=local(raw)==='p'?splitTFParagraph(raw):[raw];
+  for(const b of blocks){
+   const text=normalize(ptext(b)),a=text.match(answerLine);
+   if(a){const value=a[1].replace(/[\s,;.\-]/g,'').toUpperCase().replace(/D/g,'Đ').replace(/T/g,'Đ').replace(/F/g,'S').replace(/1/g,'Đ').replace(/0/g,'S');
+    if(/^[ĐS]{4}$/.test(value)){if(explicit&&explicit!==value)conflict=true;explicit=value;continue}
+   }
+   const mark=text.match(/^\s*\(?([abcd])\s*[).:\-]\s*/i);
+   if(mark){idx=items.length;items.push({label:mark[1].toLowerCase(),correct:false,blocks:[b],originalUnderline:b.getAttribute?.('data-original-underlined')==='true'});}
+   else if(idx>=0)items[idx].blocks.push(b);
+   else stem.push(b);
+  }
+ }
+ if(items.length!==4||items.map(x=>x.label).join('')!=='abcd')return null;
+ for(const item of items){
+  const tokens=txtTokens(item.blocks[0]),pos=tokens.findIndex(x=>x.ch.toLowerCase()===item.label);
+  item.correct=item.originalUnderline||(pos>=0&&answerUnderline(tokens[pos]));
+  item.display=normalize(item.blocks.map(ptext).join(' '));
+ }
+ const under=items.map(x=>x.correct?'Đ':'S').join('');
+ if(explicit){
+  if(items.some(x=>x.correct)&&under!==explicit)conflict=true;
+  items.forEach((x,i)=>x.correct=!conflict&&explicit[i]==='Đ');
+ }
+ const tfUncertain=conflict||(!explicit&&!items.some(x=>x.correct));
+ if(conflict)items.forEach(x=>x.correct=false);
+ return {stem,items,tfUncertain,answerConflict:conflict,answerSource:explicit?'explicit':'underline'};
+}
+function shortSegments(q){
+ if(q.section!=='III')return null;
+ let stem=[],answer='',conflict=false;
+ for(const b of q.blocks){
+  const text=normalize(ptext(b));
+  const m=text.match(/^(?:A\s*[.．):]|(?:đáp\s*án|đ\/a|đ\.a|answer|kết\s*quả)\s*[:：\-])\s*(.+)$/i);
+  if(m){const v=m[1].trim();if(answer&&answer!==v)conflict=true;answer=v;}
+  else stem.push(b);
+ }
+ return {stem,answer:conflict?'':answer,answerConflict:conflict,answerSource:answer?'explicit':'missing'};
+}
 function elementText(n){return normalize(ptext(n))}
 function getSection(text){
  const t=normalize(String(text||''));
@@ -245,7 +296,7 @@ function optionsLayout(doc,items,teacher){
  }
  return out;
 }
-function tfParagraphs(item,newLabel,teacher=false){const doc=item.blocks[0].ownerDocument;const out=item.blocks.map(b=>b.cloneNode(true));let p=out[0],tokens=txtTokens(p),s=tokens.map(x=>x.ch).join(''),m=s.match(/^\s*[abcd]\s*\)\s*/i);if(m){let cut=m[0].length,used=0;for(const t of find(p,'t')){let newVal='';for(const ch of t.textContent){if(used++>=cut)newVal+=ch}t.textContent=newVal}let first=Array.from(p.childNodes).find(c=>local(c)==='r');let run=el(doc,'r'),rPr=el(doc,'rPr');rPr.appendChild(el(doc,'b'));if(teacher&&item.correct){let u=el(doc,'u');u.setAttributeNS(W,'w:val','single');rPr.appendChild(u)}run.appendChild(rPr);let t=el(doc,'t');t.textContent=newLabel+') ';t.setAttributeNS(XML,'xml:space','preserve');run.appendChild(t);p.insertBefore(run,first||null)}return out.map(o=>formatParagraph(o,{indent:300}))}
+function tfParagraphs(item,newLabel,teacher=false){const doc=item.blocks[0].ownerDocument;const out=item.blocks.map(b=>b.cloneNode(true));let p=out[0],tokens=txtTokens(p),s=tokens.map(x=>x.ch).join(''),m=s.match(/^\s*\(?[abcd]\s*[).:\-]\s*/i);if(m){let cut=m[0].length,used=0;for(const t of find(p,'t')){let newVal='';for(const ch of t.textContent){if(used++>=cut)newVal+=ch}t.textContent=newVal}let first=Array.from(p.childNodes).find(c=>local(c)==='r');let run=el(doc,'r'),rPr=el(doc,'rPr');rPr.appendChild(el(doc,'b'));if(teacher&&item.correct){let u=el(doc,'u');u.setAttributeNS(W,'w:val','single');rPr.appendChild(u)}run.appendChild(rPr);let t=el(doc,'t');t.textContent=newLabel+') ';t.setAttributeNS(XML,'xml:space','preserve');run.appendChild(t);p.insertBefore(run,first||null)}return out.map(o=>formatParagraph(o,{indent:300}))}
 function paragraphWithNumber(q,n,source){const arr=source.map(b=>b.cloneNode(true)),p=arr.find(x=>local(x)==='p');if(p){let idx=arr.indexOf(p);arr[idx]=changeNumber(p,n)}return arr.map(x=>local(x)==='p'?formatParagraph(x):x)}
 function shuffleArray(items,rng){const a=[...items];for(let i=a.length-1;i>0;i--){let j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function seeded(seed){let n=seed>>>0;return()=>{n+=0x6D2B79F5;let t=n;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296}}
