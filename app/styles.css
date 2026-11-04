@@ -106,7 +106,7 @@
   left:50%;
   right:auto;
   bottom:auto;
-  transform:translate(-50%,-50%) rotate(90deg);
+  transform:translate(-50%,-50%) rotate(var(--camera-rotation, 0deg));
   transform-origin:center center;
   object-fit:contain;
 }
