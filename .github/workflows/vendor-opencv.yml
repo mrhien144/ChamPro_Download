@@ -1,0 +1,37 @@
+name: Bundle OpenCV.js on ChấmPro website
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/vendor-opencv.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  vendor-opencv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Download pinned OpenCV.js release
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p app/vendor
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            'https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js' \
+            -o app/vendor/opencv.js
+          test "$(wc -c < app/vendor/opencv.js)" -gt 3000000
+          sha256sum app/vendor/opencv.js
+      - name: Commit library into GitHub Pages repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/vendor/opencv.js
+          if ! git diff --staged --quiet; then
+            git commit -m 'Vendor pinned OpenCV.js for offline browser OMR'
+            git push origin HEAD:main
+          fi
