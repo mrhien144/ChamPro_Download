@@ -237,6 +237,8 @@ const {LETTERS,answerMatrix}=EngEngine;
 
 const W='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const XML='http://www.w3.org/XML/1998/namespace';
+const R='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+const PR='http://schemas.openxmlformats.org/package/2006/relationships';
 const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
 const local=n=>n?.localName||n?.nodeName?.split(':').pop()||'';
 const find=(node,name)=>Array.from(node?.getElementsByTagNameNS(W,name)||[]);
@@ -297,6 +299,70 @@ function renderExamHeading(doc,plan,raw,{asAnswers=false}={}){
  out.push(headerParagraph(doc,[{text:' ',size:14}],{after:110}));return out;
 }
 function importXml(doc,xml){const d=parse(xml);return doc.importNode(d.documentElement,true);}
+
+const FOOTER_LEFT='Nên người – Tiến bộ – Thành đạt';
+// Field codes are calculated by Word at layout time. A single-code DOCX uses
+// NUMPAGES; a combined DOCX uses SECTIONPAGES for each individual exam code.
+function footerField(doc,instruction){
+ const result=[],begin=el(doc,'r'),bc=el(doc,'fldChar');
+ bc.setAttributeNS(W,'w:fldCharType','begin');begin.appendChild(bc);result.push(begin);
+ const ri=el(doc,'r'),rp=el(doc,'rPr'),fonts=el(doc,'rFonts');
+ for(const k of ['ascii','hAnsi','eastAsia','cs'])fonts.setAttributeNS(W,'w:'+k,'Times New Roman');
+ rp.appendChild(fonts);
+ const sz=el(doc,'sz');sz.setAttributeNS(W,'w:val','22');rp.appendChild(sz);
+ const color=el(doc,'color');color.setAttributeNS(W,'w:val','7A7A7A');rp.appendChild(color);
+ ri.appendChild(rp);
+ const code=el(doc,'instrText');code.setAttributeNS(XML,'xml:space','preserve');code.textContent=' '+instruction+' ';ri.appendChild(code);result.push(ri);
+ const sep=el(doc,'r'),sc=el(doc,'fldChar');sc.setAttributeNS(W,'w:fldCharType','separate');sep.appendChild(sc);result.push(sep);
+ result.push(tRun(doc,'1',{size:22,color:'7A7A7A'}));
+ const end=el(doc,'r'),ec=el(doc,'fldChar');ec.setAttributeNS(W,'w:fldCharType','end');end.appendChild(ec);result.push(end);
+ return result;
+}
+function footerXml(plan,{totalField='SECTIONPAGES'}={}){
+ const doc=parse('<w:ftr xmlns:w="'+W+'" xmlns:r="'+R+'"></w:ftr>');
+ const root=doc.documentElement;
+ const left=el(doc,'p');left.appendChild(pPr(doc,{after:0,align:'left'}));
+ left.appendChild(tRun(doc,FOOTER_LEFT,{size:22,color:'7A7A7A'}));
+ const right=el(doc,'p');right.appendChild(pPr(doc,{after:0,align:'right'}));
+ right.appendChild(tRun(doc,'Trang ',{size:22,color:'7A7A7A'}));
+ for(const node of footerField(doc,'PAGE'))right.appendChild(node);
+ right.appendChild(tRun(doc,'/',{size:22,color:'7A7A7A'}));
+ for(const node of footerField(doc,totalField))right.appendChild(node);
+ right.appendChild(tRun(doc,' – Mã đề '+plan.code,{size:22,color:'7A7A7A'}));
+ root.appendChild(headerTable(doc,[4903,4903],[[left],[right]]));
+ root.appendChild(paragraph(doc,'',{after:0,size:2}));
+ return ser(doc);
+}
+async function linkExamFooter(zip,plan,totalField){
+ const filename='word/footer-hienSoft-'+String(plan.code).replace(/[^0-9A-Za-z_-]/g,'_')+'.xml';
+ zip.file(filename,footerXml(plan,{totalField}));
+ const ctPath='[Content_Types].xml',ct=parse(await zip.file(ctPath).async('string')),ctRoot=ct.documentElement;
+ const contentType='application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml';
+ if(!Array.from(ctRoot.childNodes).some(n=>n.nodeType===1&&local(n)==='Override'&&n.getAttribute('PartName')==='/'+filename)){
+  const entry=ct.createElementNS('http://schemas.openxmlformats.org/package/2006/content-types','Override');
+  entry.setAttribute('PartName','/'+filename);entry.setAttribute('ContentType',contentType);ctRoot.appendChild(entry);zip.file(ctPath,ser(ct));
+ }
+ const relPath='word/_rels/document.xml.rels',rels=parse(await zip.file(relPath).async('string')),root=rels.documentElement;
+ const used=new Set(Array.from(root.childNodes).filter(n=>n.nodeType===1).map(n=>n.getAttribute('Id')));
+ let k=1;while(used.has('rId'+k))k++;
+ const id='rId'+k,relation=rels.createElementNS(PR,'Relationship');
+ relation.setAttribute('Id',id);relation.setAttribute('Type',R+'/footer');
+ relation.setAttribute('Target',filename.slice('word/'.length));root.appendChild(relation);
+ zip.file(relPath,ser(rels));return id;
+}
+async function requestWordFieldUpdates(zip){
+ const settingsFile=zip.file('word/settings.xml');if(!settingsFile)return;
+ const settings=parse(await settingsFile.async('string')),root=settings.documentElement;
+ let update=child(root,'updateFields');
+ if(!update){update=el(settings,'updateFields');root.insertBefore(update,child(root,'hdrShapeDefaults')||child(root,'footnotePr')||child(root,'compat')||null)}
+ update.setAttributeNS(W,'w:val','true');
+ zip.file('word/settings.xml',ser(settings));
+}
+function sectionBreakParagraph(doc,sectionProperties){
+ const p=el(doc,'p'),pr=el(doc,'pPr');
+ pr.appendChild(sectionProperties);p.appendChild(pr);return p;
+}
+
 function tokensToContent(doc,tokens,{cleanAnswers=false}={}){
  const out=[];let buf=[],key='';
  const flush=()=>{if(!buf.length)return;const r=el(doc,'r');
@@ -360,34 +426,62 @@ async function baseZip(exam){if(exam.sourceKind==='docx'&&exam._originalBytes){c
  zip.file('word/_rels/document.xml.rels',`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>`);
  return {zip,doc:parse(`<w:document xmlns:w="${W}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body><w:sectPr/></w:body></w:document>`)};
 }
-function a4Section(doc,oldSect){const sect=oldSect?oldSect.cloneNode(true):el(doc,'sectPr');
- for(const c of Array.from(sect.childNodes))if(['pgSz','pgMar'].includes(local(c)))sect.removeChild(c);
- const pgSz=el(doc,'pgSz');pgSz.setAttributeNS(W,'w:w','11906');pgSz.setAttributeNS(W,'w:h','16838');
- const pgMar=el(doc,'pgMar');for(const [name,val] of Object.entries({top:1100,right:1050,bottom:1100,left:1050,header:500,footer:500,gutter:0}))pgMar.setAttributeNS(W,'w:'+name,String(val));
- const before=Array.from(sect.childNodes).find(n=>['pgNumType','cols','formProt','vAlign','docGrid','footnotePr','endnotePr','type','bidi','rtlGutter'].includes(local(n)));
- sect.insertBefore(pgSz,before||null);sect.insertBefore(pgMar,before||null);return sect;
+function a4Section(doc,oldSect,{footerId=null,nextPage=false}={}){
+ // Schema order: footerReference, type, pgSz, pgMar, pgNumType.
+ const section=el(doc,'sectPr');
+ if(footerId){const ref=el(doc,'footerReference');ref.setAttributeNS(W,'w:type','default');ref.setAttributeNS(R,'r:id',footerId);section.appendChild(ref)}
+ if(nextPage){const ty=el(doc,'type');ty.setAttributeNS(W,'w:val','nextPage');section.appendChild(ty)}
+ const size=el(doc,'pgSz');size.setAttributeNS(W,'w:w','11906');size.setAttributeNS(W,'w:h','16838');section.appendChild(size);
+ const margin=el(doc,'pgMar');
+ for(const [k,v] of Object.entries({top:1100,right:1050,bottom:1100,left:1050,header:500,footer:500,gutter:0}))margin.setAttributeNS(W,'w:'+k,String(v));
+ section.appendChild(margin);
+ const numbering=el(doc,'pgNumType');numbering.setAttributeNS(W,'w:start','1');numbering.setAttributeNS(W,'w:fmt','decimal');section.appendChild(numbering);
+ return section;
 }
 async function exportExamDocx(exam,plans,{teacher=false,combined=true,asAnswers=false,header=null}={}){
- if(!plans.length)throw Error('Chưa tạo mã đề.');const {zip,doc}=await baseZip(exam);const body=find(doc,'body')[0];
- const sect=child(body,'sectPr');while(body.firstChild)body.removeChild(body.firstChild);
- const qById=new Map(exam.groups.flatMap(g=>g.questions).map(q=>[q.id,q]));const gById=new Map(exam.groups.map(g=>[g.id,g]));
+ if(!plans.length)throw Error('Chưa tạo mã đề.');
+ const {zip,doc}=await baseZip(exam),body=find(doc,'body')[0],originalSection=child(body,'sectPr');
+ while(body.firstChild)body.removeChild(body.firstChild);
+ const byId=new Map(exam.groups.flatMap(g=>g.questions).map(q=>[q.id,q]));
+ const groups=new Map(exam.groups.map(g=>[g.id,g]));
  for(let pi=0;pi<plans.length;pi++){
-  const plan=plans[pi];if(pi){const p=el(doc,'p'),r=el(doc,'r');r.appendChild(el(doc,'br')).setAttributeNS(W,'w:type','page');p.appendChild(r);body.appendChild(p)}
-  for(const headingNode of renderExamHeading(doc,plan,header,{asAnswers}))body.appendChild(headingNode);
-  if(asAnswers){body.appendChild(answerTable(doc,plan));continue;}
-  for(const plannedGroup of plan.groups){const group=gById.get(plannedGroup.groupId),nMap=new Map(plannedGroup.members.map(m=>[m.sourceNumber,m.number]));
-   for(const intro of group.intro){if(intro.kind==='p'){const tok=replaceRefTokens(intro.tokens,nMap,group.kind);body.appendChild(rebuildBlock(doc,intro,{tokens:tok}))}else body.appendChild(rebuildBlock(doc,intro));}
-   for(const u of plannedGroup.members){const q=qById.get(u.qid);
-    let first=true;
-    if(q.stemParts.length){for(const stem of q.stemParts){if(stem.kind!=='p'){if(first){body.appendChild(paragraph(doc,'Question '+u.number+':',{bold:true,keepNext:true,after:0}));first=false}body.appendChild(rebuildBlock(doc,stem));continue;}
-     const p=rebuildBlock(doc,stem);if(first){p.insertBefore(tRun(doc,`Question ${u.number}: `,{bold:true}),p.childNodes[1]||null);let pr=child(p,'pPr');if(pr)pr.insertBefore(el(doc,'keepNext'),pr.firstChild);first=false;}body.appendChild(p);
-    }}
-    if(first)body.appendChild(paragraph(doc,`Question ${u.number}:`,{bold:true,after:0}));
-    for(const opt of outputOptions(doc,u,q,{teacher}))body.appendChild(opt);
+  const plan=plans[pi];
+  for(const heading of renderExamHeading(doc,plan,header,{asAnswers}))body.appendChild(heading);
+  if(asAnswers){body.appendChild(answerTable(doc,plan));}
+  else for(const planned of plan.groups){
+   const group=groups.get(planned.groupId);
+   const map=new Map(planned.members.map(m=>[m.sourceNumber,m.number]));
+   for(const intro of group.intro){
+    if(intro.kind==='p')body.appendChild(rebuildBlock(doc,intro,{tokens:replaceRefTokens(intro.tokens,map,group.kind)}));
+    else body.appendChild(rebuildBlock(doc,intro));
+   }
+   for(const unit of planned.members){
+    const q=byId.get(unit.qid);let first=true;
+    if(q.stemParts.length){
+     for(const stem of q.stemParts){
+      if(stem.kind!=='p'){
+       if(first){body.appendChild(paragraph(doc,'Question '+unit.number+':',{bold:true,keepNext:true,after:0}));first=false}
+       body.appendChild(rebuildBlock(doc,stem));continue;
+      }
+      const p=rebuildBlock(doc,stem);
+      if(first){p.insertBefore(tRun(doc,'Question '+unit.number+': ',{bold:true}),p.childNodes[1]||null);
+       const pr=child(p,'pPr');if(pr)pr.insertBefore(el(doc,'keepNext'),pr.firstChild);
+       first=false;
+      }
+      body.appendChild(p);
+     }
+    }
+    if(first)body.appendChild(paragraph(doc,'Question '+unit.number+':',{bold:true,after:0}));
+    for(const opt of outputOptions(doc,unit,q,{teacher}))body.appendChild(opt);
    }
   }
+  const footerId=await linkExamFooter(zip,plan,plans.length===1?'NUMPAGES':'SECTIONPAGES');
+  const section=a4Section(doc,originalSection,{footerId,nextPage:pi<plans.length-1});
+  if(pi<plans.length-1)body.appendChild(sectionBreakParagraph(doc,section));
+  else body.appendChild(section);
  }
- body.appendChild(a4Section(doc,sect));zip.file('word/document.xml',ser(doc));
+ zip.file('word/document.xml',ser(doc));
+ await requestWordFieldUpdates(zip);
  const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}});
  await verifyDocx(blob,exam);return blob;
 }
