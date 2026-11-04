@@ -565,7 +565,7 @@ function renderHeader(doc,opts,code){
  const cell=(tr,width,paragraphs)=>{
   const tc=el(doc,'tc'),pr=el(doc,'tcPr'),tw=el(doc,'tcW');
   tw.setAttributeNS(W,'w:w',String(width));tw.setAttributeNS(W,'w:type','dxa');pr.appendChild(tw);tc.appendChild(pr);
-  for(const p of paragraphs)tc.appendChild(p);tr.appendChild(tc);
+  for(const p of paragraphs)tc.appendChild(p);tr.appendChild(tc);return tc;
  };
  const pages=()=>{
   const p=makeP(doc,{align:'center',line:245,after:80,keep:true});
@@ -600,12 +600,18 @@ function renderHeader(doc,opts,code){
  cell(info.tr,7579,[studentP,numberP]);
  const codeP=makeP(doc,{align:'center',line:245,keep:true});
  black(codeP,'Mã đề thi '+code,{strong:true});
- const pp=child(codeP,'pPr'),pb=el(doc,'pBdr');
+ // Draw ONE complete rectangle on the Word table cell, not paragraph borders
+ // (paragraph borders can render as two horizontal lines in Microsoft Word).
+ const codeCell=cell(info.tr,2527,[codeP]);
+ const codePr=child(codeCell,'tcPr'),codeBorders=el(doc,'tcBorders');
  for(const edge of ['top','left','bottom','right']){
-  const b=el(doc,edge);b.setAttributeNS(W,'w:val','single');b.setAttributeNS(W,'w:sz','8');b.setAttributeNS(W,'w:space','5');pb.appendChild(b);
+  const b=el(doc,edge);b.setAttributeNS(W,'w:val','single');
+  b.setAttributeNS(W,'w:sz','8');b.setAttributeNS(W,'w:color','000000');
+  codeBorders.appendChild(b);
  }
- pp.appendChild(pb);reorderProps(pp,PPR_ORDER);
- cell(info.tr,2527,[codeP]);
+ codePr.appendChild(codeBorders);
+ const vertical=el(doc,'vAlign');vertical.setAttributeNS(W,'w:val','center');
+ codePr.appendChild(vertical);
  const spacer=makeP(doc,{line:245,after:45});
  return [title.tbl,info.tbl,spacer];
 }
