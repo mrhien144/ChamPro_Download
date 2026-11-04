@@ -24,3 +24,14 @@
  .camera-footer{padding:7px 11px 12px}.camera-footer .actions{margin-top:6px;gap:7px}.camera-footer button{font-size:12px;padding:10px 11px}.camera-footer p{margin:0 0 2px;font-size:11px;min-height:17px}
  .scan-layout .side-panel{padding:13px}.qr-dialog{padding:14px}
 }
+
+/* All four alignment targets are closed squares (not L-shaped corner brackets). */
+.guide .tl,.guide .tr,.guide .bl,.guide .br{
+ border:4px solid #5dffe0;
+ background:rgba(6,42,43,.10);
+ border-radius:9px;
+ box-shadow:0 0 0 2px rgba(2,30,37,.55),0 0 15px rgba(72,255,201,.55);
+}
+.guide.detected .tl,.guide.detected .tr,.guide.detected .bl,.guide.detected .br{
+ border-color:#a9ff72;background:rgba(80,255,53,.15)
+}
