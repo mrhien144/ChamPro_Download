@@ -85,42 +85,58 @@ function reconstruct(doc,tokens){let content=[],group=[],prev=null;function flus
 function answerUnderline(token){return !!token?.under}
 function optionSegments(q){
  if(q.section!=='I')return null;
- let blocks=q.blocks, start=blocks.findIndex((p,i)=>i>0&&local(p)==='p'&&/^\s*A\s*[.．)]/.test(ptext(p)));
- // Some Word files place option A inside the same paragraph as the question stem.
+ let blocks=q.blocks,explicit='',conflict=false;
+ const answerLine=/^(?:đáp\s*án|đ\/a|đa|answer|key)\s*[:：\-]\s*([A-D])\s*[.)]?\s*$/i;
+ blocks=blocks.filter(b=>{let m=normalize(ptext(b)).match(answerLine);if(!m)return true;if(explicit&&explicit!==m[1].toUpperCase())conflict=true;explicit=m[1].toUpperCase();return false});
+ let start=blocks.findIndex((p,i)=>i>0&&(['p','tbl'].includes(local(p)))&&/^\s*A\s*[.．):]/i.test(ptext(p)));
  let embeddedStart=-1;
- if(start<0 && blocks[0] && local(blocks[0])==='p'){
-  const first=txtTokens(blocks[0]),str=first.map(x=>x.ch).join('');
-  const rx=/(^|[^A-Za-z0-9À-ỹ])A\s*[.．)]/g;let m;
-  while((m=rx.exec(str))){const pos=m.index+m[1].length;if(pos>8&&str.slice(0,pos).includes('?')&&((first[pos]?.bold)||(first[pos]?.under))){embeddedStart=pos;break}}
+ if(start<0&&blocks[0]&&local(blocks[0])==='p'){
+  const first=txtTokens(blocks[0]),str=first.map(x=>x.ch).join(''),rx=/(^|[^A-Za-z0-9À-ỹ])A\s*[.．):]/gi;let m;
+  while((m=rx.exec(str))){
+   const pos=m.index+m[1].length;
+   if(pos<=8)continue;
+   // Require all four labels in order to avoid treating DNA notation as an option.
+   const suffix=str.slice(pos),parts=[...'BCD'];
+   if(!parts.every(x=>new RegExp('(?:^|\\s)'+x+'\\s*[.．):]','i').test(suffix)))continue;
+   if(str.slice(0,pos).includes('?')||str.slice(0,pos).includes(':')||first[pos]?.bold||first[pos]?.under){embeddedStart=pos;break}
+  }
   if(embeddedStart>=0)start=0;
  }
  if(start<0)return null;
- let stem=blocks.slice(0,start),list=blocks.slice(start);
- let ts=[];
- if(embeddedStart>=0){const original=txtTokens(blocks[0]),doc=blocks[0].ownerDocument;
+ let stem=blocks.slice(0,start),list=blocks.slice(start),ts=[];
+ if(embeddedStart>=0){
+  const original=txtTokens(blocks[0]),doc=blocks[0].ownerDocument;
   const sp=el(doc,'p'),ppr=child(blocks[0],'pPr');if(ppr)sp.appendChild(ppr.cloneNode(true));
-  for(const r of reconstruct(doc,original.slice(0,embeddedStart)))sp.appendChild(r);
+  for(const run of reconstruct(doc,original.slice(0,embeddedStart)))sp.appendChild(run);
   stem.push(sp);ts.push(...original.slice(embeddedStart),{ch:' ',run:null});list=list.slice(1);
  }
- if(list.some(b=>local(b)!=='p'))return null;
- for(const p of list)ts.push(...txtTokens(p),{ch:' ',run:null});
- let text=ts.map(t=>t.ch).join(''),rx=/(^|[^A-Za-z0-9À-ỹ])([ABCD])\s*[.．)]/g,m,candidates=[];
- while((m=rx.exec(text))){let pos=m.index+m[1].length;let labelToken=ts[pos];candidates.push({label:m[2],start:pos,end:rx.lastIndex,bold:!!labelToken?.bold})}
- // Do not mistake answer text such as 'Nhóm máu B.' or trailing '... A.' for an option marker.
- const matches=[];for(const label of 'ABCD'){
-  let group=candidates.filter(c=>c.label===label&&(matches.length===0||c.start>matches[matches.length-1].start));
+ const textBlocks=list.flatMap(node=>local(node)==='tbl'?find(node,'p'):[node]);
+ if(textBlocks.some(node=>local(node)!=='p'))return null;
+ for(const p of textBlocks)ts.push(...txtTokens(p),{ch:' ',run:null});
+ const text=ts.map(t=>t.ch).join(''),rx=/(^|[^A-Za-z0-9À-ỹ])([ABCD])\s*[.．):]/gi,candidates=[];let m;
+ while((m=rx.exec(text))){const pos=m.index+m[1].length;candidates.push({label:m[2].toUpperCase(),start:pos,end:rx.lastIndex,bold:!!ts[pos]?.bold})}
+ const matches=[];
+ for(const label of 'ABCD'){
+  const group=candidates.filter(c=>c.label===label&&(!matches.length||c.start>matches[matches.length-1].start));
   if(!group.length)return null;
-  // Prefer a bold option marker, otherwise take the earliest matching candidate.
-  let choice=group.find(x=>x.bold)||group[0];matches.push(choice)
+  matches.push(group.find(c=>c.bold)||group[0]);
  }
- let out=matches.map((m,i)=>{
-  let next=matches[i+1]?.start??ts.length,contents=ts.slice(m.end,next);
+ const out=matches.map((mark,i)=>{
+  const next=matches[i+1]?.start??ts.length,contents=ts.slice(mark.end,next);
   while(contents.length&&/^\s$/.test(contents[0].ch))contents.shift();
   while(contents.length&&/^\s$/.test(contents[contents.length-1].ch))contents.pop();
-  return{original:m.label,correct:answerUnderline(ts[m.start]),tokens:contents,display:normalize(contents.map(t=>t.ch==='\uFFFC'?'[Hình]':t.ch).join(''))}
+  return {original:mark.label,correct:answerUnderline(ts[mark.start]),tokens:contents,display:normalize(contents.map(t=>t.ch==='\uFFFC'?'[Hình]':t.ch).join(''))};
  });
- return{stem,options:out};
+ const under=out.filter(o=>o.correct);
+ if(explicit){
+  if(under.length&&!(under.length===1&&under[0].original===explicit))conflict=true;
+  out.forEach(o=>o.correct=!conflict&&o.original===explicit);
+ }
+ if(under.length>1)conflict=true;
+ if(conflict)out.forEach(o=>o.correct=false);
+ return {stem,options:out,answerConflict:conflict,answerSource:explicit?'explicit':'underline'};
 }
+
 function tfSegments(q){if(q.section!=='II')return null;let items=[],stem=[],idx=-1;for(const b of q.blocks){let s=normalize(ptext(b)),m=s.match(/^([abcd])\s*\)/i);if(m){idx=items.length;items.push({label:m[1].toLowerCase(),correct:false,blocks:[b]})}else if(idx>=0)items[idx].blocks.push(b);else stem.push(b)}if(items.length!==4||items.map(x=>x.label).join('')!=='abcd')return null;for(const item of items){let t=txtTokens(item.blocks[0]);let pos=t.findIndex(x=>x.ch.toLowerCase()===item.label);item.correct=pos>=0&&answerUnderline(t[pos]);item.display=normalize(item.blocks.map(ptext).join(' '))}return{stem,items}}
 function shortSegments(q){if(q.section!=='III')return null;let stem=[],answer='';for(const b of q.blocks){let text=normalize(ptext(b));if(/^A\s*[.．):]\s*/i.test(text)){answer=text.replace(/^A\s*[.．):]\s*/i,'').trim()} else stem.push(b)}return {stem,answer}}
 function elementText(n){return normalize(ptext(n))}
