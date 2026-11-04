@@ -206,7 +206,7 @@ async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;
   const key='ChamPro_Phieu_'+(exam.form==='120'?'120Cau':'3Phan')+'_MaDe'+exam.digits;
   if(!geometry[key])throw Error('Không có tọa độ mẫu phiếu '+key);
   const match=trySheetOrientations(c,geometry[key],cv,exam),result=match.result;
-  if(match.deg&&origin==='camera'&&stream){
+  if(match.deg&&origin==='camera'&&stream&&match.knownCode&&match.knownStudent&&result.confidence>=.9){
    cameraRotation=(cameraRotation+match.deg)%360;
    fitGuideToVisibleVideo();
    $('scanStatus').textContent='Đã tự hiệu chỉnh hướng phiếu '+match.deg+'°';
