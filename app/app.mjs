@@ -192,13 +192,13 @@ function rotatedCanvas(original,degrees){
  g.drawImage(original,0,0);
  return c;
 }
-let lastGoodOrientation=0,scanDirectionAttempt=0;
+let lastGoodOrientation=null,scanDirectionAttempt=0;
 async function trySheetOrientations(c,layout,cv,exam,manual=false){
  const results=[],errors=[];
- const normal=[lastGoodOrientation,0,90,270,180].filter((v,i,all)=>all.indexOf(v)===i);
+ const normal=[lastGoodOrientation,0,90,270,180].filter((v,i,all)=>v!==null&&all.indexOf(v)===i);
  // Most frames use only the previous valid angle; periodically try all angles
  // until a real student and exam code are read, including sideways sensor frames.
- const fullSearch=manual||(++scanDirectionAttempt%4===0&&!lastAuto);
+ const fullSearch=manual||lastGoodOrientation===null||(++scanDirectionAttempt%3===0&&!lastAuto);
  const directions=fullSearch?normal:normal.slice(0,1);
  for(const deg of directions){
   // Yield before entering synchronous OpenCV: update the progress message on Samsung.
@@ -213,7 +213,7 @@ async function trySheetOrientations(c,layout,cv,exam,manual=false){
    if(knownCode&&knownStudent&&result.confidence>=.98&&!result.uncertain.length){lastGoodOrientation=deg;break;}
   }catch(e){errors.push(deg+'°: '+e.message);}
  }
- if(!results.length)throw Error('Không xác định được mốc phiếu ('+errors.slice(0,2).join(' | ').slice(0,180)+')');
+ if(!results.length){lastGoodOrientation=null;throw Error('Không xác định được mốc phiếu ('+errors.slice(0,2).join(' | ').slice(0,180)+')');}
  results.sort((a,b)=>b.score-a.score);
  if(results[0].knownStudent&&results[0].knownCode)lastGoodOrientation=results[0].deg;
  return results[0];
@@ -227,10 +227,10 @@ async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;
   if(!geometry[key])throw Error('Không có tọa độ mẫu phiếu '+key);
   const match=await trySheetOrientations(c,geometry[key],cv,exam,manual),result=match.result;
   if(match.deg&&origin==='camera'&&stream&&match.knownCode&&match.knownStudent&&result.confidence>=.9){
-   cameraRotation=(cameraRotation+match.deg)%360;
-   fitGuideToVisibleVideo();
-   $('scanStatus').textContent='Đã tự hiệu chỉnh hướng phiếu '+match.deg+'°';
-  }
+    // OCR already rotated the captured frame. Do not rotate the live preview:
+    // doing so makes consecutive scans disagree and blocks automatic grading.
+    $('scanStatus').textContent='Đã nhận diện hướng ảnh '+match.deg+'°';
+   }
   if(match.knownCode&&match.knownStudent&&result.confidence>=.9){$('captureGuide').classList.add('detected');setTimeout(()=>$('captureGuide').classList.remove('detected'),550);}$('scanInfo').textContent=`Đã đọc SBD ${result.sbd||'?'}, mã đề ${result.examCode||'?'}; độ tin cậy ${(result.confidence*100).toFixed(0)}%; ${result.uncertain.length} ô cần xem. ${(performance.now()-t0).toFixed(0)} ms`;
   $('scanStatus').textContent='Đã nhận diện SBD '+(result.sbd||'?')+' · mã đề '+(result.examCode||'?')+' · '+(performance.now()-t0).toFixed(0)+' ms';
   if(manual){openReview(exam,result);return;}
