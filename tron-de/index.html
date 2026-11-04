@@ -618,7 +618,7 @@ async function verifyDocxPackage(blob){
  for(const id of needed)if(!declared.has(id))throw new Error('Word tham chiếu tệp hình hoặc công thức không tồn tại: '+id);
  for(const part of required.filter(x=>x.endsWith('.xml')))xmlParse(await check.file(part).async('string'));
  xmlParse(await check.file('word/footer-hiensoft.xml').async('string'));
- const sourceMedia=Array.from(check.files).filter(([name])=>name.startsWith('word/media/')||name.startsWith('word/embeddings/')).length;
+ const sourceMedia=Object.keys(check.files).filter(name=>name.startsWith('word/media/')||name.startsWith('word/embeddings/')).length;
  if(sourceMedia<1&&find(doc,'drawing').length)throw new Error('Word thiếu tệp hình nhúng');
  return true;
 }
