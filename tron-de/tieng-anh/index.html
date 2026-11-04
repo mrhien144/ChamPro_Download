@@ -320,7 +320,7 @@ function headerTable(doc,widths,cells,{boxedIndex=-1}={}){
  const grid=el(doc,'tblGrid');for(const w of widths){const x=el(doc,'gridCol');x.setAttributeNS(W,'w:w',String(w));grid.appendChild(x)}tbl.appendChild(grid);
  const row=el(doc,'tr');for(let i=0;i<cells.length;i++){
   const tc=el(doc,'tc'),pr=el(doc,'tcPr'),w=el(doc,'tcW');w.setAttributeNS(W,'w:w',String(widths[i]));w.setAttributeNS(W,'w:type','dxa');pr.appendChild(w);
-  if(i===boxedIndex){const bs=el(doc,'tcBorders');for(const k of ['top','left','bottom','right']){const x=el(doc,k);x.setAttributeNS(W,'w:val','single');x.setAttributeNS(W,'w:sz','8');bs.appendChild(x)}pr.appendChild(bs)}
+  if(i===boxedIndex){const bs=el(doc,'tcBorders');for(const k of ['top','left','bottom','right']){const x=el(doc,k);x.setAttributeNS(W,'w:val','single');x.setAttributeNS(W,'w:sz','10');bs.appendChild(x)}pr.appendChild(bs)}
   tc.appendChild(pr);for(const p of cells[i])tc.appendChild(p);row.appendChild(tc);
  }tbl.appendChild(row);return tbl;
 }
@@ -332,30 +332,31 @@ function pageCountLine(doc,totalPagesField){
 }
 function renderExamHeading(doc,plan,raw,{asAnswers=false,totalPagesField='NUMPAGES'}={}){
  const h=headerConfig(raw),out=[];
- // Giữ nguyên nội dung/căn chỉnh hai cột mẫu THPT, tất cả Times New Roman 12 màu đen.
  const left=[
-  headerParagraph(doc,[{text:h.school,bold:true,size:24}],{keepNext:true,after:25}),
-  ...(h.school2?[headerParagraph(doc,[{text:h.school2,bold:true,size:24}],{keepNext:true,after:25})]:[]),
-  headerParagraph(doc,[{text:h.leftTitle,size:24}],{keepNext:true,after:25}),
-  pageCountLine(doc,totalPagesField)
+  headerParagraph(doc,[{text:h.school,bold:true,size:24}],{keepNext:true,after:0}),
+  ...(h.school2?[headerParagraph(doc,[{text:h.school2,bold:true,size:24}],{keepNext:true,after:0})]:[]),
+  headerParagraph(doc,[{text:h.leftTitle,size:24}],{keepNext:true,after:0})
  ];
  const right=[
-  headerParagraph(doc,[{text:h.examTitle,bold:true,size:24}],{keepNext:true,after:25}),
-  headerParagraph(doc,[{text:'NĂM HỌC: '+h.schoolYear,bold:true,size:24}],{keepNext:true,after:25}),
-  headerParagraph(doc,[{text:'Bài thi: '+h.subject,bold:true,size:24}],{keepNext:true,after:25}),
-  headerParagraph(doc,[{text:'Thời gian làm bài: '+(h.minutes||'50')+' phút, không kể thời gian phát đề',italic:true,size:24}],{bottomLine:true,after:70})
+  headerParagraph(doc,[{text:h.examTitle,bold:true,size:24}],{keepNext:true,after:0}),
+  headerParagraph(doc,[{text:'NĂM HỌC: '+h.schoolYear,bold:true,size:24}],{keepNext:true,after:0}),
+  headerParagraph(doc,[{text:'Bài thi: '+h.subject,bold:true,size:24}],{keepNext:true,after:0})
  ];
+ // A separate full-width line prevents the exam time from wrapping in a half-width table cell.
  out.push(headerTable(doc,[4903,4903],[left,right]));
+ const time=headerParagraph(doc,[{text:'Thời gian làm bài: '+(h.minutes||'50')+' phút, không kể thời gian phát đề',italic:true,size:24}],{align:'right',after:0});
+ out.push(time);
+ const pages=pageCountLine(doc,totalPagesField);
+ out.push(headerTable(doc,[4903,4903],[[pages],[headerParagraph(doc,[{text:' ',size:2}],{after:0})]]));
  const student=asAnswers?
   [headerParagraph(doc,[{text:'BẢNG ĐÁP ÁN',bold:true,size:24}],{align:'left'})]:
   [
-   headerParagraph(doc,[{text:'Họ, tên học sinh: ',bold:true,size:24},{text:'....................................................................',size:24}],{align:'left',after:15}),
-   headerParagraph(doc,[{text:'Số báo danh: ',bold:true,size:24},{text:'............................................................',size:24}],{align:'left'})
+   headerParagraph(doc,[{text:'Họ, tên học sinh: ',bold:true,size:24},{text:'....................................................................',size:24}],{align:'left',after:0}),
+   headerParagraph(doc,[{text:'Số báo danh: ',bold:true,size:24},{text:'............................................................',size:24}],{align:'left',after:0})
   ];
- // Mã đề lấy trực tiếp từ kết quả trộn, tuyệt đối không dùng giá trị cố định.
- const code=headerParagraph(doc,[{text:'Mã đề thi '+String(plan.code),bold:true,size:24}],{align:'center',before:80,after:0});
+ const code=headerParagraph(doc,[{text:'Mã đề thi '+String(plan.code),bold:true,size:24}],{align:'center',after:0});
  out.push(headerTable(doc,[7286,2520],[student,[code]],{boxedIndex:1}));
- out.push(headerParagraph(doc,[{text:' ',size:12}],{after:90}));
+ out.push(headerParagraph(doc,[{text:' ',size:12}],{after:60}));
  return out;
 }
 function importXml(doc,xml){const d=parse(xml);return doc.importNode(d.documentElement,true);}
@@ -575,15 +576,21 @@ async function verifyDocx(blob,exam){const z=await JSZip.loadAsync(await blob.ar
 }
 function excelCol(i){let s='';while(i){i--;s=String.fromCharCode(65+i%26)+s;i=Math.floor(i/26)}return s;}
 async function exportAnswersXlsx(exam,plans){
- const matrix=answerMatrix(plans);
- const originalAnswers=new Map((exam?.groups||[]).flatMap(g=>g.questions||[]).map(q=>[Number(q.number),q.answer||'']));
- const rows=[['Câu\\Mã đề','000',...plans.map(p=>String(p.code).padStart(3,'0'))],...matrix.map(row=>[row[0],originalAnswers.get(Number(row[0]))||'',...row.slice(1)])];const sheet=rows.map((row,i)=>`<row r="${i+1}">${row.map((v,j)=>`<c r="${excelCol(j+1)}${i+1}" t="inlineStr"><is><t>${esc(v)}</t></is></c>`).join('')}</row>`).join('');
- const z=new JSZip();z.file('[Content_Types].xml',`<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`);
- z.file('_rels/.rels',`<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`);
- z.file('xl/workbook.xml',`<?xml version="1.0"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Đáp án" sheetId="1" r:id="rId1"/></sheets></workbook>`);
- z.file('xl/_rels/workbook.xml.rels',`<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`);
- z.file('xl/worksheets/sheet1.xml',`<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${excelCol(rows[0].length)}${rows.length}"/><sheetViews><sheetView workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="18"/><cols><col min="1" max="1" width="16" customWidth="1"/><col min="2" max="${rows[0].length}" width="13" customWidth="1"/></cols><sheetData>${sheet}</sheetData></worksheet>`);
- return z.generateAsync({type:'blob',compression:'DEFLATE'});
+ const matrix=answerMatrix(plans),originals=new Map((exam?.groups||[]).flatMap(g=>g.questions||[]).map(q=>[Number(q.number),q.answer||'']));
+ const rows=[['Câu\\Mã đề','000',...plans.map(p=>String(p.code).padStart(3,'0'))],...matrix.map(r=>[r[0],originals.get(Number(r[0]))||'',...r.slice(1)])];
+ const strings=[],ids=new Map();let stringCount=0;
+ const strId=v=>{const s=String(v??'').replace(/[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F]/g,'');stringCount++;if(!ids.has(s)){ids.set(s,strings.length);strings.push(s)}return ids.get(s)};
+ const sheetRows=rows.map((row,i)=>`<row r="${i+1}"${i===0?' ht="24" customHeight="1"':''}>${row.map((v,j)=>{const ref=excelCol(j+1)+(i+1),style=i===0?1:2;return i>0&&j===0?`<c r="${ref}" s="${style}"><v>${Number(v)}</v></c>`:`<c r="${ref}" s="${style}" t="s"><v>${strId(v)}</v></c>`}).join('')}</row>`).join('');
+ const ns='http://schemas.openxmlformats.org/spreadsheetml/2006/main',rels='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+ const z=new JSZip();
+ z.file('[Content_Types].xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/></Types>`);
+ z.file('_rels/.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${rels}/officeDocument" Target="xl/workbook.xml"/></Relationships>`);
+ z.file('xl/workbook.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="${ns}" xmlns:r="${rels}"><bookViews><workbookView/></bookViews><sheets><sheet name="Đáp án" sheetId="1" r:id="rId1"/></sheets></workbook>`);
+ z.file('xl/_rels/workbook.xml.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${rels}/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="${rels}/styles" Target="styles.xml"/><Relationship Id="rId3" Type="${rels}/sharedStrings" Target="sharedStrings.xml"/></Relationships>`);
+ z.file('xl/styles.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="${ns}"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1E3A5F"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"/><right style="thin"/><top style="thin"/><bottom style="thin"/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`);
+ z.file('xl/sharedStrings.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><sst xmlns="${ns}" count="${stringCount}" uniqueCount="${strings.length}">${strings.map(s=>`<si><t xml:space="preserve">${esc(s)}</t></si>`).join('')}</sst>`);
+ z.file('xl/worksheets/sheet1.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="${ns}"><dimension ref="A1:${excelCol(rows[0].length)}${rows.length}"/><sheetViews><sheetView tabSelected="1" workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="18"/><cols><col min="1" max="1" width="17" customWidth="1"/><col min="2" max="${rows[0].length}" width="14" customWidth="1"/></cols><sheetData>${sheetRows}</sheetData><pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/></worksheet>`);
+ return z.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}});
 }
 async function exportSeparateDocx(exam,plans,opts={}){const z=new JSZip();for(const plan of plans){const blob=await exportExamDocx(exam,[plan],{...opts,combined:false});z.file(`De_TiengAnh_${plan.code}.docx`,blob)}return z.generateAsync({type:'blob',compression:'DEFLATE'});}
 
