@@ -34,7 +34,7 @@ $('keysFile').addEventListener('change',async ev=>{
  ev.stopImmediatePropagation();const file=ev.target.files?.[0];if(!file)return;
  try{
   const exam=db().exams.find(e=>e.id===$('keyExam').value);if(!exam)throw Error('Hãy chọn kỳ và môn kiểm tra trước');
-  const rows=await spreadsheetRows(file);if(!rows.length)throw Error('Excel trống');
+  const rows=await spreadsheetRows(file,'DapAn');if(!rows.length)throw Error('Excel trống');
   let keys=parseAnswerMatrix(rows,exam);
   if(!keys){
    const header=rows.shift().map(x=>String(x).trim().toLowerCase().replace(/\s+/g,''));const pos=(...names)=>header.findIndex(x=>names.includes(x));const ci=pos('ma_de','mãđề','made'),pi=pos('phan','phần'),qi=pos('cau','câu'),ai=pos('dap_an','đápán','dapan');
@@ -65,7 +65,7 @@ async function applyQR(raw){
  catch(e){if(/giải nén gzip/.test(e.message)){await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js','pako');payload=await decodeChamProQR(raw);}else throw e;}
  if(payload.type!==qrMode)throw Error('Loại mã QR không đúng mục đang nhập');
  if(qrMode==='student_list'){
-  const students=studentsFromQR(payload),added=students.filter(s=>!db().students.some(x=>x.sbd===s.sbd));
+  const students=studentsFromQR(payload),added=students.filter(s=>!db().students.some(x=>x.sbd===s.sbd));if(students.some(s=>!s.classroom)){const cl=prompt('QR có học sinh chưa có tên lớp. Nhập lớp để sử dụng bảng điểm (ví dụ 12A10):','');if(!cl)return;students.forEach(s=>{if(!s.classroom)s.classroom=cl.trim();});}
   if(!confirm('Mã QR có '+students.length+' học sinh, '+added.length+' mới. Nhập danh sách?'))return;
   for(const s of added)db().students.push({id:crypto.randomUUID?.()||String(Date.now())+'-'+s.sbd,...s});save();toast('Đã nhập '+added.length+' học sinh bằng QR.');
  }else{
