@@ -67,7 +67,7 @@ function choose(warped,points,scale,alphabet){
  if(sorted.length>1&&sorted[0][0]-sorted[1][0]<.12)return {value:'?',status:'unclear',ink};
  return {value:alphabet[sorted[0][1]],status:'ok',ink};
 }
-export function readSheet(canvas,layout,cv){
+export function readSheet(canvas,layout,cv,counts=null){
  if(!cv?.Mat)throw Error('Bộ xử lý OpenCV chưa tải xong; kiểm tra kết nối mạng');
  let src=null,gray=null,warped=null,M=null,srcPts=null,dstPts=null;
  try{
@@ -81,9 +81,9 @@ export function readSheet(canvas,layout,cv){
   function series(groups,alphabet,region){return groups.map((g,i)=>{const c=choose(warped,g,scale,alphabet);if(c.status==='unclear')uncertain.push(`${region} ${i+1}`);if(c.status==='ok')idOk++;return c.value;});}
   const sbd=series(layout.candidate_no,'0123456789','SBD').join('');
   const examCode=series(layout.exam_code,'0123456789','Mã đề').join('');
-  const I=(layout.parts.I||[]).map((g,i)=>{const c=choose(warped,g,scale,'ABCD');if(c.status==='unclear')uncertain.push('Phần I câu '+(i+1));return c.value;});
-  const II=(layout.parts.II||[]).map((question,i)=>question.map((g,j)=>{const c=choose(warped,g,scale,'ĐS');if(c.status==='unclear')uncertain.push(`Phần II câu ${i+1}${'abcd'[j]}`);return c.value||' ';}).join(''));
-  const III=(layout.parts.III||[]).map((question,i)=>question.map((g,j)=>{const c=choose(warped,g,scale,'.,0123456789');if(c.status==='unclear')uncertain.push(`Phần III câu ${i+1}, cột ${j+1}`);return c.value||' ';}).join('').trim());
+  const I=(layout.parts.I||[]).slice(0,Math.max(0,counts?.I??(layout.parts.I||[]).length)).map((g,i)=>{const c=choose(warped,g,scale,'ABCD');if(c.status==='unclear')uncertain.push('Phần I câu '+(i+1));return c.value;});
+  const II=(layout.parts.II||[]).slice(0,Math.max(0,counts?.II??(layout.parts.II||[]).length)).map((question,i)=>question.map((g,j)=>{const c=choose(warped,g,scale,'ĐS');if(c.status==='unclear')uncertain.push(`Phần II câu ${i+1}${'abcd'[j]}`);return c.value||' ';}).join(''));
+  const III=(layout.parts.III||[]).slice(0,Math.max(0,counts?.III??(layout.parts.III||[]).length)).map((question,i)=>question.map((g,j)=>{const c=choose(warped,g,scale,'.,0123456789');if(c.status==='unclear')uncertain.push(`Phần III câu ${i+1}, cột ${j+1}`);return c.value||' ';}).join('').trim());
   const totalColumns=layout.candidate_no.length+layout.exam_code.length;
   const confidence=clamp((idOk/Math.max(1,totalColumns))*(uncertain.length?0.7:1),0,1);
   return {sbd,examCode,I,II,III,confidence,uncertain,markers:marks,form:layout.mode,photoWidth:gray.cols,photoHeight:gray.rows};
