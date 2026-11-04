@@ -254,6 +254,30 @@ function tRun(doc,str,{bold=false,italic=false,underline=false,color=null,highli
  if(color){const c=el(doc,'color');c.setAttributeNS(W,'w:val',color);rp.appendChild(c)}if(highlight){const h=el(doc,'highlight');h.setAttributeNS(W,'w:val',highlight===true?'yellow':String(highlight));rp.appendChild(h)}const sz=el(doc,'sz');sz.setAttributeNS(W,'w:val',String(size));rp.appendChild(sz);
  r.appendChild(rp);const t=el(doc,'t');t.setAttributeNS(XML,'xml:space','preserve');t.textContent=str;r.appendChild(t);return r;
 }
+
+// Chuẩn hóa toàn bộ chữ trong tài liệu Word: Times New Roman 12pt, màu đen.
+// Chỉ đổi thuộc tính chữ, không xóa đậm/nghiêng/gạch chân và không đổi dữ liệu câu hỏi.
+function normalizeWordTypography(root){
+ const doc=root.nodeType===9?root:root.ownerDocument;
+ for(const run of find(root,'r')){
+  let rp=child(run,'rPr');
+  if(!rp){rp=el(doc,'rPr');run.insertBefore(rp,run.firstChild)}
+  let fonts=child(rp,'rFonts');
+  if(!fonts){fonts=el(doc,'rFonts');rp.insertBefore(fonts,rp.firstChild)}
+  for(const k of ['ascii','hAnsi','eastAsia','cs'])fonts.setAttributeNS(W,'w:'+k,'Times New Roman');
+  for(const k of ['asciiTheme','hAnsiTheme','eastAsiaTheme','cstheme'])fonts.removeAttributeNS(W,k);
+  let color=child(rp,'color');
+  if(!color){color=el(doc,'color');rp.appendChild(color)}
+  color.setAttributeNS(W,'w:val','000000');
+  for(const k of ['themeColor','themeTint','themeShade'])color.removeAttributeNS(W,k);
+  for(const name of ['sz','szCs']){
+   let node=child(rp,name);
+   if(!node){node=el(doc,name);rp.appendChild(node)}
+   node.setAttributeNS(W,'w:val','24');
+  }
+ }
+}
+
 function pPr(doc,{after=60,before=0,align=null,tabs=[],keepNext=false,bold=false}={}){
  const pr=el(doc,'pPr');if(keepNext)pr.appendChild(el(doc,'keepNext'));
  if(tabs.length){const tbl=el(doc,'tabs');for(const pos of tabs){const tab=el(doc,'tab');tab.setAttributeNS(W,'w:val','left');tab.setAttributeNS(W,'w:pos',String(pos));tbl.appendChild(tab)}pr.appendChild(tbl)}
@@ -301,27 +325,27 @@ function headerTable(doc,widths,cells,{boxedIndex=-1}={}){
  }tbl.appendChild(row);return tbl;
 }
 function renderExamHeading(doc,plan,raw,{asAnswers=false}={}){
- const h=headerConfig(raw),out=[],RED='C00000';
+ const h=headerConfig(raw),out=[];
  const left=[
-  headerParagraph(doc,[{text:h.school,bold:true,size:26}],{keepNext:true,after:25}),
-  ...(h.school2?[headerParagraph(doc,[{text:h.school2,bold:true,size:25}],{keepNext:true,after:25})]:[]),
-  headerParagraph(doc,[{text:h.leftTitle,size:26}],{keepNext:true,after:25}),
+  headerParagraph(doc,[{text:h.school,bold:true,size:24}],{keepNext:true,after:25}),
+  ...(h.school2?[headerParagraph(doc,[{text:h.school2,bold:true,size:24}],{keepNext:true,after:25})]:[]),
+  headerParagraph(doc,[{text:h.leftTitle,size:24}],{keepNext:true,after:25}),
   headerParagraph(doc,[{text:'(Đề thi có ',italic:true,size:24},{text:h.pages||'...',italic:true,highlight:true,size:24},{text:' trang)',italic:true,size:24}],{after:70})
  ];
  const right=[
-  headerParagraph(doc,[{text:h.examTitle,bold:true,color:RED,size:27}],{keepNext:true,after:25}),
-  headerParagraph(doc,[{text:'NĂM HỌC: '+h.schoolYear,bold:true,color:RED,size:26}],{keepNext:true,after:25}),
-  headerParagraph(doc,[{text:'Bài thi: ',bold:true,color:RED,size:26},{text:h.subject,bold:true,color:RED,highlight:true,size:26}],{keepNext:true,after:25}),
-  headerParagraph(doc,[{text:'Thời gian làm bài: ',italic:true,size:22},{text:h.minutes||'...',italic:true,highlight:true,size:22},{text:' phút, không kể thời gian phát đề',italic:true,size:22}],{bottomLine:true,after:70})
+  headerParagraph(doc,[{text:h.examTitle,bold:true,size:24}],{keepNext:true,after:25}),
+  headerParagraph(doc,[{text:'NĂM HỌC: '+h.schoolYear,bold:true,size:24}],{keepNext:true,after:25}),
+  headerParagraph(doc,[{text:'Bài thi: ',bold:true,size:24},{text:h.subject,bold:true,highlight:true,size:24}],{keepNext:true,after:25}),
+  headerParagraph(doc,[{text:'Thời gian làm bài: ',italic:true,size:24},{text:h.minutes||'...',italic:true,highlight:true,size:24},{text:' phút, không kể thời gian phát đề',italic:true,size:24}],{bottomLine:true,after:70})
  ];
  out.push(headerTable(doc,[4903,4903],[left,right]));
  const bottomLeft=asAnswers?
-  [headerParagraph(doc,[{text:'BẢNG ĐÁP ÁN',bold:true,size:26}],{align:'left'})]:
+  [headerParagraph(doc,[{text:'BẢNG ĐÁP ÁN',bold:true,size:24}],{align:'left'})]:
   [
-   headerParagraph(doc,[{text:'Họ, tên học sinh: ',bold:true,size:25},{text:'....................................................................',size:24}],{align:'left',after:15}),
-   headerParagraph(doc,[{text:'Số báo danh: ',bold:true,size:25},{text:'............................................................',size:24}],{align:'left'})
+   headerParagraph(doc,[{text:'Họ, tên học sinh: ',bold:true,size:24},{text:'....................................................................',size:24}],{align:'left',after:15}),
+   headerParagraph(doc,[{text:'Số báo danh: ',bold:true,size:24},{text:'............................................................',size:24}],{align:'left'})
   ];
- const code=headerParagraph(doc,[{text:'Mã đề thi ',bold:true,size:27},{text:String(plan.code),bold:true,highlight:true,size:27}],{align:'center',borderBox:true,before:80,after:0});
+ const code=headerParagraph(doc,[{text:'Mã đề thi ',bold:true,size:24},{text:String(plan.code),bold:true,highlight:true,size:24}],{align:'center',borderBox:true,before:80,after:0});
  out.push(headerTable(doc,[7286,2520],[bottomLeft,[code]]));
  out.push(headerParagraph(doc,[{text:' ',size:12}],{after:90}));
  return out;
@@ -359,6 +383,7 @@ function footerXml(plan,{totalField='SECTIONPAGES'}={}){
  right.appendChild(tRun(doc,' – Mã đề '+plan.code,{size:22,color:'7A7A7A'}));
  root.appendChild(headerTable(doc,[4903,4903],[[left],[right]]));
  root.appendChild(paragraph(doc,'',{after:0,size:2}));
+ normalizeWordTypography(doc);
  return ser(doc);
 }
 async function linkExamFooter(zip,plan,totalField){
@@ -508,6 +533,7 @@ async function exportExamDocx(exam,plans,{teacher=false,combined=true,asAnswers=
   if(pi<plans.length-1)body.appendChild(sectionBreakParagraph(doc,section));
   else body.appendChild(section);
  }
+ normalizeWordTypography(doc);
  zip.file('word/document.xml',ser(doc));
  await requestWordFieldUpdates(zip);
  const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}});
