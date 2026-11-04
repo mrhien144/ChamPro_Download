@@ -244,10 +244,10 @@ const child=(node,name)=>Array.from(node?.childNodes||[]).find(x=>x.nodeType===1
 const parse=s=>{const d=new DOMParser().parseFromString(s,'application/xml');if(d.getElementsByTagName('parsererror').length)throw Error('Không phân tích được XML trong Word');return d};
 const ser=d=>new XMLSerializer().serializeToString(d);
 const el=(doc,n)=>doc.createElementNS(W,'w:'+n);
-function tRun(doc,str,{bold=false,underline=false,color=null,size=26}={}){
+function tRun(doc,str,{bold=false,italic=false,underline=false,color=null,size=26}={}){
  const r=el(doc,'r'),rp=el(doc,'rPr'),font=el(doc,'rFonts');
  for(const name of ['ascii','hAnsi','eastAsia','cs'])font.setAttributeNS(W,'w:'+name,'Times New Roman');rp.appendChild(font);
- if(bold)rp.appendChild(el(doc,'b'));if(underline){const u=el(doc,'u');u.setAttributeNS(W,'w:val','single');rp.appendChild(u)}
+ if(bold)rp.appendChild(el(doc,'b'));if(italic)rp.appendChild(el(doc,'i'));if(underline){const u=el(doc,'u');u.setAttributeNS(W,'w:val','single');rp.appendChild(u)}
  if(color){const c=el(doc,'color');c.setAttributeNS(W,'w:val',color);rp.appendChild(c)}const sz=el(doc,'sz');sz.setAttributeNS(W,'w:val',String(size));rp.appendChild(sz);
  r.appendChild(rp);const t=el(doc,'t');t.setAttributeNS(XML,'xml:space','preserve');t.textContent=str;r.appendChild(t);return r;
 }
@@ -258,6 +258,44 @@ function pPr(doc,{after=60,before=0,align=null,tabs=[],keepNext=false,bold=false
  if(align){const jc=el(doc,'jc');jc.setAttributeNS(W,'w:val',align);pr.appendChild(jc)}return pr;
 }
 function paragraph(doc,text,opts={}){const p=el(doc,'p');p.appendChild(pPr(doc,opts));p.appendChild(tRun(doc,String(text),{bold:opts.bold,color:opts.color,size:opts.size||26}));return p;}
+
+const HEADER_DEFAULTS={school:'TRƯỜNG THPT CHI LĂNG',leftTitle:'ĐỀ KIỂM TRA',examTitle:'ĐỀ KIỂM TRA / ÔN TẬP',subject:'TIẾNG ANH',minutes:'50',pages:''};
+function headerConfig(data={}){
+ const o={};for(const [k,def] of Object.entries(HEADER_DEFAULTS)){
+  const raw=data&&data[k]!==undefined?data[k]:def;
+  o[k]=String(raw??'').replace(/[\r\n\t]+/g,' ').trim().slice(0,k==='minutes'||k==='pages'?8:120);
+ }return o;
+}
+function headerParagraph(doc,parts,{align='center',after=0,keepNext=false}={}){
+ const p=el(doc,'p'),pr=pPr(doc,{after,align,keepNext});p.appendChild(pr);
+ for(const part of parts){if(typeof part==='string')p.appendChild(tRun(doc,part));else p.appendChild(tRun(doc,part.text,{bold:!!part.bold,italic:!!part.italic,underline:!!part.underline,size:part.size||26}))}
+ return p;
+}
+// Only the two exam-title rows use borderless OOXML tables. Options remain un-tabled.
+function headerTable(doc,widths,cells,{boxedIndex=-1}={}){
+ const tbl=el(doc,'tbl'),tp=el(doc,'tblPr'),tblW=el(doc,'tblW');tblW.setAttributeNS(W,'w:w',String(widths.reduce((a,b)=>a+b,0)));tblW.setAttributeNS(W,'w:type','dxa');tp.appendChild(tblW);
+ const borders=el(doc,'tblBorders');for(const k of ['top','left','bottom','right','insideH','insideV']){const x=el(doc,k);x.setAttributeNS(W,'w:val','nil');borders.appendChild(x)}tp.appendChild(borders);
+ const mar=el(doc,'tblCellMar');for(const k of ['top','left','bottom','right']){const x=el(doc,k);x.setAttributeNS(W,'w:w',k==='top'||k==='bottom'?'0':'80');x.setAttributeNS(W,'w:type','dxa');mar.appendChild(x)}tp.appendChild(mar);tbl.appendChild(tp);
+ const grid=el(doc,'tblGrid');for(const w of widths){const x=el(doc,'gridCol');x.setAttributeNS(W,'w:w',String(w));grid.appendChild(x)}tbl.appendChild(grid);
+ const row=el(doc,'tr');for(let i=0;i<cells.length;i++){
+  const tc=el(doc,'tc'),pr=el(doc,'tcPr'),w=el(doc,'tcW');w.setAttributeNS(W,'w:w',String(widths[i]));w.setAttributeNS(W,'w:type','dxa');pr.appendChild(w);
+  if(i===boxedIndex){const bs=el(doc,'tcBorders');for(const k of ['top','left','bottom','right']){const x=el(doc,k);x.setAttributeNS(W,'w:val','single');x.setAttributeNS(W,'w:sz','8');bs.appendChild(x)}pr.appendChild(bs)}
+  tc.appendChild(pr);for(const p of cells[i])tc.appendChild(p);row.appendChild(tc);
+ }tbl.appendChild(row);return tbl;
+}
+function renderExamHeading(doc,plan,raw,{asAnswers=false}={}){
+ const h=headerConfig(raw),out=[];
+ const left=[headerParagraph(doc,[{text:h.school,bold:true,underline:true,size:26}],{keepNext:true}),headerParagraph(doc,[{text:h.leftTitle,size:25}],{keepNext:!!h.pages})];
+ if(h.pages)left.push(headerParagraph(doc,[{text:'(Đề thi có '+h.pages+' trang)',italic:true,size:24}]));
+ const right=[headerParagraph(doc,[{text:h.examTitle,bold:true,size:26}],{keepNext:true}),headerParagraph(doc,[{text:'Môn thi: '+h.subject,bold:true,size:26}],{keepNext:true}),headerParagraph(doc,[{text:'Thời gian làm bài: '+h.minutes+' phút, không kể thời gian phát đề',italic:true,underline:true,size:22}])];
+ out.push(headerTable(doc,[4650,5156],[left,right]));
+ const bottomLeft=asAnswers?[headerParagraph(doc,[{text:'BẢNG ĐÁP ÁN',bold:true,size:26}],{align:'left'})]:[
+  headerParagraph(doc,[{text:'Họ, tên thí sinh: ',bold:true,size:26},{text:'.............................................................................',size:26}],{align:'left'}),
+  headerParagraph(doc,[{text:'Số báo danh: ',bold:true,size:26},{text:'..............................................',size:26}],{align:'left'})];
+ const code=headerParagraph(doc,[{text:'Mã đề: '+plan.code,bold:true,size:26}],{align:'center'});
+ out.push(headerTable(doc,[7650,2156],[bottomLeft,[code]],{boxedIndex:1}));
+ out.push(headerParagraph(doc,[{text:' ',size:14}],{after:110}));return out;
+}
 function importXml(doc,xml){const d=parse(xml);return doc.importNode(d.documentElement,true);}
 function tokensToContent(doc,tokens,{cleanAnswers=false}={}){
  const out=[];let buf=[],key='';
@@ -329,14 +367,13 @@ function a4Section(doc,oldSect){const sect=oldSect?oldSect.cloneNode(true):el(do
  const before=Array.from(sect.childNodes).find(n=>['pgNumType','cols','formProt','vAlign','docGrid','footnotePr','endnotePr','type','bidi','rtlGutter'].includes(local(n)));
  sect.insertBefore(pgSz,before||null);sect.insertBefore(pgMar,before||null);return sect;
 }
-async function exportExamDocx(exam,plans,{teacher=false,combined=true,asAnswers=false}={}){
+async function exportExamDocx(exam,plans,{teacher=false,combined=true,asAnswers=false,header=null}={}){
  if(!plans.length)throw Error('Chưa tạo mã đề.');const {zip,doc}=await baseZip(exam);const body=find(doc,'body')[0];
  const sect=child(body,'sectPr');while(body.firstChild)body.removeChild(body.firstChild);
  const qById=new Map(exam.groups.flatMap(g=>g.questions).map(q=>[q.id,q]));const gById=new Map(exam.groups.map(g=>[g.id,g]));
  for(let pi=0;pi<plans.length;pi++){
   const plan=plans[pi];if(pi){const p=el(doc,'p'),r=el(doc,'r');r.appendChild(el(doc,'br')).setAttributeNS(W,'w:type','page');p.appendChild(r);body.appendChild(p)}
-  body.appendChild(paragraph(doc,'ĐỀ KIỂM TRA MÔN TIẾNG ANH',{align:'center',after:120,bold:true,size:28}));
-  body.appendChild(paragraph(doc,`MÃ ĐỀ: ${plan.code}`,{align:'center',after:180,bold:true,size:26}));
+  for(const headingNode of renderExamHeading(doc,plan,header,{asAnswers}))body.appendChild(headingNode);
   if(asAnswers){body.appendChild(answerTable(doc,plan));continue;}
   for(const plannedGroup of plan.groups){const group=gById.get(plannedGroup.groupId),nMap=new Map(plannedGroup.members.map(m=>[m.sourceNumber,m.number]));
    for(const intro of group.intro){if(intro.kind==='p'){const tok=replaceRefTokens(intro.tokens,nMap,group.kind);body.appendChild(rebuildBlock(doc,intro,{tokens:tok}))}else body.appendChild(rebuildBlock(doc,intro));}
@@ -414,12 +451,13 @@ function doGenerate(){if(!state.exam)return toast('Hãy nhập đề trước.')
  const cfg=config();if(!Number.isInteger(cfg.quantity)||cfg.quantity<1||cfg.quantity>100||cfg.startCode<1||cfg.startCode+cfg.quantity>9999){return status('planStatus','Số lượng từ 1 đến 100; mã đề trong khoảng 1–9999.','error');}
  try{state.plans=createPlan(state.exam,cfg);const issues2=validatePlans(state.exam,state.plans);renderPlans();status('planStatus',issues2.length?`Có ${issues2.length} vấn đề — chưa thể xuất.`:`Đã tạo ${state.plans.length} mã đề. Đã đối chiếu câu hỏi, nhóm và đáp án.`,issues2.length?'error':'success');}catch(e){status('planStatus',e.message,'error');}}
 function blobDownload(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),15000)}
+const documentHeader=()=>Object.fromEntries(['school','leftTitle','examTitle','subject','minutes','pages'].map(k=>[k,$('hdr'+k[0].toUpperCase()+k.slice(1)).value]));
 async function doExport(type,btn){if(!state.exam||!state.plans.length)return;const issues=validatePlans(state.exam,state.plans);if(issues.length){status('exportStatus','Xuất bị khóa: '+issues.map(x=>x.scope+': '+x.message).slice(0,3).join('; '),'error');return;}
- btn.disabled=true;status('exportStatus','Đang tạo tệp Word/Excel thật và kiểm tra cấu trúc...');try{let blob,name;
-  switch(type){case'separate':blob=await exportSeparateDocx(state.exam,state.plans);name='English_Exam_Mixer_De_Rieng.zip';break;
-   case'combined':blob=await exportExamDocx(state.exam,state.plans);name='English_Exam_Mixer_Tat_Ca_Ma.docx';break;
-   case'teacher':blob=await exportExamDocx(state.exam,state.plans,{teacher:true});name='English_Exam_Mixer_Giao_Vien.docx';break;
-   case'answers':blob=await exportExamDocx(state.exam,state.plans,{asAnswers:true});name='English_Exam_Mixer_Dap_An.docx';break;
+ const header=documentHeader();btn.disabled=true;status('exportStatus','Đang tạo tệp Word/Excel thật và kiểm tra cấu trúc...');try{let blob,name;
+  switch(type){case'separate':blob=await exportSeparateDocx(state.exam,state.plans,{header});name='English_Exam_Mixer_De_Rieng.zip';break;
+   case'combined':blob=await exportExamDocx(state.exam,state.plans,{header});name='English_Exam_Mixer_Tat_Ca_Ma.docx';break;
+   case'teacher':blob=await exportExamDocx(state.exam,state.plans,{teacher:true,header});name='English_Exam_Mixer_Giao_Vien.docx';break;
+   case'answers':blob=await exportExamDocx(state.exam,state.plans,{asAnswers:true,header});name='English_Exam_Mixer_Dap_An.docx';break;
    case'xlsx':blob=await exportAnswersXlsx(state.plans);name='English_Exam_Mixer_Dap_An.xlsx';break;
    default:throw Error('Lựa chọn xuất không tồn tại');
   }blobDownload(blob,name);status('exportStatus',`Đã tạo ${name} (${Math.round(blob.size/1024)} KB).`,'success');
@@ -435,8 +473,8 @@ $('questionReview').addEventListener('click',e=>{const edit=e.target.closest('.e
 $('groupSettings').addEventListener('change',e=>{const row=e.target.closest('[data-gid]');if(!row)return;const g=state.exam.groups.find(g=>g.id===row.dataset.gid);if(!g)return;storeHistory();g.enabled=row.querySelector('.group-enable').checked;g.shuffleInside=!['cloze','reading'].includes(g.kind)&&row.querySelector('.group-inside').checked;g.shuffleOptions=row.querySelector('.group-options').checked;resetPlans();renderStats();});
 $('quantity').addEventListener('change',()=>{$('customQuantity').classList.toggle('hidden',$('quantity').value!=='custom');resetPlans()});for(const id of ['startCode','seed','customQuantity','shuffleQuestions','shuffleOptions','shuffleGroups'])$(id).addEventListener('change',resetPlans);
 $('generate').addEventListener('click',doGenerate);$('remix').addEventListener('click',()=>{state.generation++;doGenerate()});$('codeSelect').addEventListener('change',renderPreview);document.querySelectorAll('.export').forEach(btn=>btn.addEventListener('click',()=>doExport(btn.dataset.export,btn)));
-$('saveConfig').addEventListener('click',()=>{try{localStorage.setItem('hienSoftEnglishMixerSettings',JSON.stringify({...config(),quantityValue:$('quantity').value}));toast('Đã lưu cấu hình trộn trên trình duyệt này.')}catch{toast('Trình duyệt không cho phép lưu cấu hình.')}});
-try{const c=JSON.parse(localStorage.getItem('hienSoftEnglishMixerSettings')||'null');if(c){$('quantity').value=c.quantityValue||String(c.quantity);$('customQuantity').classList.toggle('hidden',$('quantity').value!=='custom');$('customQuantity').value=c.quantity;$('startCode').value=c.startCode;$('seed').value=c.seed;for(const k of ['shuffleQuestions','shuffleOptions','shuffleGroups'])$(k).checked=!!c[k];}}catch{}
+$('saveConfig').addEventListener('click',()=>{try{localStorage.setItem('hienSoftEnglishMixerSettings',JSON.stringify({...config(),quantityValue:$('quantity').value,header:documentHeader()}));toast('Đã lưu cấu hình trộn trên trình duyệt này.')}catch{toast('Trình duyệt không cho phép lưu cấu hình.')}});
+try{const c=JSON.parse(localStorage.getItem('hienSoftEnglishMixerSettings')||'null');if(c){$('quantity').value=c.quantityValue||String(c.quantity);$('customQuantity').classList.toggle('hidden',$('quantity').value!=='custom');$('customQuantity').value=c.quantity;$('startCode').value=c.startCode;$('seed').value=c.seed;for(const k of ['shuffleQuestions','shuffleOptions','shuffleGroups'])$(k).checked=!!c[k];if(c.header)for(const [k,v] of Object.entries(c.header)){const el=$('hdr'+k[0].toUpperCase()+k.slice(1));if(el)el.value=v;}}}catch{}
 </script></head>
 <body><header class="sitehead"><nav class="wrap nav hs-english-nav" aria-label="Điều hướng chính"><a href="/tron-de/tieng-anh/" class="brand" aria-label="English Exam Mixer – HienSoft"><img class="hs-brand-logo" src="/app/icon.svg" alt="Logo HienSoft" width="75" height="60" decoding="async"><span class="hs-brand-title"><strong>ENGLISH EXAM MIXER</strong><small>HienSoft · Công cụ Tiếng Anh THPT</small></span></a><div class="hs-navlinks" aria-label="Menu chính"><a href="https://mrhien.com/">Trang chủ</a><a href="/app/">Chấm Pro</a><a href="/tron-de/" aria-current="page">Trộn đề</a><a href="/qr-excel.html">Tạo QR</a><a href="/ho-tro.html">Hỗ trợ</a></div></nav></header>
 <main><section class="hero"><div class="wrap hero-grid"><div><div class="eyebrow">✦ HienSoft dành cho giáo viên THPT</div><h1>Trộn đề Tiếng Anh<br><span>đúng cấu trúc, đúng đáp án.</span></h1><p>Công cụ trộn mã đề thi Tiếng Anh THPT thông minh dành cho giáo viên. Giữ nguyên mối liên kết giữa bài đọc, câu điền từ và các phương án; xử lý trực tiếp trên thiết bị.</p><div class="chips"><span>✓ Xử lý trên trình duyệt</span><span>✓ Không đăng nhập</span><span>✓ Word & Excel thật</span></div></div><div class="hero-info"><div class="hero-icon">40<span>Q</span></div><div><b>Quy trình 4 bước</b><p>Nhập đề → Kiểm tra đáp án → Thiết lập trộn → Xuất kết quả</p></div></div></div></section>
@@ -452,6 +490,16 @@ try{const c=JSON.parse(localStorage.getItem('hienSoftEnglishMixerSettings')||'nu
 <div class="action-row"><button class="button primary" id="generate">✦ Tạo mã đề</button><button class="button secondary" id="remix" disabled>↻ Trộn lại</button><button class="button tertiary" id="saveConfig">Lưu cấu hình</button></div><div id="planStatus" class="status">Chưa tạo mã đề.</div></section>
 <div class="step-head"><span class="stepno">04</span><div><h2>Xem trước và xuất kết quả</h2><p>Chỉ mở các nút xuất khi đã kiểm tra số câu, nhóm liên kết, phương án và đáp án.</p></div></div>
 <section class="panel"><div class="preview-top"><label for="codeSelect">Mã đề</label><select id="codeSelect"></select><span id="equivalence" class="equivalence">Chưa kiểm tra</span></div><div id="codePreview" class="code-preview empty">Tạo mã đề để xem trước cấu trúc và đáp án.</div>
+
+<div class="subheading">Thông tin đầu đề Word (theo mẫu THPT)</div>
+<div class="settings-grid exam-heading-settings">
+ <div><label for="hdrSchool">Tên trường</label><input id="hdrSchool" type="text" value="TRƯỜNG THPT CHI LĂNG" maxlength="120"></div>
+ <div><label for="hdrLeftTitle">Tên đề bên trái</label><input id="hdrLeftTitle" type="text" value="ĐỀ KIỂM TRA" maxlength="120"></div>
+ <div><label for="hdrExamTitle">Tiêu đề kỳ kiểm tra</label><input id="hdrExamTitle" type="text" value="ĐỀ KIỂM TRA / ÔN TẬP" maxlength="120"></div>
+ <div><label for="hdrSubject">Môn thi</label><input id="hdrSubject" type="text" value="TIẾNG ANH" maxlength="120"></div>
+ <div><label for="hdrMinutes">Thời gian làm bài (phút)</label><input id="hdrMinutes" type="number" min="1" max="300" value="50"></div>
+ <div><label for="hdrPages">Số trang mỗi mã đề (nếu đã biết)</label><input id="hdrPages" type="text" inputmode="numeric" maxlength="8" placeholder="Để trống nếu chưa xác định"></div>
+</div><div class="status">Đầu đề Word có tên trường, kỳ kiểm tra, môn thi, thời gian, họ tên, số báo danh và ô mã đề. Số trang chỉ in khi đã nhập để tránh ghi sai sau khi trộn.</div>
 <div class="subheading">Xuất đề Word (.docx)</div><div class="download-grid"><button disabled data-export="separate" class="button blue export">Từng mã đề (ZIP)</button><button disabled data-export="combined" class="button blue export">Tất cả mã đề (Word)</button><button disabled data-export="teacher" class="button secondary export">Bản giáo viên (Word)</button></div>
 <div class="subheading">Xuất đáp án</div><div class="download-grid"><button disabled data-export="xlsx" class="button blue export">Bảng đáp án Excel</button><button disabled data-export="answers" class="button secondary export">Bảng đáp án Word</button></div><div id="exportStatus" class="status">Chưa có mã đề hợp lệ.</div></section>
 </section></div></main><footer><div class="wrap footerinner"><div><strong>ENGLISH EXAM MIXER · HienSoft</strong><p>Bản quyền thuộc về Nguyễn Sỹ Hiển – HienSoft.</p></div><div class="footlinks"><a href="/tron-de/">Trộn đề các môn</a><a href="https://mrhien.com/">mrhien.com</a></div></div></footer>
