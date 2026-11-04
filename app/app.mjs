@@ -4,7 +4,7 @@ const $=id=>document.getElementById(id);
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const storedKey='champro-web-beta-v1';
 const fresh=()=>({schema:1,exams:[],students:[],results:[]});
-let db=fresh(),layouts=null,cvPromise=null,stream=null,autoTimer=null,captureBusy=false,review=null,lastAuto=null,lastSaved='',installPrompt=null,lastReviewImage='';
+let db=fresh(),layouts=null,cvPromise=null,stream=null,autoTimer=null,captureBusy=false,review=null,lastAuto=null,lastSaved='',installPrompt=null,lastReviewImage='',cameraRotation=0;
 try{const old=JSON.parse(localStorage.getItem(storedKey)||'null');if(old&&Array.isArray(old.exams)&&Array.isArray(old.students)&&Array.isArray(old.results))db=old;}catch(e){console.warn('localStorage invalid',e)}
 const id=()=>globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random().toString(16).slice(2);
 function save(){try{localStorage.setItem(storedKey,JSON.stringify(db));}catch(e){toast('Không lưu được: bộ nhớ trình duyệt đầy. Hãy xuất bản sao lưu.');throw e;}render();window.dispatchEvent(new Event('champro-db-updated'));}
@@ -63,9 +63,55 @@ $('resultsTable').addEventListener('click',ev=>{const b=ev.target.closest('[data
 $('backupBtn').onclick=()=>sendFile('ChamPro_SaoLuu_'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(db,null,2),'application/json');
 $('restoreFile').onchange=async ev=>{try{const f=ev.target.files[0];if(!f)return;const data=JSON.parse(await f.text());if(!Array.isArray(data.exams)||!Array.isArray(data.students)||!Array.isArray(data.results)||data.schema!==1)throw Error('Không phải tệp sao lưu đúng định dạng');if(!confirm(`Khôi phục ${data.exams.length} kỳ kiểm tra, ${data.students.length} học sinh, ${data.results.length} bài? Dữ liệu hiện tại sẽ bị thay thế.`))return;db=data;save();toast('Đã khôi phục dữ liệu');}catch(e){toast(e.message)}ev.target.value='';};
 // Camera, auto scanning, OCR gating.
-async function ensureCv(){if(window.cv?.Mat)return window.cv;if(cvPromise)return cvPromise;
- $('cvStatus').textContent='Đang tải OpenCV…';
- cvPromise=(async()=>{if(!window.cv)await loadScript('https://docs.opencv.org/4.10.0/opencv.js');if(typeof window.cv?.then==='function')window.cv=await window.cv;const start=Date.now();while(!window.cv?.Mat){if(Date.now()-start>45000)throw Error('OpenCV không khởi tạo được');await new Promise(r=>setTimeout(r,200));}$('cvStatus').textContent='Bộ đọc ảnh sẵn sàng';return window.cv;})().catch(e=>{cvPromise=null;$('cvStatus').textContent='OpenCV chưa sẵn sàng';throw e});return cvPromise;}
+// Do not depend on a single external host: try the local GitHub Pages vendor first.
+async function loadOpenCvScript(url){
+ return new Promise((resolve,reject)=>{
+  const tag=document.createElement('script');tag.src=url;tag.async=true;
+  const timer=setTimeout(()=>{tag.remove();reject(Error('Quá thời gian tải '+url));},20000);
+  tag.onload=()=>{clearTimeout(timer);resolve();};
+  tag.onerror=()=>{clearTimeout(timer);tag.remove();reject(Error('Không kết nối được '+url));};
+  document.head.appendChild(tag);
+ });
+}
+async function awaitCvReady(){
+ if(window.cv&&typeof window.cv.then==='function'){
+  window.cv=await Promise.race([Promise.resolve(window.cv),new Promise((_,reject)=>setTimeout(()=>reject(Error('OpenCV khởi tạo quá lâu')),35000))]);
+ }
+ const start=performance.now();
+ while(!window.cv?.Mat){
+  if(performance.now()-start>35000)throw Error('OpenCV không tạo được đối tượng Mat');
+  await new Promise(r=>setTimeout(r,180));
+ }
+ return window.cv;
+}
+async function ensureCv(){
+ if(window.cv?.Mat)return window.cv;
+ if(cvPromise)return cvPromise;
+ $('cvStatus').textContent='Đang tải bộ nhận diện ảnh…';
+ cvPromise=(async()=>{
+  const sources=['./vendor/opencv.js',
+    'https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js',
+    'https://unpkg.com/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js',
+    'https://docs.opencv.org/4.10.0/opencv.js'];
+  const errors=[];
+  for(const src of sources){
+   try{
+    $('scanStatus').textContent='Đang khởi động bộ nhận diện ảnh…';
+    if(!window.cv)await loadOpenCvScript(src);
+    const ready=await awaitCvReady();
+    $('cvStatus').textContent='Bộ nhận diện đã sẵn sàng';
+    $('scanStatus').textContent='Bộ nhận diện đã sẵn sàng · Đưa đủ 4 ô đen vào vùng ngắm';
+    return ready;
+   }catch(e){
+    errors.push(src.split('/')[2]||'tệp cục bộ');
+    console.warn('OpenCV load failed',src,e);
+    if(window.cv&&!window.cv.Mat)window.cv=null;
+   }
+  }
+  throw Error('Không tải được OpenCV từ '+errors.join(', ')+'. Hãy kiểm tra mạng và thử nút "Kiểm tra bộ xử lý ảnh".');
+ })().catch(e=>{cvPromise=null;$('cvStatus').textContent='Lỗi bộ nhận diện ảnh';throw e});
+ return cvPromise;
+}
 async function ensureLayouts(){if(!layouts){const r=await fetch('./layouts.json',{cache:'force-cache'});if(!r.ok)throw Error('Không tải được tọa độ mẫu phiếu');layouts=await r.json();}return layouts;}
 // The four outer printed fiducials are A4 portrait: 547.28 x 793.89 PDF points.
 // Never resize the guide's X and Y independently: that made it look square on phones.
@@ -81,20 +127,18 @@ function cameraGuideMetrics(sw,sh,videoW,videoH){
 }
 function fitGuideToVisibleVideo(){
  const v=$('video'),surface=$('cameraSurface'),guide=$('captureGuide'),note=$('videoFormatNote');
- // Some Android browsers expose rear-camera frames in landscape even in portrait.
- // Rotate presentation and capture identically rather than squeezing a landscape frame into an A4 guide.
- const portraitPage=surface.clientHeight>=surface.clientWidth*.95;
- const rotate=portraitPage&&v.videoWidth>v.videoHeight*1.12;
- v.classList.toggle('rotate-landscape',rotate);
- if(rotate){
-  v.style.width=surface.clientHeight+'px';
-  v.style.height=surface.clientWidth+'px';
- }else{v.style.width='';v.style.height='';}
- const metrics=cameraGuideMetrics(surface.clientWidth,surface.clientHeight,rotate?v.videoHeight:v.videoWidth,rotate?v.videoWidth:v.videoHeight);
- if(!metrics){guide.style.width='';guide.style.height='';if(note)note.textContent='Khung phiếu A4 · camera dọc';return;}
+ // Never infer physical document orientation merely from videoWidth/videoHeight.
+ // Mobile camera metadata may report landscape frames even while the preview is upright.
+ const rotated=cameraRotation!==0;
+ v.classList.toggle('rotate-landscape',rotated);
+ v.style.setProperty('--camera-rotation',cameraRotation+'deg');
+ if(rotated){v.style.width=surface.clientHeight+'px';v.style.height=surface.clientWidth+'px';}
+ else {v.style.width='';v.style.height='';}
+ const metrics=cameraGuideMetrics(surface.clientWidth,surface.clientHeight,rotated?v.videoHeight:v.videoWidth,rotated?v.videoWidth:v.videoHeight);
+ if(!metrics){guide.style.width='';guide.style.height='';if(note)note.textContent='Khung phiếu A4 · giữ điện thoại dọc';return;}
  guide.style.width=Math.round(metrics.markerW)+'px';
  guide.style.height=Math.round(metrics.markerH)+'px';
- if(note)note.textContent=(rotate?'Đã xoay camera ngang sang dọc':'Khung hình chữ nhật dọc')+' · '+v.videoWidth+'×'+v.videoHeight;
+ if(note)note.textContent='Khung phiếu A4 dọc · Ảnh gốc '+v.videoWidth+'×'+v.videoHeight+(rotated?' · Xoay '+cameraRotation+'°':'');
 }
 $('video').addEventListener('loadedmetadata',fitGuideToVisibleVideo);
 $('video').addEventListener('resize',fitGuideToVisibleVideo);
@@ -107,15 +151,17 @@ let s;try{s=await navigator.mediaDevices.getUserMedia(cameraOptions);}catch(firs
 }stream=s;$('video').srcObject=s;await $('video').play();fitGuideToVisibleVideo();$('cameraPlaceholder').hidden=true;$('scanMode').textContent='Camera đang mở';$('scanStatus').textContent='Đặt phiếu phẳng, đủ 4 ô đen trong hình';if($('autoScan').checked)autoTimer=setInterval(autoScanOnce,750);void Promise.all([ensureCv(),ensureLayouts()]).catch(e=>{$('scanStatus').textContent='Chưa tải được bộ đọc ảnh: '+e.message;});}catch(e){toast('Camera: '+e.message);$('scanStatus').textContent=e.message;}}
 function stopCamera(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;}if(stream){stream.getTracks().forEach(x=>x.stop());stream=null;}$('video').srcObject=null;$('cameraPlaceholder').hidden=false;$('scanMode').textContent='Đã dừng';lastAuto=null;}
 $('startCamera').onclick=startCamera;$('stopCamera').onclick=stopCamera;
+$('rotateCamera').onclick=()=>{cameraRotation=cameraRotation===0?270:cameraRotation===270?90:0;fitGuideToVisibleVideo();$('scanStatus').textContent=cameraRotation?'Đã xoay khung hình '+cameraRotation+'°; tiếp tục quét.':'Đã khôi phục hướng camera gốc.';};
 $('autoScan').onchange=()=>{if(autoTimer){clearInterval(autoTimer);autoTimer=null;}if(stream&&$('autoScan').checked)autoTimer=setInterval(autoScanOnce,750);};
 $('torch').onclick=async()=>{try{const t=stream?.getVideoTracks()[0];if(!t)throw Error('Camera chưa mở');const can=t.getCapabilities?.();if(!can?.torch)throw Error('Thiết bị hoặc trình duyệt không hỗ trợ đèn');await t.applyConstraints({advanced:[{torch:!Boolean(t.getSettings().torch)}]});}catch(e){toast(e.message);}};
 function captureVideo(){
  const v=$('video');if(!stream||!v.videoWidth)throw Error('Camera chưa sẵn sàng');
- const rotate=v.classList.contains('rotate-landscape'),limit=1500;
- const a=Math.min(1,limit/Math.max(v.videoWidth,v.videoHeight)),w=Math.round(v.videoWidth*a),h=Math.round(v.videoHeight*a);
- const c=$('capture');c.width=rotate?h:w;c.height=rotate?w:h;
+ const scale=Math.min(1,1500/Math.max(v.videoWidth,v.videoHeight));
+ const w=Math.round(v.videoWidth*scale),h=Math.round(v.videoHeight*scale);
+ const c=$('capture');c.width=cameraRotation?h:w;c.height=cameraRotation?w:h;
  const ctx=c.getContext('2d',{willReadFrequently:true});
- if(rotate){ctx.translate(c.width,0);ctx.rotate(Math.PI/2);ctx.drawImage(v,0,0,w,h);}
+ if(cameraRotation===90){ctx.translate(c.width,0);ctx.rotate(Math.PI/2);ctx.drawImage(v,0,0,w,h);}
+ else if(cameraRotation===270){ctx.translate(0,c.height);ctx.rotate(-Math.PI/2);ctx.drawImage(v,0,0,w,h);}
  else ctx.drawImage(v,0,0,w,h);
  return c;
 }
