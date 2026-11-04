@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#112b57"><meta name="description" content="English Exam Mixer – HienSoft: trộn mã đề Tiếng Anh THPT trên trình duyệt, giữ nhóm bài đọc và đục lỗ, xuất Word và Excel."><title>English Exam Mixer – HienSoft</title><style>:root{--ink:#142b4f;--blue:#2154d4;--blue2:#143f9f;--teal:#46cdae;--light:#f5f8fe;--muted:#61738d;--line:#e3ebf6;--red:#bb3844}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--light);color:var(--ink);font:15px/1.65 system-ui,-apple-system,'Segoe UI',sans-serif}button,input,textarea,select{font:inherit}button{cursor:pointer}a{color:inherit;text-decoration:none}h1,h2,h3,p{margin-top:0}.hidden{display:none!important}.wrap{width:min(1190px,calc(100% - 40px));margin:auto}.sitehead{background:#fff;position:sticky;top:0;z-index:30;border-bottom:1px solid var(--line);box-shadow:0 2px 20px #2034560b}.nav{min-height:74px;display:flex;align-items:center;justify-content:space-between;gap:15px}.brand{display:flex;align-items:center;gap:10px;line-height:1.2}.brand strong{font-size:19px;letter-spacing:-.4px;display:block}.brand small{display:block;color:var(--muted);font-size:11px;margin-top:5px}.logo{width:44px;height:44px;display:grid;place-items:center;border-radius:13px;background:linear-gradient(135deg,#225dde,#12346f);color:#fff;font-weight:900;font-size:27px;position:relative}.logo span{font-size:9px;position:absolute;right:7px;bottom:6px}.back,.go-main{color:#42618d;font-size:13px;font-weight:750;white-space:nowrap}.back:hover,.go-main:hover{color:var(--blue)}.hero{background:radial-gradient(circle at 90% 0,#3859a4,transparent 40%),linear-gradient(125deg,#0a1b3a,#193d77);color:#fff}.hero-grid{display:grid;grid-template-columns:1.6fr .65fr;align-items:center;gap:40px;padding:65px 0 70px}.eyebrow{font-weight:730;color:#a5f1d6;font-size:13px;letter-spacing:.3px}.hero h1{font-size:clamp(34px,4.3vw,56px);line-height:1.18;letter-spacing:-1.9px;margin:15px 0}.hero h1 span{color:#75e1ca}.hero p{font-size:16px;color:#dae4f8;max-width:660px;margin-bottom:23px}.chips{display:flex;gap:8px;flex-wrap:wrap}.chips span{font-size:12px;font-weight:700;padding:6px 10px;border:1px solid #b1d5ff55;border-radius:30px;background:#ffffff0f}.hero-info{background:#ffffff14;border:1px solid #ffffff3b;border-radius:21px;padding:26px;display:flex;gap:20px;align-items:center}.hero-info b{font-size:17px}.hero-info p{font-size:13px;margin:8px 0 0;color:#d7e8ff}.hero-icon{font-size:48px;font-weight:900;line-height:1;letter-spacing:-3px;color:#7ee8cb}.hero-icon span{font-size:19px;letter-spacing:0}.content{padding-bottom:65px}.step-head{display:flex;gap:17px;align-items:center;margin:40px 0 19px}.step-head h2{font-size:25px;letter-spacing:-.6px;margin:0 0 2px}.step-head p{color:var(--muted);font-size:13px;margin:0}.stepno{width:43px;height:43px;flex-shrink:0;display:grid;place-items:center;border-radius:14px;background:#dfeaff;color:#2254cf;font-weight:900}.panel{background:#fff;border:1px solid var(--line);border-radius:20px;padding:25px;box-shadow:0 7px 26px #1e396308}.input-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.dropzone{min-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;border:2px dashed #a9c2eb;border-radius:17px;background:#f7faff;cursor:pointer;padding:22px}.dropzone:hover,.dropzone.drag{background:#edf5ff;border-color:#2666d9}.upload-symbol{font-size:34px;color:#1f5add;font-weight:900;line-height:1}.dropzone strong{font-size:17px}.dropzone>span:not(.upload-symbol,.file-button){font-size:12px;color:var(--muted)}.file-button{border-radius:9px;padding:9px 18px;background:#245cda;color:#fff;font-weight:750;font-size:13px;margin-top:7px}.paste-area label,.settings-grid label,.answer-upload label,.toolbar label,.preview-top label{display:block;font-size:13px;font-weight:770;margin-bottom:7px}.paste-area textarea{min-height:150px;resize:vertical}.paste-area .button{margin-top:10px}input[type='text'],input[type='number'],input[type='search'],input[type='file'],textarea,select{border:1px solid #cad7eb;background:#fff;border-radius:10px;padding:10px 12px;color:#172e50;outline:none;max-width:100%}textarea:focus,input:focus,select:focus{border-color:#5589ed;box-shadow:0 0 0 3px #528aff1c}textarea{width:100%}.button{border:0;padding:10px 17px;border-radius:10px;font-weight:770;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:43px;transition:transform .15s,box-shadow .15s}.button:hover:not(:disabled){transform:translateY(-1px)}.button:disabled{opacity:.45;cursor:not-allowed}.button.primary,.button.blue{background:var(--blue);color:white}.button.primary{background:linear-gradient(120deg,#1e59e3,#2250bf);box-shadow:0 8px 17px #2d5ae32a}.button.secondary{background:#eaf1ff;color:#1546b6}.button.tertiary{border:1px solid #d5deef;background:white;color:#4d6080}.answer-upload{border-top:1px solid var(--line);margin-top:21px;padding-top:17px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}.answer-upload label{margin:0}.answer-upload span{color:var(--muted);font-size:12px}.answer-upload input{font-size:12px}.status{font-size:13px;margin-top:15px;color:#4e6889}.status.error{color:var(--red)}.status.success{color:#087d60}.metric-row{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin:16px 0}.metric{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 19px;display:flex;gap:12px;align-items:baseline}.metric b{font-size:27px;color:#2152c6}.metric span{font-size:12px;color:var(--muted)}.notes{border:1px solid #f0dba2;background:#fffbef;border-radius:13px;padding:15px 19px;margin-bottom:18px;color:#7b6026;font-size:13px}.notes ul{margin:8px 0 0;padding-left:18px}.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0}.toolbar label{margin:0}.review-list{display:grid;gap:12px;max-height:700px;overflow:auto;scrollbar-color:#bdcfea transparent}.group-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 15px;background:#eaf2ff;border-radius:13px;color:#234f9c;margin-top:12px}.group-head small{margin-left:auto;color:#607da6;font-weight:700}.question-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px}.question-top{display:flex;align-items:center;gap:12px;justify-content:space-between}.question-top b{color:#1d4cb2}.pill{display:inline-block;background:#e8f6f0;color:#0c8067;border-radius:20px;font-weight:760;font-size:11px;padding:3px 9px}.pill.warn{color:#a36416;background:#fff1d7}.question-stem{white-space:pre-wrap;font-size:13px;margin:10px 0;color:#3b506b;max-height:110px;overflow:auto}.choicegrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.choice{font-size:13px;padding:9px 11px;border:1px solid #e6ecf5;border-radius:9px;word-break:break-word}.choice.correct{background:#edfbf5;border-color:#b8e9d4}.choice b{color:#244baa;margin-right:7px}.review-actions{display:flex;align-items:center;flex-wrap:wrap;gap:11px;margin-top:13px}.review-actions label{font-size:12px;font-weight:750}.review-actions select{padding:7px 9px}.edit-box{border-top:1px solid var(--line);margin-top:15px;padding-top:16px;display:grid;gap:9px}.edit-box label{font-size:12px;font-weight:750}.edit-box textarea{min-height:64px}.edit-box input{width:100%}.edit-box .button{justify-self:start}.settings-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.settings-grid input,.settings-grid select{width:100%}.switches{display:flex;gap:14px 24px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:20px 0}.switches label{font-size:13px;font-weight:700}.switches input{accent-color:#2459d7;margin-right:5px}.subheading{font-size:15px;font-weight:850;margin:22px 0 13px}.group-settings{display:grid;gap:9px}.group-setting{display:flex;justify-content:space-between;flex-wrap:wrap;align-items:center;gap:10px;border:1px solid var(--line);border-radius:11px;padding:12px 15px}.group-setting strong{font-size:13px}.group-setting small{display:block;font-size:11px;color:var(--muted)}.group-setting .controls{display:flex;gap:13px;align-items:center}.group-setting .controls label{font-size:12px;white-space:nowrap}.action-row{display:flex;gap:11px;flex-wrap:wrap;margin-top:22px}.preview-top{display:flex;align-items:center;gap:11px;flex-wrap:wrap}.preview-top label{margin:0}.equivalence{color:#93601e;background:#fff3df;border-radius:20px;padding:4px 10px;font-size:12px;font-weight:800}.equivalence.valid{color:#0b8067;background:#e6f7f0}.code-preview{border:1px solid var(--line);margin:17px 0;padding:17px;border-radius:13px;max-height:530px;overflow:auto;font-family:'Times New Roman',serif;font-size:16px}.code-preview.empty{color:var(--muted);font-family:inherit;font-size:13px}.preview-group{border-top:1px solid #dce5f3;padding:13px 0}.preview-group h4{font:700 14px/1.5 system-ui,sans-serif;color:#2452aa;margin:0 0 7px}.preview-group .passage{white-space:pre-wrap;font-size:14px;margin:6px 0}.preview-item{margin:11px 0}.preview-item strong{font-weight:bold}.preview-answers{font-size:13px;color:#4c6080;white-space:normal}.download-grid{display:flex;gap:11px;flex-wrap:wrap}footer{background:#0d1d3d;color:#d2def0;padding:33px 0}.footerinner{display:flex;justify-content:space-between;gap:18px;align-items:center;flex-wrap:wrap}.footerinner strong{font-size:15px}.footerinner p{margin:5px 0 0;color:#c2d2ed;font-size:13px}.footlinks{display:flex;gap:18px;font-size:13px}#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:50;max-width:min(560px,90vw);border-radius:11px;background:#193460;color:#fff;padding:13px 20px;box-shadow:0 14px 30px #0b183744;display:none;font-size:13px}#toast.on{display:block}@media(max-width:800px){.hero-grid{grid-template-columns:1fr}.hero-info{max-width:440px}.input-grid,.settings-grid{grid-template-columns:1fr}.metric-row{grid-template-columns:repeat(2,1fr)}.nav{gap:8px}.back,.go-main{font-size:11px}.brand strong{font-size:15px}}@media(max-width:530px){.wrap{width:calc(100% - 26px)}.nav{flex-wrap:wrap;justify-content:center;padding:9px 0}.brand{order:-1;width:100%;justify-content:center}.hero-grid{padding:45px 0}.hero h1{letter-spacing:-1.1px}.chips{gap:6px}.chips span{font-size:10px}.panel{padding:16px}.metric{padding:11px;gap:6px;flex-direction:column}.metric b{font-size:24px}.choicegrid{grid-template-columns:1fr}.step-head{align-items:flex-start}.step-head h2{font-size:22px}.download-grid .button{flex:1 1 100%}.group-setting .controls{flex-wrap:wrap}.footerinner{flex-direction:column;align-items:flex-start}}
+</style><script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script><script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script><script type="module">const EngEngine=(()=>{
+/** English Exam Mixer: pure linked-group shuffle and validation. No DOM required. */
+const LETTERS=['A','B','C','D'];
+const KINDS={cloze:'Điền từ/đục lỗ',reading:'Đọc hiểu',arrangement:'Sắp xếp câu/hội thoại',independent:'Câu độc lập'};
+function seedRandom(seed){let a=(Number(seed)>>>0)||1;return ()=>{a+=0x6D2B79F5;let t=a;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296}}
+function shuffle(items,rng){const a=[...items];for(let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function validateSource(exam,{requireAnswers=true}={}){
+ const issues=[];const questions=exam.groups.flatMap(g=>g.questions);const seen=new Set();
+ if(!questions.length)issues.push({scope:'Đề gốc',message:'Không nhận diện được câu hỏi nào.'});
+ for(const q of questions){
+  if(seen.has(q.id))issues.push({scope:`Câu ${q.number}`,message:'Trùng định danh câu hỏi.'});seen.add(q.id);
+  if(!q.stemParts?.length&&!q.options?.length)issues.push({scope:`Câu ${q.number}`,message:'Thiếu nội dung.'});
+  if(q.options?.length!==4)issues.push({scope:`Câu ${q.number}`,message:`Có ${q.options?.length||0}/4 phương án.`});
+  else for(let i=0;i<4;i++)if(!q.options[i].text?.trim())issues.push({scope:`Câu ${q.number}`,message:`Phương án ${LETTERS[i]} trống.`});
+  if(requireAnswers&&!LETTERS.includes(q.answer))issues.push({scope:`Câu ${q.number}`,message:q.conflict?'Nhiều dấu hiệu đáp án mâu thuẫn. Cần xác nhận.':'Chưa có đáp án đúng; hãy chọn thủ công.'});
+ }
+ for(const group of exam.groups){
+  const nums=group.questions.map(q=>q.number);
+  if(group.kind==='cloze'){
+   const intro=group.intro.map(p=>p.text||'').join(' ');
+   const blanks=[...intro.matchAll(/\((\d{1,3})\)\s*_{2,}/g)].map(m=>+m[1]);
+   const wrong=blanks.filter(n=>!nums.includes(n));
+   if(wrong.length)issues.push({scope:group.title,message:`Chỗ trống (${wrong.join('), (')}) không khớp số câu trong nhóm.`});
+   // Sentence-gap cloze can use (18) ____ and blank at new line; don't require one pattern.
+  }
+ }
+ return issues;
+}
+function createPlan(exam,config={}){
+ const quantity=Math.max(1,Math.min(100,Number(config.quantity)||2)),codes=[];
+ const source=exam.groups.flatMap(g=>g.questions),expectedIds=new Set(source.map(q=>q.id));
+ const maxAttempts=150,signatures=new Set(),baseSeed=(Number(config.seed)||Date.now())>>>0;
+ for(let k=0;k<quantity;k++){
+  let plan=null,signature='';
+  for(let retry=0;retry<maxAttempts;retry++){
+   const rng=seedRandom(baseSeed+k*7919+retry*104729);
+   let groups=[...exam.groups];
+   if(config.shuffleGroups){const movable=shuffle(groups.filter(g=>g.enabled!==false),rng);let next=0;groups=groups.map(g=>g.enabled===false?g:movable[next++]);}
+   const ordered=[];let n=1;
+   for(const group of groups){
+    let qs=[...group.questions];
+    if(config.shuffleQuestions&&group.shuffleInside&&group.enabled!==false)qs=shuffle(qs,rng);
+    const members=[];
+    for(const q of qs){
+     const perm=(config.shuffleOptions&&group.shuffleOptions!==false&&group.enabled!==false)?shuffle([0,1,2,3],rng):[0,1,2,3];
+     const newAnswer=LETTERS[perm.indexOf(LETTERS.indexOf(q.answer))]||null;
+     members.push({qid:q.id,sourceNumber:q.number,number:n++,perm,answer:newAnswer});
+    }
+    ordered.push({groupId:group.id,kind:group.kind,members});
+   }
+   signature=ordered.map(g=>g.groupId+':'+g.members.map(m=>m.qid+'['+m.perm.join('')+']').join(',')).join('|');
+   plan={code:String((Number(config.startCode)||101)+k),groups:ordered,signature};
+   if(!signatures.has(signature))break;
+  }
+  if(signatures.has(signature))plan.duplicateLayout=true;
+  signatures.add(signature);codes.push(plan);
+ }
+ return codes;
+}
+function validatePlans(exam,plans){
+ const problems=[...validateSource(exam)];const source=exam.groups.flatMap(g=>g.questions);const base=new Set(source.map(q=>q.id));
+ const groupMap=new Map(exam.groups.map(g=>[g.id,g]));
+ for(const plan of plans){
+  const entries=plan.groups.flatMap(g=>g.members),found=new Set();
+  if(plan.duplicateLayout)problems.push({scope:`Mã ${plan.code}`,message:'Cấu trúc trộn trùng với mã đề khác; hãy bật đảo câu/phương án hoặc giảm số mã đề.'});
+  if(entries.length!==source.length)problems.push({scope:`Mã ${plan.code}`,message:`Số câu ${entries.length}/${source.length}.`});
+  for(let i=0;i<entries.length;i++){
+   const e=entries[i],g=plan.groups.find(g=>g.members.includes(e));
+   if(found.has(e.qid))problems.push({scope:`Mã ${plan.code}`,message:`Câu gốc ${e.sourceNumber} bị trùng.`});found.add(e.qid);
+   if(!base.has(e.qid))problems.push({scope:`Mã ${plan.code}`,message:`Câu không tồn tại: ${e.qid}.`});
+   if(e.number!==i+1)problems.push({scope:`Mã ${plan.code}`,message:`Thứ tự câu không liên tục tại câu ${i+1}.`});
+   if(e.perm.length!==4||new Set(e.perm).size!==4)problems.push({scope:`Mã ${plan.code}`,message:`Đảo phương án lỗi tại câu ${e.number}.`});
+   const original=source.find(q=>q.id===e.qid);
+   if(original){const correct=LETTERS[e.perm.indexOf(LETTERS.indexOf(original.answer))];if(correct!==e.answer)problems.push({scope:`Mã ${plan.code}`,message:`Đáp án sai tại câu ${e.number}.`});}
+   if(!groupMap.get(g.groupId)?.questions.some(q=>q.id===e.qid))problems.push({scope:`Mã ${plan.code}`,message:`Câu ${e.sourceNumber} bị chuyển sang nhóm khác.`});
+  }
+  for(const id of base)if(!found.has(id))problems.push({scope:`Mã ${plan.code}`,message:`Thiếu câu gốc ${id}.`});
+  for(const grp of plan.groups){const src=groupMap.get(grp.groupId);if(src?.kind==='cloze'&&grp.members.some((m,i)=>m.sourceNumber!==src.questions[i]?.number))problems.push({scope:`Mã ${plan.code}`,message:`Nhóm đục lỗ ${grp.groupId} bị đảo câu.`});}
+ }
+ return problems;
+}
+function answerMatrix(plans){const n=plans[0]?.groups.flatMap(g=>g.members).length||0;return Array.from({length:n},(_,i)=>[i+1,...plans.map(p=>p.groups.flatMap(g=>g.members)[i]?.answer||'?')]);}
+
+return {LETTERS,KINDS,validateSource,createPlan,validatePlans,answerMatrix};})()
+const EngParser=(()=>{
+/** Browser-side DOCX / PDF / pasted text parsing. No network data upload. */
+const XML_NS='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+const ns=XML_NS;const local=n=>n?.localName||n?.nodeName?.split(':').pop()||'';
+const descendants=(n,name)=>Array.from(n?.getElementsByTagNameNS(ns,name)||[]);
+const child=(n,name)=>Array.from(n?.childNodes||[]).find(x=>x.nodeType===1&&local(x)===name);
+const normalize=s=>String(s||'').replace(/\u00a0|\u2002|\u2003/g,' ').replace(/\s+/g,' ').trim();
+const serial=n=>new XMLSerializer().serializeToString(n);
+const parseXML=s=>{const d=new DOMParser().parseFromString(s,'application/xml');if(d.getElementsByTagName('parsererror').length)throw Error('XML không hợp lệ trong tài liệu.');return d;};
+const isAnswerRed=s=>{if(!s||s.toLowerCase()==='auto')return false;const v=s.replace('#','').toLowerCase();return ['ff0000','c00000','e00000','dc0000','f00','red'].includes(v)||(/^\w{6}$/.test(v)&&parseInt(v.slice(0,2),16)>170&&parseInt(v.slice(2,4),16)<95&&parseInt(v.slice(4,6),16)<95);};
+const isAnswerYellow=s=>['yellow','ffff00','fff200','ffeb3b','ffd966','fce4d6','ffe699'].includes((s||'').toLowerCase().replace('#',''));
+function runMeta(r,p){const pr=child(r,'rPr'),pp=child(p,'pPr');const value=(n,a='val')=>n?.getAttributeNS(ns,a)||n?.getAttribute('w:'+a)||n?.getAttribute(a)||'';let h=value(child(pr,'highlight')),c=value(child(pr,'color')),shade=value(child(pr,'shd'),'fill')||value(child(pp,'shd'),'fill');const under=child(pr,'u');return {highlight:isAnswerYellow(h)||isAnswerYellow(shade),red:isAnswerRed(c),underline:!!under&&value(under)!=='none',rPr:pr?serial(pr):null};}
+function makeTokens(p){const arr=[];const visit=n=>{
+  if(n.nodeType!==1)return;const tag=local(n);
+  if(tag==='r'){
+   const meta=runMeta(n,p);
+   for(const item of Array.from(n.childNodes)){
+    const k=local(item);if(k==='t'||k==='instrText')for(const char of item.textContent)arr.push({ch:char,...meta});
+    else if(k==='tab'||k==='br')arr.push({ch:' ',...meta});
+    else if(['drawing','pict','object','oMath','oMathPara'].includes(k))arr.push({ch:'\uFFFC',xml:serial(item),...meta});
+   }return;
+  }
+  if(['hyperlink','ins','smartTag','sdtContent','oMath','oMathPara'].includes(tag))Array.from(n.childNodes).forEach(visit);
+ };
+ Array.from(p.childNodes).forEach(visit);return arr;
+}
+function paraBlock(p){const tokens=makeTokens(p);return {kind:'p',text:tokens.map(t=>t.ch).join(''),tokens,ppr:child(p,'pPr')?serial(child(p,'pPr')):null};}
+const optRe=/([ABCD])\s*[.．):]\s*/g;
+function startsOfOptions(tokens,nextLabel='A'){const text=tokens.map(x=>x.ch).join(''),marks=[];let match;optRe.lastIndex=0;
+ while((match=optRe.exec(text))){const label=match[1],pos=match.index;if(!marks.length&&label!==nextLabel)continue;
+   if(marks.length&&label!=='ABCD'['ABCD'.indexOf(nextLabel)+marks.length])continue;
+   if(!marks.length&&pos>18&&!/[\s?:.!;]\s*$/.test(text.slice(Math.max(0,pos-3),pos)))continue;
+   marks.push({letter:label,start:pos,end:optRe.lastIndex});if(marks.length===4)break;
+ }
+ return marks;
+}
+function optionMarkers(tokens){return {highlight:tokens.some(t=>t.highlight),red:tokens.some(t=>t.red),underline:tokens.some(t=>t.underline)};}
+function createOption(letter,tokens){return {letter,text:normalize(tokens.map(t=>t.ch).join('')),tokens,markers:optionMarkers(tokens)};}
+function appendBlockToQuestion(q,block){
+ if(block.kind!=='p'){q.stemParts.push(block);return}
+ const tokens=block.tokens;const marks=startsOfOptions(tokens,'ABCD'[q.options.length]||'Z');
+ if(marks.length){
+  if(marks[0].start>0&&!q.options.length){const before=tokens.slice(0,marks[0].start);if(normalize(before.map(x=>x.ch).join('')))q.stemParts.push({...block,tokens:before,text:before.map(x=>x.ch).join('')});}
+  for(let i=0;i<marks.length;i++){
+   const m=marks[i],end=marks[i+1]?.start??tokens.length;
+   const value=tokens.slice(m.end,end);const marked=tokens.slice(m.start,end);const labelTokens=tokens.slice(m.start,m.end);
+   const opt=createOption(m.letter,value);opt.markers={highlight:marked.some(t=>t.highlight),red:marked.some(t=>t.red),underline:marked.some(t=>t.underline)};
+   opt.labelTokens=labelTokens;
+   if(q.options.length===0||q.options[q.options.length-1].letter!==m.letter){q.options.push(opt)}else q.options[q.options.length-1]=opt;
+  }
+ }else if(q.options.length){const last=q.options[q.options.length-1];last.tokens.push(...tokens);last.text=normalize(last.tokens.map(t=>t.ch).join(''));last.markers=optionMarkers([...last.labelTokens||[],...last.tokens]);}
+ else q.stemParts.push(block);
+}
+function classify(title,intro){const text=(title+' '+intro.map(p=>p.text).join(' ')).toLowerCase();if(/correct arrangement|meaningful paragraph|letter or conversation|sắp xếp/.test(text))return 'arrangement';if(/numbered blanks|fits each of the numbered blanks|chỗ trống|điền từ/.test(text))return 'cloze';if(/read the following|following passage|đọc hiểu/.test(text))return 'reading';return 'independent';}
+const isStartOfGroup=t=>/^(?:Read the following (?:advertisement|leaflet|passage|text|article|email|notice)|Mark the letter [A-D][,.\s]+[A-D]|Read the passage|Đọc (?:đoạn|bài)|Choose the best answer for the following)/i.test(normalize(t));
+const questionRe=/^(?:Question|Câu(?:\s+hỏi)?)\s*(\d+)\s*[:.):–-]\s*/i;
+function finalizeAnswer(q){const marked=q.options.map(o=>({letter:o.letter,...o.markers}));const byKind={highlight:marked.filter(x=>x.highlight),red:marked.filter(x=>x.red),underline:marked.filter(x=>x.underline)};
+ const top=Object.entries(byKind).find(([k,v])=>v.length>0);const all=new Set(Object.values(byKind).flat().map(x=>x.letter));
+ if(top&&top[1].length===1&&all.size===1){q.answer=top[1][0].letter;q.answerSource=top[0];q.conflict=false;}
+ else if(all.size){q.answer=null;q.conflict=true;q.answerSource='conflict';}
+ else {q.answer=null;q.answerSource='missing';q.conflict=false;}
+}
+function parseBlocks(blocks,{fileName='',kind='paste'}={}){
+ const exam={fileName,sourceKind:kind,groups:[],warnings:[],title:'',assets:[],total:0};let group=null,q=null,idx=0;
+ const newGroup=()=>{group={id:`g${exam.groups.length+1}`,title:'',kind:'independent',intro:[],questions:[],shuffleInside:false,shuffleOptions:true,enabled:true};exam.groups.push(group);q=null;};
+ for(const original of blocks){let block=original;if(!block||!block.text?.trim()&&block.kind!=='tbl')continue;const text=normalize(block.text);
+  if(isStartOfGroup(text)){newGroup();group.title=text.slice(0,100);group.intro.push(block);continue;}
+  const found=text.match(questionRe);
+  if(found){if(!group)newGroup();const n=Number(found[1]);q={id:`q${++idx}`,number:n,stemParts:[],options:[],answer:null,answerSource:'missing',conflict:false,groupId:group.id};group.questions.push(q);
+   if(block.kind==='p'){
+    const m=block.text.match(questionRe),start=m?m[0].length:0;
+    const rest=block.tokens.slice(start);
+    if(rest.length)appendBlockToQuestion(q,{...block,text:rest.map(x=>x.ch).join(''),tokens:rest});
+   }continue;
+  }
+  if(!group)newGroup();
+  if(q)appendBlockToQuestion(q,block);else group.intro.push(block);
+ }
+ // Groups that contain no questions are not emitted. Their text is preserved as title only.
+ const first=exam.groups[0];if(first&&first.questions.length===0){exam.title=first.intro.map(b=>normalize(b.text)).filter(Boolean).join(' · ');exam.groups.shift();}
+ for(const g of exam.groups){g.kind=classify(g.title,g.intro);g.shuffleInside=['independent','arrangement'].includes(g.kind);for(const question of g.questions){finalizeAnswer(question);
+  if(question.options.length!==4)exam.warnings.push(`Câu ${question.number}: phát hiện ${question.options.length}/4 phương án.`);
+  if(question.conflict)exam.warnings.push(`Câu ${question.number}: nhiều loại đánh dấu đáp án mâu thuẫn.`);
+ }}
+ exam.groups=exam.groups.filter(g=>g.questions.length);exam.total=exam.groups.reduce((x,g)=>x+g.questions.length,0);
+ if(!exam.total)throw Error('Không nhận diện được câu hỏi. Hãy kiểm tra bố cục Question 1 ... và A/B/C/D.');
+ return exam;
+}
+async function importDocx(file){if(!window.JSZip)throw Error('Thiếu thư viện JSZip. Vui lòng tải lại trang.');let zip;
+ try{zip=await JSZip.loadAsync(await file.arrayBuffer(),{checkCRC32:true});}catch{throw Error('Không thể mở DOCX. Vui lòng lưu lại bằng Microsoft Word ở định dạng .docx.');}
+ const xml=await zip.file('word/document.xml')?.async('string');if(!xml)throw Error('Tệp không chứa word/document.xml.');
+ const doc=parseXML(xml);const body=descendants(doc,'body')[0];if(!body)throw Error('DOCX thiếu thân tài liệu.');
+ const blocks=Array.from(body.childNodes).filter(n=>['p','tbl'].includes(local(n))).map(n=>local(n)==='p'?paraBlock(n):{kind:'tbl',text:descendants(n,'t').map(x=>x.textContent).join(' '),xml:serial(n)});
+ const exam=parseBlocks(blocks,{fileName:file.name,kind:'docx'});exam._originalBytes=await file.arrayBuffer();
+ const bodySect=child(body,'sectPr');exam.sectPr=bodySect?serial(bodySect):null;
+ return exam;
+}
+function stringBlocks(text){return String(text||'').replace(/\r\n/g,'\n').split(/\n/).map(line=>({kind:'p',text:line,tokens:[...line].map(ch=>({ch})),ppr:null}));}
+function importPasted(text){return parseBlocks(stringBlocks(text),{fileName:'Nội dung dán',kind:'paste'});}
+async function importPdf(file){if(!window.pdfjsLib)throw Error('Không tải được thư viện PDF.js. Hãy kiểm tra kết nối Internet hoặc sử dụng DOCX.');
+ const buffer=await file.arrayBuffer();let document;
+ try{document=await pdfjsLib.getDocument({data:buffer}).promise;}catch{throw Error('Không mở được PDF hoặc PDF được bảo vệ.');}
+ const lines=[];
+ for(let p=1;p<=document.numPages;p++){
+  const page=await document.getPage(p),c=await page.getTextContent();let current=[],lastY=null,lastRight=null;
+  for(const i of c.items){const y=Math.round(i.transform?.[5]||0),x=i.transform?.[4]||0,width=i.width||0;
+   if(lastY!==null&&Math.abs(y-lastY)>3){lines.push(current.join(''));current=[];lastRight=null;}
+   if(lastRight!==null&&x-lastRight>2)current.push(' ');
+   current.push(i.str);lastY=y;lastRight=x+width;
+   if(i.hasEOL){lines.push(current.join(''));current=[];lastY=null;lastRight=null;}
+  }
+  if(current.length)lines.push(current.join(''));
+ }
+ const exam=parseBlocks(stringBlocks(lines.join('\n')),{fileName:file.name,kind:'pdf'});
+ exam.warnings.push('PDF chỉ trích xuất văn bản: không bảo toàn chắc chắn hình ảnh, màu/gạch chân và bố cục. Hãy xác nhận thủ công tất cả câu và đáp án trước khi trộn.');
+ return exam;
+}
+async function importAnswerFile(file){const ext=file.name.toLowerCase().split('.').pop();let data='';
+ if(['txt','csv','tsv'].includes(ext))data=await file.text();
+ else if(ext==='docx'){const zip=await JSZip.loadAsync(file);const xml=await zip.file('word/document.xml')?.async('string');if(!xml)throw Error('File đáp án DOCX không hợp lệ');data=descendants(parseXML(xml),'p').map(p=>descendants(p,'t').map(x=>x.textContent).join(' ')).join('\n');}
+ else if(ext==='xlsx'){const zip=await JSZip.loadAsync(file);const shared=await zip.file('xl/sharedStrings.xml')?.async('string');const strs=shared?descendants(parseXML(shared),'si').map(si=>descendants(si,'t').map(x=>x.textContent).join('')):[];
+ const sheet=await zip.file('xl/worksheets/sheet1.xml')?.async('string');if(!sheet)throw Error('Excel không có Sheet1');const x=parseXML(sheet);
+ data=Array.from(x.getElementsByTagName('*')).filter(e=>local(e)==='row').map(row=>Array.from(row.childNodes).filter(e=>local(e)==='c').map(c=>{const v=Array.from(c.getElementsByTagName('*')).find(e=>local(e)==='v');const inline=descendants(c,'t').map(x=>x.textContent).join('');return c.getAttribute('t')==='s'?strs[Number(v?.textContent)||0]:inline||v?.textContent||''}).join(' ')).join('\n');
+ }else throw Error('Chỉ hỗ trợ file đáp án .xlsx, .docx, .txt, .csv');
+ const answers=new Map();for(const line of data.split(/\r?\n/)){
+  let m=line.match(/(?:Question|Câu)?\s*(\d{1,3})\s*(?:[:.\-)\t ,;]|\s+)\s*([ABCD])\b/i);
+  if(m)answers.set(Number(m[1]),m[2].toUpperCase());
+  else for(const match of line.matchAll(/(\d{1,3})\s*[:=]\s*([ABCD])\b/gi))answers.set(Number(match[1]),match[2].toUpperCase());
+ }
+ return answers;
+}
+
+return {importDocx,importPdf,importPasted,importAnswerFile};})()
+const EngExport=(()=>{
+const {LETTERS,answerMatrix}=EngEngine;
+/** True OOXML DOCX + XLSX export. All source DOCX media/relationships remain inside the package. */
+
+const W='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+const XML='http://www.w3.org/XML/1998/namespace';
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+const local=n=>n?.localName||n?.nodeName?.split(':').pop()||'';
+const find=(node,name)=>Array.from(node?.getElementsByTagNameNS(W,name)||[]);
+const child=(node,name)=>Array.from(node?.childNodes||[]).find(x=>x.nodeType===1&&local(x)===name);
+const parse=s=>{const d=new DOMParser().parseFromString(s,'application/xml');if(d.getElementsByTagName('parsererror').length)throw Error('Không phân tích được XML trong Word');return d};
+const ser=d=>new XMLSerializer().serializeToString(d);
+const el=(doc,n)=>doc.createElementNS(W,'w:'+n);
+function tRun(doc,str,{bold=false,underline=false,color=null,size=26}={}){
+ const r=el(doc,'r'),rp=el(doc,'rPr'),font=el(doc,'rFonts');
+ for(const name of ['ascii','hAnsi','eastAsia','cs'])font.setAttributeNS(W,'w:'+name,'Times New Roman');rp.appendChild(font);
+ if(bold)rp.appendChild(el(doc,'b'));if(underline){const u=el(doc,'u');u.setAttributeNS(W,'w:val','single');rp.appendChild(u)}
+ if(color){const c=el(doc,'color');c.setAttributeNS(W,'w:val',color);rp.appendChild(c)}const sz=el(doc,'sz');sz.setAttributeNS(W,'w:val',String(size));rp.appendChild(sz);
+ r.appendChild(rp);const t=el(doc,'t');t.setAttributeNS(XML,'xml:space','preserve');t.textContent=str;r.appendChild(t);return r;
+}
+function pPr(doc,{after=60,before=0,align=null,tabs=[],keepNext=false,bold=false}={}){
+ const pr=el(doc,'pPr');if(keepNext)pr.appendChild(el(doc,'keepNext'));
+ if(tabs.length){const tbl=el(doc,'tabs');for(const pos of tabs){const tab=el(doc,'tab');tab.setAttributeNS(W,'w:val','left');tab.setAttributeNS(W,'w:pos',String(pos));tbl.appendChild(tab)}pr.appendChild(tbl)}
+ const sp=el(doc,'spacing');sp.setAttributeNS(W,'w:before',String(before));sp.setAttributeNS(W,'w:after',String(after));sp.setAttributeNS(W,'w:line','260');sp.setAttributeNS(W,'w:lineRule','auto');pr.appendChild(sp);
+ if(align){const jc=el(doc,'jc');jc.setAttributeNS(W,'w:val',align);pr.appendChild(jc)}return pr;
+}
+function paragraph(doc,text,opts={}){const p=el(doc,'p');p.appendChild(pPr(doc,opts));p.appendChild(tRun(doc,String(text),{bold:opts.bold,color:opts.color,size:opts.size||26}));return p;}
+function importXml(doc,xml){const d=parse(xml);return doc.importNode(d.documentElement,true);}
+function tokensToContent(doc,tokens,{cleanAnswers=false}={}){
+ const out=[];let buf=[],key='';
+ const flush=()=>{if(!buf.length)return;const r=el(doc,'r');
+  if(key){const rp=importXml(doc,key);if(cleanAnswers){for(const x of Array.from(rp.childNodes)){if(['highlight','shd'].includes(local(x)))rp.removeChild(x);
+   else if(local(x)==='u')rp.removeChild(x);
+   else if(local(x)==='color'){const v=x.getAttributeNS(W,'val')||'';if(/^(?:FF0000|C00000|E00000|DC0000)$/i.test(v))rp.removeChild(x)}
+   } }
+  // Enforce Times New Roman, 13 pt while keeping meaningful bold/italic/superscript.
+  let fonts=child(rp,'rFonts');if(!fonts){fonts=el(doc,'rFonts');rp.insertBefore(fonts,rp.firstChild)}
+  for(const name of ['ascii','hAnsi','eastAsia','cs'])fonts.setAttributeNS(W,'w:'+name,'Times New Roman');
+  let size=child(rp,'sz');if(!size){size=el(doc,'sz');rp.appendChild(size)}size.setAttributeNS(W,'w:val','26');
+  let sizeCs=child(rp,'szCs');if(sizeCs)sizeCs.setAttributeNS(W,'w:val','26');
+  r.appendChild(rp)}
+  const t=el(doc,'t');t.setAttributeNS(XML,'xml:space','preserve');t.textContent=buf.map(x=>x.ch).join('');r.appendChild(t);out.push(r);buf=[];
+ };
+ for(const token of tokens){if(token.xml){flush();const r=el(doc,'r');if(token.rPr)r.appendChild(importXml(doc,token.rPr));r.appendChild(importXml(doc,token.xml));out.push(r);key='';continue}
+  const thisKey=token.rPr||'';if(buf.length&&thisKey!==key)flush();key=thisKey;buf.push(token);
+ }flush();return out;
+}
+function rebuildBlock(doc,block,{tokens=null,cleanAnswers=false}={}){
+ if(block.kind==='tbl'){return importXml(doc,block.xml)}
+ const p=el(doc,'p'),pr=block.ppr?importXml(doc,block.ppr):pPr(doc,{after:0});
+ for(const c of Array.from(pr.childNodes))if(['numPr','sectPr','pageBreakBefore','keepNext','keepLines','spacing'].includes(local(c)))pr.removeChild(c);
+ const sp=el(doc,'spacing');sp.setAttributeNS(W,'w:before','0');sp.setAttributeNS(W,'w:after','0');sp.setAttributeNS(W,'w:line','260');sp.setAttributeNS(W,'w:lineRule','auto');pr.appendChild(sp);p.appendChild(pr);
+ for(const r of tokensToContent(doc,tokens||block.tokens||[],{cleanAnswers}))p.appendChild(r);
+ return p;
+}
+function replaceRefTokens(tokens,map,kind){if(!tokens?.length||!map.size)return tokens;
+ const src=tokens.map(t=>t.ch).join('');let text=src;
+ // Keep fixed cloze positions, but relabel the visible blank numbers to new question numbers.
+ if(kind==='cloze')text=text.replace(/\((\d{1,3})\)/g,(match,n)=>map.has(Number(n))?'('+map.get(Number(n))+')':match);
+ text=text.replace(/\b((?:questions?|blanks?)\s*(?:from\s+)?)(\d{1,3})(\s*(?:to|[-–])\s*)(\d{1,3})/gi,(full,p,a,mid,b)=>map.has(+a)&&map.has(+b)?p+map.get(+a)+mid+map.get(+b):full);
+ if(text===src)return tokens;
+ // Preserve paragraph-level style and the run formatting of the surrounding source.
+ const base=tokens.find(t=>!t.xml)||{ch:''};return Array.from(text,ch=>({ch,rPr:base.rPr||null}));
+}
+function optionSize(s){let n=0;for(const ch of s){if(/[.,:'iIl1| ]/.test(ch))n+=4;else if(/[MW@]/.test(ch))n+=12;else n+=7}return n;}
+function outputOptions(doc,unit,q,{teacher=false}={}){
+ const ordered=unit.perm.map(i=>q.options[i]);const width=ordered.map((opt,i)=>optionSize('ABCD'[i]+'. '+(opt.text||'')));
+ const columns=width.every(x=>x<120)?4:width.every(x=>x<255)?2:1,stops=columns===4?[2520,5070,7600]:columns===2?[5070]:[];
+ const rows=[];
+ for(let base=0;base<4;base+=columns){const p=el(doc,'p');p.appendChild(pPr(doc,{after:0,tabs:stops}));
+  for(let j=0;j<columns;j++){const idx=base+j,opt=ordered[idx],mark=teacher&&unit.answer==='ABCD'[idx];
+   if(j){const t=el(doc,'r');t.appendChild(el(doc,'tab'));p.appendChild(t)}
+   p.appendChild(tRun(doc,'ABCD'[idx]+'. ',{bold:true,underline:mark}));
+   let toks=opt.tokens;
+   if(!toks||opt.edited)toks=[...(opt.text||'')].map(ch=>({ch}));
+   for(const r of tokensToContent(doc,toks,{cleanAnswers:!teacher||mark}))p.appendChild(r);
+  }rows.push(p);
+ }
+ return rows;
+}
+function answerTable(doc,plan){const columns=['Câu','Đáp án'];const rows=plan.groups.flatMap(g=>g.members).map(m=>[m.number,m.answer]);return tableRows(doc,[columns,...rows]);}
+function tableRows(doc,rows){const tbl=el(doc,'tbl'),pr=el(doc,'tblPr'),borders=el(doc,'tblBorders');
+ for(const side of ['top','left','bottom','right','insideH','insideV']){const b=el(doc,side);b.setAttributeNS(W,'w:val','single');b.setAttributeNS(W,'w:sz','4');borders.appendChild(b)}pr.appendChild(borders);tbl.appendChild(pr);
+ for(let i=0;i<rows.length;i++){const tr=el(doc,'tr');for(const val of rows[i]){const tc=el(doc,'tc'),p=paragraph(doc,String(val),{after:0,bold:i===0,size:24});tc.appendChild(p);tr.appendChild(tc)}tbl.appendChild(tr)}return tbl;
+}
+async function baseZip(exam){if(exam.sourceKind==='docx'&&exam._originalBytes){const zip=await JSZip.loadAsync(exam._originalBytes.slice(0));const xml=await zip.file('word/document.xml').async('string');return {zip,doc:parse(xml)};}
+ const zip=new JSZip();zip.file('[Content_Types].xml',`<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`);
+ zip.file('_rels/.rels',`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
+ zip.file('word/_rels/document.xml.rels',`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>`);
+ return {zip,doc:parse(`<w:document xmlns:w="${W}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body><w:sectPr/></w:body></w:document>`)};
+}
+function a4Section(doc,oldSect){const sect=oldSect?oldSect.cloneNode(true):el(doc,'sectPr');
+ for(const c of Array.from(sect.childNodes))if(['pgSz','pgMar'].includes(local(c)))sect.removeChild(c);
+ const pgSz=el(doc,'pgSz');pgSz.setAttributeNS(W,'w:w','11906');pgSz.setAttributeNS(W,'w:h','16838');
+ const pgMar=el(doc,'pgMar');for(const [name,val] of Object.entries({top:1100,right:1050,bottom:1100,left:1050,header:500,footer:500,gutter:0}))pgMar.setAttributeNS(W,'w:'+name,String(val));
+ const before=Array.from(sect.childNodes).find(n=>['pgNumType','cols','formProt','vAlign','docGrid','footnotePr','endnotePr','type','bidi','rtlGutter'].includes(local(n)));
+ sect.insertBefore(pgSz,before||null);sect.insertBefore(pgMar,before||null);return sect;
+}
+async function exportExamDocx(exam,plans,{teacher=false,combined=true,asAnswers=false}={}){
+ if(!plans.length)throw Error('Chưa tạo mã đề.');const {zip,doc}=await baseZip(exam);const body=find(doc,'body')[0];
+ const sect=child(body,'sectPr');while(body.firstChild)body.removeChild(body.firstChild);
+ const qById=new Map(exam.groups.flatMap(g=>g.questions).map(q=>[q.id,q]));const gById=new Map(exam.groups.map(g=>[g.id,g]));
+ for(let pi=0;pi<plans.length;pi++){
+  const plan=plans[pi];if(pi){const p=el(doc,'p'),r=el(doc,'r');r.appendChild(el(doc,'br')).setAttributeNS(W,'w:type','page');p.appendChild(r);body.appendChild(p)}
+  body.appendChild(paragraph(doc,'ĐỀ KIỂM TRA MÔN TIẾNG ANH',{align:'center',after:120,bold:true,size:28}));
+  body.appendChild(paragraph(doc,`MÃ ĐỀ: ${plan.code}`,{align:'center',after:180,bold:true,size:26}));
+  if(asAnswers){body.appendChild(answerTable(doc,plan));continue;}
+  for(const plannedGroup of plan.groups){const group=gById.get(plannedGroup.groupId),nMap=new Map(plannedGroup.members.map(m=>[m.sourceNumber,m.number]));
+   for(const intro of group.intro){if(intro.kind==='p'){const tok=replaceRefTokens(intro.tokens,nMap,group.kind);body.appendChild(rebuildBlock(doc,intro,{tokens:tok}))}else body.appendChild(rebuildBlock(doc,intro));}
+   for(const u of plannedGroup.members){const q=qById.get(u.qid);
+    let first=true;
+    if(q.stemParts.length){for(const stem of q.stemParts){if(stem.kind!=='p'){if(first){body.appendChild(paragraph(doc,'Question '+u.number+':',{bold:true,keepNext:true,after:0}));first=false}body.appendChild(rebuildBlock(doc,stem));continue;}
+     const p=rebuildBlock(doc,stem);if(first){p.insertBefore(tRun(doc,`Question ${u.number}: `,{bold:true}),p.childNodes[1]||null);let pr=child(p,'pPr');if(pr)pr.insertBefore(el(doc,'keepNext'),pr.firstChild);first=false;}body.appendChild(p);
+    }}
+    if(first)body.appendChild(paragraph(doc,`Question ${u.number}:`,{bold:true,after:0}));
+    for(const opt of outputOptions(doc,u,q,{teacher}))body.appendChild(opt);
+   }
+  }
+ }
+ body.appendChild(a4Section(doc,sect));zip.file('word/document.xml',ser(doc));
+ const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}});
+ await verifyDocx(blob,exam);return blob;
+}
+async function verifyDocx(blob,exam){const z=await JSZip.loadAsync(await blob.arrayBuffer(),{checkCRC32:true});for(const part of ['[Content_Types].xml','_rels/.rels','word/document.xml'])if(!z.file(part))throw Error('Word thiếu '+part);
+ const d=parse(await z.file('word/document.xml').async('string'));if(!find(d,'body').length)throw Error('Word không có nội dung');
+ if(exam?.sourceKind==='docx'){const old=await JSZip.loadAsync(exam._originalBytes.slice(0));for(const path of Object.keys(old.files).filter(x=>/^word\/(media|embeddings)\//.test(x)))if(!z.file(path))throw Error('Word mất đối tượng nhúng: '+path);}
+}
+function excelCol(i){let s='';while(i){i--;s=String.fromCharCode(65+i%26)+s;i=Math.floor(i/26)}return s;}
+async function exportAnswersXlsx(plans){const matrix=answerMatrix(plans),rows=[['Câu',...plans.map(p=>'Mã đề '+p.code)],...matrix];const sheet=rows.map((row,i)=>`<row r="${i+1}">${row.map((v,j)=>`<c r="${excelCol(j+1)}${i+1}" t="inlineStr"><is><t>${esc(v)}</t></is></c>`).join('')}</row>`).join('');
+ const z=new JSZip();z.file('[Content_Types].xml',`<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`);
+ z.file('_rels/.rels',`<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`);
+ z.file('xl/workbook.xml',`<?xml version="1.0"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Đáp án" sheetId="1" r:id="rId1"/></sheets></workbook>`);
+ z.file('xl/_rels/workbook.xml.rels',`<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`);
+ z.file('xl/worksheets/sheet1.xml',`<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${excelCol(rows[0].length)}${rows.length}"/><sheetViews><sheetView workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="18"/><sheetData>${sheet}</sheetData></worksheet>`);
+ return z.generateAsync({type:'blob',compression:'DEFLATE'});
+}
+async function exportSeparateDocx(exam,plans,opts={}){const z=new JSZip();for(const plan of plans){const blob=await exportExamDocx(exam,[plan],{...opts,combined:false});z.file(`De_TiengAnh_${plan.code}.docx`,blob)}return z.generateAsync({type:'blob',compression:'DEFLATE'});}
+
+return {exportExamDocx,exportSeparateDocx,exportAnswersXlsx};})()
+const {importDocx,importPdf,importPasted,importAnswerFile}=EngParser;
+const {LETTERS,KINDS,validateSource,createPlan,validatePlans}=EngEngine;
+const {exportExamDocx,exportSeparateDocx,exportAnswersXlsx}=EngExport;
+
+
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+const clean=s=>String(s||'').replace(/\s+/g,' ').trim();
+const getQ=id=>state.exam?.groups.flatMap(g=>g.questions).find(q=>q.id===id);
+let state={exam:null,plans:[],history:[],generation:0};
+let toastTimer;
+function toast(s){const node=$('toast');node.textContent=s;node.classList.add('on');clearTimeout(toastTimer);toastTimer=setTimeout(()=>node.classList.remove('on'),4200)}
+function status(id,text,type=''){const node=$(id);node.textContent=text;node.className='status '+type;}
+function storeHistory(){if(!state.exam)return;const fields=state.exam.groups.map(g=>({id:g.id,enabled:g.enabled,shuffleInside:g.shuffleInside,shuffleOptions:g.shuffleOptions,questions:g.questions.map(q=>({id:q.id,answer:q.answer,answerSource:q.answerSource,conflict:q.conflict,stemParts:q.stemParts.map(b=>({...b,tokens:b.tokens?.slice()})),options:q.options.map(o=>({...o,tokens:o.tokens?.slice(),labelTokens:o.labelTokens?.slice()}))}))}));state.history.push(fields);if(state.history.length>15)state.history.shift();$('undo').disabled=false;}
+function restoreHistory(){const fields=state.history.pop();if(!fields)return;for(const gf of fields){const g=state.exam.groups.find(g=>g.id===gf.id);if(!g)continue;g.enabled=gf.enabled;g.shuffleInside=gf.shuffleInside;g.shuffleOptions=gf.shuffleOptions;for(const qf of gf.questions){const q=g.questions.find(q=>q.id===qf.id);if(!q)continue;Object.assign(q,{answer:qf.answer,answerSource:qf.answerSource,conflict:qf.conflict,stemParts:qf.stemParts,options:qf.options});}}state.plans=[];renderAll();toast('Đã hoàn tác thay đổi.');$('undo').disabled=!state.history.length;}
+function resetPlans(){state.plans=[];renderPlans();status('planStatus','Cần tạo mã đề lại sau thay đổi.');}
+function renderStats(){if(!state.exam)return;const qs=state.exam.groups.flatMap(g=>g.questions),problems=validateSource(state.exam);$('statQuestions').textContent=qs.length;$('statGroups').textContent=state.exam.groups.length;$('statAnswers').textContent=qs.filter(q=>LETTERS.includes(q.answer)).length;$('statWarnings').textContent=problems.length;
+ const warnings=[...state.exam.warnings,...problems.map(x=>`${x.scope}: ${x.message}`)];$('parseWarnings').classList.toggle('hidden',!warnings.length);$('parseWarnings').innerHTML=warnings.length?`<strong>Thông tin cần rà soát (${warnings.length}):</strong><ul>${warnings.slice(0,18).map(w=>`<li>${esc(w)}</li>`).join('')}${warnings.length>18?'<li>... và các mục khác trong bộ kiểm tra.</li>':''}</ul>`:'';
+}
+function renderFilter(){const current=$('groupFilter').value;$('groupFilter').innerHTML='<option value="all">Tất cả nhóm</option>'+state.exam.groups.map(g=>`<option value="${g.id}">${esc(g.title||'Nhóm '+g.id)} — ${g.questions.length} câu</option>`).join('');$('groupFilter').value=state.exam.groups.some(g=>g.id===current)?current:'all';}
+function renderQuestions(){if(!state.exam)return;const filter=$('groupFilter').value,search=clean($('questionFilter').value).toLowerCase();let html='';for(const g of state.exam.groups){if(filter!=='all'&&filter!==g.id)continue;let shown=g.questions.filter(q=>(String(q.number)+' '+q.stemParts.map(b=>b.text).join(' ')+' '+q.options.map(o=>o.text).join(' ')).toLowerCase().includes(search));if(!shown.length)continue;
+ html+=`<div class="group-head"><strong>${esc(KINDS[g.kind]||'Nhóm nội dung')}</strong><span>${esc(g.title||'Nhóm '+g.id)}</span><small>${g.questions.length} câu</small></div>`;
+ for(const q of shown){const stem=q.stemParts.map(x=>x.text||'').join('\n').trim();const opts=q.options.map(o=>`<div class="choice ${o.letter===q.answer?'correct':''}"><b>${o.letter}.</b>${esc(o.text||'(trống)')}</div>`).join('');
+ html+=`<article class="question-card" data-qid="${q.id}"><div class="question-top"><b>Question ${q.number}</b><span class="pill ${!q.answer?'warn':''}">${q.answer?`Đáp án ${q.answer} · ${q.answerSource==='manual'?'đã xác nhận':'tự nhận diện'}`:'Chưa xác định đáp án'}</span></div><div class="question-stem">${esc(stem||'(Câu này chọn phương án dựa trên đoạn văn của nhóm)')}</div><div class="choicegrid">${opts}</div><div class="review-actions"><label for="answer-${q.id}">Đáp án đúng:</label><select class="answer-select" id="answer-${q.id}" data-qid="${q.id}"><option value="">— Chưa xác định —</option>${LETTERS.map(l=>`<option value="${l}" ${q.answer===l?'selected':''}>${l}</option>`).join('')}</select><button type="button" class="button tertiary edit-btn" data-qid="${q.id}">✎ Sửa câu hỏi/phương án</button></div><div class="edit-box hidden" id="edit-${q.id}"><label>Nội dung câu hỏi (không gồm đoạn văn nhóm)</label><textarea class="edit-stem">${esc(stem)}</textarea>${q.options.map(o=>`<label>Phương án ${o.letter}</label><input class="edit-opt" data-opt="${o.letter}" type="text" value="${esc(o.text)}">`).join('')}<small>Sửa văn bản sẽ làm mới định dạng của phần đã sửa. Không sửa dữ liệu có hình/công thức nếu cần giữ định dạng gốc.</small><button class="button primary save-edit" type="button" data-qid="${q.id}">Lưu câu hỏi</button></div></article>`;
+ }
+ }$('questionReview').innerHTML=html||'<div class="status">Không có câu hỏi phù hợp bộ lọc.</div>';
+}
+function renderGroupSettings(){if(!state.exam)return;$('groupSettings').innerHTML=state.exam.groups.map(g=>`<div class="group-setting" data-gid="${g.id}"><div><strong>${esc(KINDS[g.kind])} · Câu ${g.questions[0].number}–${g.questions.at(-1).number}</strong><small>${esc(g.title||'Câu hỏi riêng lẻ')} · ${g.questions.length} câu</small></div><div class="controls"><label><input type="checkbox" class="group-enable" ${g.enabled!==false?'checked':''}>Cho trộn</label><label title="Chỉ mở khi câu hỏi độc lập; nhóm đục lỗ và đọc hiểu không được đảo thứ tự câu bên trong."><input type="checkbox" class="group-inside" ${g.shuffleInside?'checked':''} ${['reading','cloze'].includes(g.kind)?'disabled':''}>Đảo câu trong nhóm</label><label><input type="checkbox" class="group-options" ${g.shuffleOptions!==false?'checked':''}>Đảo A–D</label></div></div>`).join('');}
+function renderAll(){if(!state.exam)return;$('workspace').classList.remove('hidden');renderStats();renderFilter();renderQuestions();renderGroupSettings();renderPlans();}
+async function handleFile(file){if(!file)return;if(!/\.docx$|\.pdf$/i.test(file.name))return status('sourceStatus','Chỉ nhận Word .docx hoặc PDF.','error');if(file.size>45*1024*1024)return status('sourceStatus','Tệp quá lớn (>45 MB). Vui lòng giảm dung lượng.','error');status('sourceStatus','Đang phân tích '+file.name+'...');try{state.exam=/\.pdf$/i.test(file.name)?await importPdf(file):await importDocx(file);state.history=[];$('undo').disabled=true;state.plans=[];$('questionFilter').value='';renderAll();status('sourceStatus',`Đã phân tích ${file.name}: ${state.exam.total} câu / ${state.exam.groups.length} nhóm. Vui lòng kiểm tra đáp án.`, 'success');}catch(e){status('sourceStatus',e.message||String(e),'error');toast('Không thể phân tích đề.');}}
+function qty(){return $('quantity').value==='custom'?Number($('customQuantity').value):Number($('quantity').value)}
+function config(){return {quantity:qty(),startCode:Number($('startCode').value),seed:Number($('seed').value)+state.generation*10007,shuffleQuestions:$('shuffleQuestions').checked,shuffleOptions:$('shuffleOptions').checked,shuffleGroups:$('shuffleGroups').checked};}
+function renderPlans(){const plans=state.plans;$('codeSelect').innerHTML=plans.map(p=>`<option value="${esc(p.code)}">Mã đề ${esc(p.code)}</option>`).join('');$('remix').disabled=!state.exam;document.querySelectorAll('.export').forEach(btn=>btn.disabled=!plans.length);$('equivalence').className='equivalence';if(!plans.length){$('equivalence').textContent='Chưa kiểm tra';$('codePreview').className='code-preview empty';$('codePreview').textContent='Tạo mã đề để xem trước cấu trúc và đáp án.';return;}
+ const problems=validatePlans(state.exam,plans);$('equivalence').className='equivalence '+(!problems.length?'valid':'');$('equivalence').textContent=problems.length?`${problems.length} vấn đề`:'✓ Đã đối chiếu đủ câu và đáp án';document.querySelectorAll('.export').forEach(btn=>btn.disabled=!!problems.length);renderPreview();}
+function renderPreview(){const plan=state.plans.find(p=>p.code===$('codeSelect').value)||state.plans[0];if(!plan)return;let output='';for(const groupPlan of plan.groups){const group=state.exam.groups.find(g=>g.id===groupPlan.groupId);const map=new Map(groupPlan.members.map(m=>[m.sourceNumber,m.number]));let intro=group.intro.map(b=>b.text||'').join('\n').trim();if(group.kind==='cloze')intro=intro.replace(/\((\d+)\)/g,(all,n)=>map.has(+n)?'('+map.get(+n)+')':all);
+ intro=intro.replace(/((?:questions?|blanks?)\s*(?:from\s+)?)(\d+)(\s*(?:to|[-–])\s*)(\d+)/gi,(all,a,b,sep,d)=>map.has(+b)&&map.has(+d)?a+map.get(+b)+sep+map.get(+d):all);
+ output+=`<div class="preview-group"><h4>${esc(KINDS[group.kind])} · ${groupPlan.members.length} câu</h4><div class="passage">${esc(intro)}</div>`;
+ for(const m of groupPlan.members){const q=group.questions.find(q=>q.id===m.qid);output+=`<div class="preview-item"><strong>Question ${m.number}:</strong> ${esc(q.stemParts.map(b=>b.text||'').join(' '))}<div class="preview-answers">${m.perm.map((j,i)=>`<span style="display:inline-block;margin:2px 13px 2px 0">${'ABCD'[i]}. ${esc(q.options[j].text)}</span>`).join('')}</div></div>`;}output+='</div>';}
+ $('codePreview').className='code-preview';$('codePreview').innerHTML=output;}
+function doGenerate(){if(!state.exam)return toast('Hãy nhập đề trước.');const issues=validateSource(state.exam);if(issues.length){status('planStatus',`Không thể trộn: còn ${issues.length} lỗi/chưa xác nhận đáp án. Hãy xem khu vực rà soát.`, 'error');renderStats();toast('Cần xác nhận đầy đủ đáp án.');return;}
+ const cfg=config();if(!Number.isInteger(cfg.quantity)||cfg.quantity<1||cfg.quantity>100||cfg.startCode<1||cfg.startCode+cfg.quantity>9999){return status('planStatus','Số lượng từ 1 đến 100; mã đề trong khoảng 1–9999.','error');}
+ try{state.plans=createPlan(state.exam,cfg);const issues2=validatePlans(state.exam,state.plans);renderPlans();status('planStatus',issues2.length?`Có ${issues2.length} vấn đề — chưa thể xuất.`:`Đã tạo ${state.plans.length} mã đề. Đã đối chiếu câu hỏi, nhóm và đáp án.`,issues2.length?'error':'success');}catch(e){status('planStatus',e.message,'error');}}
+function blobDownload(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),15000)}
+async function doExport(type,btn){if(!state.exam||!state.plans.length)return;const issues=validatePlans(state.exam,state.plans);if(issues.length){status('exportStatus','Xuất bị khóa: '+issues.map(x=>x.scope+': '+x.message).slice(0,3).join('; '),'error');return;}
+ btn.disabled=true;status('exportStatus','Đang tạo tệp Word/Excel thật và kiểm tra cấu trúc...');try{let blob,name;
+  switch(type){case'separate':blob=await exportSeparateDocx(state.exam,state.plans);name='English_Exam_Mixer_De_Rieng.zip';break;
+   case'combined':blob=await exportExamDocx(state.exam,state.plans);name='English_Exam_Mixer_Tat_Ca_Ma.docx';break;
+   case'teacher':blob=await exportExamDocx(state.exam,state.plans,{teacher:true});name='English_Exam_Mixer_Giao_Vien.docx';break;
+   case'answers':blob=await exportExamDocx(state.exam,state.plans,{asAnswers:true});name='English_Exam_Mixer_Dap_An.docx';break;
+   case'xlsx':blob=await exportAnswersXlsx(state.plans);name='English_Exam_Mixer_Dap_An.xlsx';break;
+   default:throw Error('Lựa chọn xuất không tồn tại');
+  }blobDownload(blob,name);status('exportStatus',`Đã tạo ${name} (${Math.round(blob.size/1024)} KB).`,'success');
+ }catch(e){status('exportStatus',`Lỗi tạo tệp: ${e.message||e}`,'error');}finally{btn.disabled=false;}}
+$('examFile').addEventListener('change',e=>handleFile(e.target.files?.[0]));$('parsePaste').addEventListener('click',()=>{try{state.exam=importPasted($('pasteText').value);state.history=[];state.plans=[];renderAll();status('sourceStatus',`Đã nhận diện ${state.exam.total} câu từ văn bản dán. Tất cả đáp án cần được kiểm tra.`, 'success')}catch(e){status('sourceStatus',e.message,'error')}});
+const drop=$('dropzone');['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')}));['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));drop.addEventListener('drop',e=>handleFile(e.dataTransfer?.files?.[0]));drop.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('examFile').click()}});
+$('answerFile').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file||!state.exam)return toast('Hãy tải đề trước khi nhập đáp án.');try{const answers=await importAnswerFile(file);if(!answers.size)return toast('Không tìm được đáp án theo định dạng 1 A, 2 B...');storeHistory();let count=0;for(const q of state.exam.groups.flatMap(g=>g.questions)){if(answers.has(q.number)){q.answer=answers.get(q.number);q.answerSource='file';q.conflict=false;count++}}resetPlans();renderAll();status('sourceStatus',`Đã nhận ${count}/${answers.size} đáp án từ ${file.name}.`,'success')}catch(err){toast('Không đọc được file đáp án: '+err.message)}});
+$('groupFilter').addEventListener('change',renderQuestions);$('questionFilter').addEventListener('input',renderQuestions);$('undo').addEventListener('click',restoreHistory);
+$('questionReview').addEventListener('change',e=>{if(!e.target.classList.contains('answer-select'))return;const q=getQ(e.target.dataset.qid);if(!q)return;storeHistory();q.answer=e.target.value||null;q.answerSource=q.answer?'manual':'missing';q.conflict=false;resetPlans();renderStats();renderQuestions();});
+$('questionReview').addEventListener('click',e=>{const edit=e.target.closest('.edit-btn');if(edit){$('edit-'+edit.dataset.qid).classList.toggle('hidden');return;}const save=e.target.closest('.save-edit');if(!save)return;const q=getQ(save.dataset.qid),el=$('edit-'+q.id);if(!q)return;storeHistory();const stem=el.querySelector('.edit-stem').value.trim();if(stem!==q.stemParts.map(b=>b.text||'').join('\n').trim()){q.stemParts=stem.split('\n').map(t=>({kind:'p',text:t,tokens:[...t].map(ch=>({ch})),ppr:null}));}
+ for(const input of el.querySelectorAll('.edit-opt')){const opt=q.options.find(o=>o.letter===input.dataset.opt);if(opt&&opt.text!==input.value.trim()){opt.text=input.value.trim();opt.edited=true;opt.tokens=[...opt.text].map(ch=>({ch}));}}
+ resetPlans();renderAll();toast('Đã lưu nội dung. Hãy kiểm tra đáp án và tạo mã đề lại.');});
+$('groupSettings').addEventListener('change',e=>{const row=e.target.closest('[data-gid]');if(!row)return;const g=state.exam.groups.find(g=>g.id===row.dataset.gid);if(!g)return;storeHistory();g.enabled=row.querySelector('.group-enable').checked;g.shuffleInside=!['cloze','reading'].includes(g.kind)&&row.querySelector('.group-inside').checked;g.shuffleOptions=row.querySelector('.group-options').checked;resetPlans();renderStats();});
+$('quantity').addEventListener('change',()=>{$('customQuantity').classList.toggle('hidden',$('quantity').value!=='custom');resetPlans()});for(const id of ['startCode','seed','customQuantity','shuffleQuestions','shuffleOptions','shuffleGroups'])$(id).addEventListener('change',resetPlans);
+$('generate').addEventListener('click',doGenerate);$('remix').addEventListener('click',()=>{state.generation++;doGenerate()});$('codeSelect').addEventListener('change',renderPreview);document.querySelectorAll('.export').forEach(btn=>btn.addEventListener('click',()=>doExport(btn.dataset.export,btn)));
+$('saveConfig').addEventListener('click',()=>{try{localStorage.setItem('hienSoftEnglishMixerSettings',JSON.stringify({...config(),quantityValue:$('quantity').value}));toast('Đã lưu cấu hình trộn trên trình duyệt này.')}catch{toast('Trình duyệt không cho phép lưu cấu hình.')}});
+try{const c=JSON.parse(localStorage.getItem('hienSoftEnglishMixerSettings')||'null');if(c){$('quantity').value=c.quantityValue||String(c.quantity);$('customQuantity').classList.toggle('hidden',$('quantity').value!=='custom');$('customQuantity').value=c.quantity;$('startCode').value=c.startCode;$('seed').value=c.seed;for(const k of ['shuffleQuestions','shuffleOptions','shuffleGroups'])$(k).checked=!!c[k];}}catch{}
+</script></head>
+<body><header class="sitehead"><nav class="wrap nav" aria-label="Điều hướng"><a href="/tron-de/" class="back">← Trộn đề các môn</a><a href="./" class="brand"><span class="logo">E<span>✓</span></span><span><strong>ENGLISH EXAM MIXER</strong><small>HienSoft · Công cụ Tiếng Anh THPT</small></span></a><a class="go-main" href="https://mrhien.com/">mrhien.com ↗</a></nav></header>
+<main><section class="hero"><div class="wrap hero-grid"><div><div class="eyebrow">✦ HienSoft dành cho giáo viên THPT</div><h1>Trộn đề Tiếng Anh<br><span>đúng cấu trúc, đúng đáp án.</span></h1><p>Công cụ trộn mã đề thi Tiếng Anh THPT thông minh dành cho giáo viên. Giữ nguyên mối liên kết giữa bài đọc, câu điền từ và các phương án; xử lý trực tiếp trên thiết bị.</p><div class="chips"><span>✓ Xử lý trên trình duyệt</span><span>✓ Không đăng nhập</span><span>✓ Word & Excel thật</span></div></div><div class="hero-info"><div class="hero-icon">40<span>Q</span></div><div><b>Quy trình 4 bước</b><p>Nhập đề → Kiểm tra đáp án → Thiết lập trộn → Xuất kết quả</p></div></div></div></section>
+<div class="wrap content"><div class="step-head"><span class="stepno">01</span><div><h2>Nhập đề gốc</h2><p>Ưu tiên Word .docx để giữ hình ảnh và định dạng; PDF và văn bản dán cần rà soát kỹ hơn.</p></div></div>
+<section class="panel input-panel"><div class="input-grid"><label id="dropzone" class="dropzone" for="examFile" tabindex="0"><span class="upload-symbol">⇧</span><strong>Chọn hoặc thả file đề tại đây</strong><span>Word .docx hoặc PDF · Tệp được xử lý trên thiết bị của bạn</span><span class="file-button">Chọn tệp đề</span><input id="examFile" type="file" accept=".docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden></label><div class="paste-area"><label for="pasteText">Hoặc dán nội dung đề</label><textarea id="pasteText" rows="6" placeholder="Read the following passage...&#10;Question 1: ...&#10;A. ... B. ... C. ... D. ..."></textarea><button id="parsePaste" type="button" class="button secondary">Phân tích văn bản đã dán</button></div></div><div class="answer-upload"><label>File đáp án riêng (không bắt buộc)</label><input type="file" id="answerFile" accept=".xlsx,.docx,.txt,.csv,.tsv"><span>Hỗ trợ dạng 1 A, 2 B hoặc 1:A; không tự đoán đáp án thiếu.</span></div><div id="sourceStatus" class="status" role="status">Chưa tải đề gốc.</div></section>
+<section id="workspace" class="hidden" aria-label="Không gian trộn đề"><div class="step-head"><span class="stepno">02</span><div><h2>Rà soát đề và đáp án</h2><p>Kiểm tra từng nhóm liên kết trước khi tạo mã đề. Mọi đáp án chưa chắc chắn phải xác nhận thủ công.</p></div></div>
+<div class="metric-row"><div class="metric"><b id="statQuestions">0</b><span>Câu hỏi</span></div><div class="metric"><b id="statGroups">0</b><span>Nhóm nội dung</span></div><div class="metric"><b id="statAnswers">0</b><span>Đáp án xác nhận</span></div><div class="metric"><b id="statWarnings">0</b><span>Cần rà soát</span></div></div>
+<div id="parseWarnings" class="notes hidden"></div>
+<div class="toolbar"><label for="groupFilter">Xem nhóm</label><select id="groupFilter"></select><label for="questionFilter">Câu</label><input id="questionFilter" type="search" placeholder="Tìm nội dung / số câu" style="max-width:230px"><button id="undo" class="button tertiary" type="button" title="Hoàn tác lần chỉnh sửa gần nhất">↶ Hoàn tác</button></div><div id="questionReview" class="review-list"></div>
+<div class="step-head"><span class="stepno">03</span><div><h2>Thiết lập và tạo mã đề</h2><p>Câu đục lỗ và bài đọc luôn được giữ trong nhóm; tùy chọn trộn tuân thủ ràng buộc của nhóm.</p></div></div>
+<section class="panel"><div class="settings-grid"><div><label for="quantity">Số mã đề</label><select id="quantity"><option>2</option><option selected>4</option><option>6</option><option>8</option><option>10</option><option value="custom">Tùy chỉnh...</option></select><input id="customQuantity" class="hidden" type="number" min="1" max="100" value="12" aria-label="Số mã đề tùy chỉnh"></div><div><label for="startCode">Mã đề bắt đầu</label><input id="startCode" type="number" value="101" min="1" max="9999"></div><div><label for="seed">Mã ngẫu nhiên (seed)</label><input id="seed" type="number" value="2026" min="1" title="Nhập cùng mã để tái tạo kết quả"></div></div>
+<div class="switches"><label><input id="shuffleQuestions" type="checkbox" checked> Đảo câu trong nhóm được phép</label><label><input id="shuffleOptions" type="checkbox" checked> Đảo phương án A–D</label><label><input id="shuffleGroups" type="checkbox"> Đảo vị trí các nhóm nội dung</label></div><div class="subheading">Điều khiển theo từng nhóm</div><div id="groupSettings" class="group-settings"></div>
+<div class="action-row"><button class="button primary" id="generate">✦ Tạo mã đề</button><button class="button secondary" id="remix" disabled>↻ Trộn lại</button><button class="button tertiary" id="saveConfig">Lưu cấu hình</button></div><div id="planStatus" class="status">Chưa tạo mã đề.</div></section>
+<div class="step-head"><span class="stepno">04</span><div><h2>Xem trước và xuất kết quả</h2><p>Chỉ mở các nút xuất khi đã kiểm tra số câu, nhóm liên kết, phương án và đáp án.</p></div></div>
+<section class="panel"><div class="preview-top"><label for="codeSelect">Mã đề</label><select id="codeSelect"></select><span id="equivalence" class="equivalence">Chưa kiểm tra</span></div><div id="codePreview" class="code-preview empty">Tạo mã đề để xem trước cấu trúc và đáp án.</div>
+<div class="subheading">Xuất đề Word (.docx)</div><div class="download-grid"><button disabled data-export="separate" class="button blue export">Từng mã đề (ZIP)</button><button disabled data-export="combined" class="button blue export">Tất cả mã đề (Word)</button><button disabled data-export="teacher" class="button secondary export">Bản giáo viên (Word)</button></div>
+<div class="subheading">Xuất đáp án</div><div class="download-grid"><button disabled data-export="xlsx" class="button blue export">Bảng đáp án Excel</button><button disabled data-export="answers" class="button secondary export">Bảng đáp án Word</button></div><div id="exportStatus" class="status">Chưa có mã đề hợp lệ.</div></section>
+</section></div></main><footer><div class="wrap footerinner"><div><strong>ENGLISH EXAM MIXER · HienSoft</strong><p>Bản quyền thuộc về Nguyễn Sỹ Hiển – HienSoft.</p></div><div class="footlinks"><a href="/tron-de/">Trộn đề các môn</a><a href="https://mrhien.com/">mrhien.com</a></div></div></footer>
+<div id="toast" role="status" aria-live="polite"></div></body></html>
