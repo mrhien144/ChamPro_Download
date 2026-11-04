@@ -166,11 +166,52 @@ function captureVideo(){
  return c;
 }
 function imageCanvas(img){const c=$('capture'),scale=Math.min(1,2000/Math.max(img.naturalWidth,img.naturalHeight));c.width=Math.round(img.naturalWidth*scale);c.height=Math.round(img.naturalHeight*scale);c.getContext('2d',{willReadFrequently:true}).drawImage(img,0,0,c.width,c.height);return c;}
-async function readCanvas(c,manual=false){if(captureBusy)return;const exam=selectedExam();if(!exam){$('scanStatus').textContent='Chưa chọn môn/kỳ kiểm tra. Hãy tạo đề, nhập đáp án và chọn kỳ kiểm tra trước khi chấm.';if(manual)toast('Hãy tạo và chọn kỳ kiểm tra trước');return;}
+// Camera sensors may expose sideways frames despite the phone being upright.
+// Inspect actual OMR geometry in 0/90/270/180-degree versions, not videoWidth alone.
+// After a successful read, keep the winning orientation to speed up subsequent frames.
+function rotatedCanvas(original,degrees){
+ if(!degrees)return original;
+ const w=original.width,h=original.height;
+ const c=document.createElement('canvas');
+ c.width=degrees===90||degrees===270?h:w;
+ c.height=degrees===90||degrees===270?w:h;
+ const g=c.getContext('2d',{willReadFrequently:true});
+ if(degrees===90){g.translate(c.width,0);g.rotate(Math.PI/2);}
+ else if(degrees===270){g.translate(0,c.height);g.rotate(-Math.PI/2);}
+ else if(degrees===180){g.translate(c.width,c.height);g.rotate(Math.PI);}
+ g.drawImage(original,0,0);
+ return c;
+}
+function trySheetOrientations(c,layout,cv,exam){
+ const results=[],errors=[];
+ // The first attempt matches the preview. Fallback angles only run on poor reads.
+ for(const deg of [0,90,270,180]){
+  try{
+   const result=readSheet(rotatedCanvas(c,deg),layout,cv);
+   const knownStudent=db.students.some(x=>x.sbd===result.sbd);
+   const knownCode=Boolean(exam.keys?.[result.examCode]);
+   const score=(knownStudent?3:0)+(knownCode?3:0)+(result.confidence||0)*3-
+    Math.min(2,(result.uncertain?.length||0)*.025);
+   results.push({result,deg,score,knownStudent,knownCode});
+   if(knownCode&&knownStudent&&result.confidence>=.98&&!result.uncertain.length)break;
+  }catch(e){errors.push(deg+'°: '+e.message);}
+ }
+ if(!results.length)throw Error('Không nhận diện được bốn góc phiếu ở mọi hướng. '+errors.join(' | ').slice(0,240));
+ results.sort((a,b)=>b.score-a.score);
+ return results[0];
+}
+async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;const exam=selectedExam();if(!exam){$('scanStatus').textContent='Chưa chọn môn/kỳ kiểm tra. Hãy tạo đề, nhập đáp án và chọn kỳ kiểm tra trước khi chấm.';if(manual)toast('Hãy tạo và chọn kỳ kiểm tra trước');return;}
  captureBusy=true;if(manual)lastReviewImage=c.toDataURL('image/jpeg',.65);const t0=performance.now();$('scanStatus').textContent='Đang đọc bốn ô đen…';try{
   const [cv,geometry]=await Promise.all([ensureCv(),ensureLayouts()]);
   const key='ChamPro_Phieu_'+(exam.form==='120'?'120Cau':'3Phan')+'_MaDe'+exam.digits;
-  const result=readSheet(c,geometry[key],cv);$('captureGuide').classList.add('detected');setTimeout(()=>$('captureGuide').classList.remove('detected'),550);$('scanInfo').textContent=`Đã đọc SBD ${result.sbd||'?'}, mã đề ${result.examCode||'?'}; độ tin cậy ${(result.confidence*100).toFixed(0)}%; ${result.uncertain.length} ô cần xem. ${(performance.now()-t0).toFixed(0)} ms`;
+  if(!geometry[key])throw Error('Không có tọa độ mẫu phiếu '+key);
+  const match=trySheetOrientations(c,geometry[key],cv,exam),result=match.result;
+  if(match.deg&&origin==='camera'&&stream){
+   cameraRotation=(cameraRotation+match.deg)%360;
+   fitGuideToVisibleVideo();
+   $('scanStatus').textContent='Đã tự hiệu chỉnh hướng phiếu '+match.deg+'°';
+  }
+  $('captureGuide').classList.add('detected');setTimeout(()=>$('captureGuide').classList.remove('detected'),550);$('scanInfo').textContent=`Đã đọc SBD ${result.sbd||'?'}, mã đề ${result.examCode||'?'}; độ tin cậy ${(result.confidence*100).toFixed(0)}%; ${result.uncertain.length} ô cần xem. ${(performance.now()-t0).toFixed(0)} ms`;
   $('scanStatus').textContent='Đã đọc ảnh · '+(performance.now()-t0).toFixed(0)+' ms';
   if(manual){openReview(exam,result);return;}
   const student=db.students.find(s=>s.sbd===result.sbd),issues=validateForSave(exam,student,result);
@@ -185,7 +226,7 @@ async function readCanvas(c,manual=false){if(captureBusy)return;const exam=selec
  finally{captureBusy=false;}}
 async function autoScanOnce(){if(!stream||captureBusy||$('reviewDialog').open||!$('autoScan').checked)return;try{await readCanvas(captureVideo(),false);}catch(e){$('scanStatus').textContent=e.message;}}
 $('snap').onclick=async()=>{try{await readCanvas(captureVideo(),true);}catch(e){toast(e.message)}};
-$('openPhoto').onclick=async()=>{const file=$('photoFile').files[0];if(!file)return toast('Hãy chọn ảnh phiếu trước');const url=URL.createObjectURL(file),img=new Image();img.onload=async()=>{try{await readCanvas(imageCanvas(img),true);}catch(e){toast(e.message);}finally{URL.revokeObjectURL(url);}};img.onerror=()=>{URL.revokeObjectURL(url);toast('Không mở được ảnh')};img.src=url;};
+$('openPhoto').onclick=async()=>{const file=$('photoFile').files[0];if(!file)return toast('Hãy chọn ảnh phiếu trước');const url=URL.createObjectURL(file),img=new Image();img.onload=async()=>{try{await readCanvas(imageCanvas(img),true,'photo');}catch(e){toast(e.message);}finally{URL.revokeObjectURL(url);}};img.onerror=()=>{URL.revokeObjectURL(url);toast('Không mở được ảnh')};img.src=url;};
 $('testEngine').onclick=async()=>{try{await Promise.all([ensureCv(),ensureLayouts()]);toast('OpenCV và 4 mẫu phiếu đã sẵn sàng');}catch(e){toast(e.message);}};
 function openReview(exam,omr){review={exam,omr};const student=db.students.find(s=>s.sbd===omr.sbd);const info=omr.uncertain?.length?`<p class="warning">Có ${omr.uncertain.length} ô chưa rõ. Hãy kiểm tra với ảnh phiếu trước khi lưu.</p>`:'<p class="success">Đã nhận dạng. Kiểm tra SBD, mã đề và đáp án trước khi lưu.</p>';
  const field=(p,num,val,opts)=>`<label>${p} ${num}<input data-p="${p}" data-q="${num-1}" ${opts||''} value="${esc(val)}"></label>`;
