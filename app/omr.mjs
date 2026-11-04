@@ -6,49 +6,59 @@ const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 export function detectMarkers(gray,cv) {
  const w=gray.cols,h=gray.rows;
  if(Math.min(w,h)<450)throw Error('Ảnh quá nhỏ; hãy lại gần một chút hoặc bật độ phân giải cao');
- let blurred=new cv.Mat(),bw=new cv.Mat(),contours=new cv.MatVector(),hier=new cv.Mat();
+ const blurred=new cv.Mat(),bw=new cv.Mat(),contours=new cv.MatVector(),hier=new cv.Mat();
  try {
   cv.GaussianBlur(gray,blurred,new cv.Size(3,3),0);
-  cv.threshold(blurred,bw,0,255,cv.THRESH_BINARY_INV+cv.THRESH_OTSU);
-  cv.findContours(bw,contours,hier,cv.RETR_LIST,cv.CHAIN_APPROX_SIMPLE);
-  const a=[];
-  for(let i=0;i<contours.size();i++){
-   const contour=contours.get(i);
-   try {
-    const r=cv.boundingRect(contour),area=cv.contourArea(contour);
-    if(r.width<Math.max(7,w*.006)||r.height<Math.max(7,h*.006))continue;
-    if(r.width>Math.min(w,h)*.08||r.height>Math.min(w,h)*.08)continue;
-    if(r.width/r.height<.63||r.width/r.height>1.58)continue;
-    if(area/(r.width*r.height)<.69||area<w*h*.000018)continue;
-    a.push([r.x+r.width/2,r.y+r.height/2,area]);
-   }finally{contour.delete();}
+  let best=null,bestScore=-Infinity,bestCount=0;
+  // Both global and local thresholds are necessary for dim rooms and
+  // non-uniform illumination across a large paper sheet.
+  for(const mode of ['global','local']){
+   if(mode==='global')cv.threshold(blurred,bw,0,255,cv.THRESH_BINARY_INV+cv.THRESH_OTSU);
+   else cv.adaptiveThreshold(blurred,bw,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C,cv.THRESH_BINARY_INV,35,11);
+   cv.findContours(bw,contours,hier,cv.RETR_LIST,cv.CHAIN_APPROX_SIMPLE);
+   const a=[];
+   for(let i=0;i<contours.size();i++){
+    const contour=contours.get(i);
+    try{
+     const r=cv.boundingRect(contour),area=cv.contourArea(contour),box=r.width*r.height;
+     if(r.width<Math.max(6,w*.004)||r.height<Math.max(6,h*.004))continue;
+     if(r.width>Math.min(w,h)*.10||r.height>Math.min(w,h)*.10)continue;
+     if(r.width/r.height<.68||r.width/r.height>1.47)continue;
+     if(area/box<.66||area<w*h*.000012)continue;
+     a.push([r.x+r.width/2,r.y+r.height/2,area]);
+    }finally{contour.delete();}
+   }
+   bestCount=Math.max(bestCount,a.length);
+   if(a.length<4)continue;
+   const prominent=a.sort((x,y)=>y[2]-x[2]).slice(0,100);
+   const pool=[
+    [...prominent].sort((x,y)=>x[0]+x[1]-y[0]-y[1]).slice(0,12),
+    [...prominent].sort((x,y)=>(y[0]-y[1])-(x[0]-x[1])).slice(0,12),
+    [...prominent].sort((x,y)=>y[0]+y[1]-x[0]-x[1]).slice(0,12),
+    [...prominent].sort((x,y)=>(x[0]-x[1])-(y[0]-y[1])).slice(0,12)
+   ];
+   for(const tl of pool[0])for(const tr of pool[1])for(const br of pool[2])for(const bl of pool[3]){
+    if(tl===tr||tl===br||tl===bl||tr===br||tr===bl||br===bl)continue;
+    if(tr[0]<=tl[0]||br[1]<=tr[1]||bl[0]>=br[0]||bl[1]<=tl[1])continue;
+    const widths=[len(tl,tr),len(br,bl)],heights=[len(tl,bl),len(tr,br)];
+    const area=Math.abs(cross([tr[0]-tl[0],tr[1]-tl[1]],[bl[0]-tl[0],bl[1]-tl[1]]));
+    if(area<w*h*.12||Math.min(...widths)<w*.36||Math.min(...heights)<h*.40)continue;
+    const aspect=((widths[0]+widths[1])/2)/((heights[0]+heights[1])/2);
+    if(aspect<.42||aspect>1.02)continue;
+    const shape=Math.min(...widths)/Math.max(...widths)*Math.min(...heights)/Math.max(...heights);
+    if(shape<.48)continue;
+    if(cross([tr[0]-tl[0],tr[1]-tl[1]],[br[0]-tr[0],br[1]-tr[1]])<=0)continue;
+    const sizes=[tl[2],tr[2],br[2],bl[2]];
+    const consistency=Math.min(...sizes)/Math.max(...sizes);
+    if(consistency<.22)continue;
+    const aspectFit=Math.max(0,1-Math.abs(aspect-.689)/.689);
+    const score=area/(w*h)*7+shape*2+consistency*2+aspectFit*2+Math.log1p(Math.min(...sizes))/12;
+    if(score>bestScore){bestScore=score;best=[tl,tr,br,bl].map(p=>[p[0],p[1]]);}
+   }
   }
-  if(a.length<4)throw Error('Chưa tìm đủ 4 ô vuông đen (đã thấy '+a.length+')');
-  const pool=[
-   [...a].sort((x,y)=>x[0]+x[1]-y[0]-y[1]).slice(0,8),
-   [...a].sort((x,y)=>y[0]-y[1]-x[0]+x[1]).slice(0,8),
-   [...a].sort((x,y)=>y[0]+y[1]-x[0]-x[1]).slice(0,8),
-   [...a].sort((x,y)=>x[0]-x[1]-y[0]+y[1]).slice(0,8)
-  ];
-  let best=null,bestScore=-Infinity;
-  for(const tl of pool[0])for(const tr of pool[1])for(const br of pool[2])for(const bl of pool[3]){
-   if(tr[0]<=tl[0]||br[1]<=tr[1]||bl[0]>=br[0]||bl[1]<=tl[1])continue;
-   const p=[tl,tr,br,bl],widths=[len(tl,tr),len(br,bl)],heights=[len(tl,bl),len(tr,br)];
-   const area=Math.abs(cross([tr[0]-tl[0],tr[1]-tl[1]],[bl[0]-tl[0],bl[1]-tl[1]]));
-   if(area<w*h*.11||Math.min(...widths)<w*.30||Math.min(...heights)<h*.36)continue;
-   const aspect=((widths[0]+widths[1])/2)/((heights[0]+heights[1])/2);
-   if(aspect<.35||aspect>1.05)continue;
-   const shape=(Math.min(...widths)/Math.max(...widths))*(Math.min(...heights)/Math.max(...heights));
-   if(shape<.5)continue;
-   if(cross([tr[0]-tl[0],tr[1]-tl[1]],[br[0]-tr[0],br[1]-tr[1]])<=0)continue;
-   const sizes=p.map(x=>x[2]);const consistency=Math.min(...sizes)/Math.max(...sizes);
-   if(consistency<.17)continue;
-   const score=area/(w*h)*8+shape+consistency;
-   if(score>bestScore){bestScore=score;best=p.map(x=>[x[0],x[1]]);}
-  }
-  if(!best)throw Error('Đã thấy hình vuông, nhưng hình học phiếu chưa hợp lệ. Hãy giữ phẳng cả tờ giấy.');
+  if(!best)throw Error('Chưa xác định được 4 mốc ngoài phiếu (phát hiện '+bestCount+' hình vuông). Giữ đủ cả bốn góc trong khung.');
   return best;
- } finally {blurred.delete();bw.delete();contours.delete();hier.delete();}
+ }finally{blurred.delete();bw.delete();contours.delete();hier.delete();}
 }
 function innerInk(warped,pt,scale){
  const x=Math.round(pt[0]*scale),y=Math.round(pt[1]*scale),r=Math.max(2,Math.round(1.6*scale));
