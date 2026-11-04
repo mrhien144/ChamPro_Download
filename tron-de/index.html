@@ -623,7 +623,7 @@ async function addFooter(zip,doc,sectPr,code){
  let root=xmlParse(`<w:ftr xmlns:w="${W}" xmlns:r="${R}"></w:ftr>`),ftr=root.documentElement;
  // One native Word paragraph, with a right-aligned tab inside the printable width.
  // Avoids blank/hidden left cells from table-based footer layout.
- const p=makeP(root,{tabs:[['right',9500]],line:245,after:0});
+ const p=makeP(root,{align:'left',tabs:[['right',9700]],line:245,after:0});
  const motto=addRun(p,'Nên người – Tiến bộ – Thành đạt');
  const mottoPr=child(motto,'rPr'),mottoColor=el(root,'color');
  mottoColor.setAttributeNS(W,'w:val','000000');mottoPr.appendChild(mottoColor);
