@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0d2341">
+<title>Làm mới camera ChấmPro an toàn</title>
+<style>
+body{margin:0;min-height:100dvh;display:grid;place-items:center;background:#eef4fb;font:16px/1.55 system-ui,sans-serif;color:#102b52;padding:18px}
+main{width:min(100%,480px);padding:24px;border-radius:18px;background:#fff;box-shadow:0 12px 36px #09233f18}
+h1{font-size:23px;margin:0 0 9px}p{margin:8px 0}button{background:#235ce1;color:#fff;border:0;padding:12px 20px;border-radius:10px;font-weight:750;cursor:pointer}
+.note{font-size:13px;color:#47617f}.status{padding:9px 12px;background:#eff5fe;border-radius:9px;margin:14px 0}
+</style>
+</head>
+<body>
+<main>
+<h1>Đang làm mới camera ChấmPro</h1>
+<p>Tự cập nhật mã camera và bộ nhận diện ảnh. <strong>Dữ liệu học sinh, đáp án và điểm đã lưu sẽ được giữ nguyên.</strong></p>
+<div class="status" id="status" role="status">Đang kiểm tra phiên bản cũ…</div>
+<button id="open" type="button" hidden>Mở ChấmPro mới</button>
+<p class="note">Công cụ chỉ xóa bộ nhớ đệm tệp giao diện ChấmPro, không xóa dữ liệu LocalStorage, IndexedDB hay dữ liệu trang web khác.</p>
+</main>
+<script>
+(async function(){
+ const status=document.getElementById('status');
+ const btn=document.getElementById('open');
+ const target='./index.html?build=20261104-camera-r3';
+ btn.addEventListener('click',()=>location.replace(target));
+ try{
+  if('serviceWorker' in navigator){
+   const regs=await navigator.serviceWorker.getRegistrations();
+   for(const r of regs){if(new URL(r.scope).pathname.startsWith('/app/'))await r.unregister();}
+  }
+  if('caches' in window){
+   for(const key of await caches.keys()){
+    if(/^champro-web-/.test(key))await caches.delete(key);
+   }
+  }
+  status.textContent='Đã loại bỏ bộ nhớ đệm camera cũ. Đang mở phiên bản mới…';
+ }catch(e){status.textContent='Không thể xóa hoàn toàn bộ nhớ đệm: '+e.message+'. Vẫn mở bản mới.';}
+ btn.hidden=false;
+ location.replace(target);
+})();
+</script>
+</body></html>
