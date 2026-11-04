@@ -67,17 +67,35 @@ async function ensureCv(){if(window.cv?.Mat)return window.cv;if(cvPromise)return
  $('cvStatus').textContent='Đang tải OpenCV…';
  cvPromise=(async()=>{if(!window.cv)await loadScript('https://docs.opencv.org/4.10.0/opencv.js');if(typeof window.cv?.then==='function')window.cv=await window.cv;const start=Date.now();while(!window.cv?.Mat){if(Date.now()-start>45000)throw Error('OpenCV không khởi tạo được');await new Promise(r=>setTimeout(r,200));}$('cvStatus').textContent='Bộ đọc ảnh sẵn sàng';return window.cv;})().catch(e=>{cvPromise=null;$('cvStatus').textContent='OpenCV chưa sẵn sàng';throw e});return cvPromise;}
 async function ensureLayouts(){if(!layouts){const r=await fetch('./layouts.json',{cache:'force-cache'});if(!r.ok)throw Error('Không tải được tọa độ mẫu phiếu');layouts=await r.json();}return layouts;}
+// The four outer printed fiducials are A4 portrait: 547.28 x 793.89 PDF points.
+// Never resize the guide's X and Y independently: that made it look square on phones.
+// object-fit:contain keeps the complete frame; the guide is fitted ONLY in visible pixels.
+const FIDUCIAL_ASPECT=547.2756/793.8898;
+function cameraGuideMetrics(sw,sh,videoW,videoH){
+ if(!(sw>0&&sh>0&&videoW>0&&videoH>0))return null;
+ const aspect=videoW/videoH;
+ const viewW=Math.min(sw,sh*aspect),viewH=Math.min(sh,sw/aspect);
+ const markerW=Math.min(viewW*.90,viewH*.90*FIDUCIAL_ASPECT);
+ const markerH=markerW/FIDUCIAL_ASPECT;
+ return {viewW,viewH,markerW,markerH,aspect};
+}
 function fitGuideToVisibleVideo(){
- const v=$('video'),surface=$('cameraSurface'),guide=surface.querySelector('.guide');
- if(!v.videoWidth||!v.videoHeight)return;
- const w=surface.clientWidth,h=surface.clientHeight,ratio=v.videoWidth/v.videoHeight;
- const visibleW=Math.min(w,h*ratio),visibleH=Math.min(h,w/ratio);
- guide.style.width=Math.max(60,Math.round(visibleW*.82))+'px';
- guide.style.height=Math.max(100,Math.round(visibleH*.82))+'px';
+ const v=$('video'),surface=$('cameraSurface'),guide=$('captureGuide'),note=$('videoFormatNote');
+ const metrics=cameraGuideMetrics(surface.clientWidth,surface.clientHeight,v.videoWidth,v.videoHeight);
+ if(!metrics){guide.style.width='';guide.style.height='';if(note)note.textContent='Khung phiếu A4 · camera dọc';return;}
+ guide.style.width=Math.round(metrics.markerW)+'px';
+ guide.style.height=Math.round(metrics.markerH)+'px';
+ if(note)note.textContent=(metrics.aspect>1.05?'Camera xuất khung ngang · ưu tiên dọc để thấy đủ phiếu':'Khung A4 dọc')+' · '+v.videoWidth+'×'+v.videoHeight;
 }
 $('video').addEventListener('loadedmetadata',fitGuideToVisibleVideo);
+$('video').addEventListener('resize',fitGuideToVisibleVideo);
 window.addEventListener('resize',fitGuideToVisibleVideo);
-async function startCamera(){if(stream)return;try{if(!navigator.mediaDevices?.getUserMedia)throw Error('Cần HTTPS và trình duyệt hỗ trợ camera');const s=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1440},height:{ideal:1920}}});stream=s;$('video').srcObject=s;await $('video').play();fitGuideToVisibleVideo();$('cameraPlaceholder').hidden=true;$('scanMode').textContent='Camera đang mở';$('scanStatus').textContent='Đặt phiếu phẳng, đủ 4 ô đen trong hình';if($('autoScan').checked)autoTimer=setInterval(autoScanOnce,750);void Promise.all([ensureCv(),ensureLayouts()]).catch(e=>{$('scanStatus').textContent='Chưa tải được bộ đọc ảnh: '+e.message;});}catch(e){toast('Camera: '+e.message);$('scanStatus').textContent=e.message;}}
+if(typeof ResizeObserver!=='undefined')new ResizeObserver(fitGuideToVisibleVideo).observe($('cameraSurface'));
+async function startCamera(){if(stream)return;try{if(!navigator.mediaDevices?.getUserMedia)throw Error('Cần HTTPS và trình duyệt hỗ trợ camera');const cameraOptions={audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1080},height:{ideal:1440},aspectRatio:{ideal:3/4},frameRate:{ideal:30,max:30}}};
+let s;try{s=await navigator.mediaDevices.getUserMedia(cameraOptions);}catch(firstError){
+ // Some browsers/cameras reject portrait constraints; fall back to rear camera.
+ s=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'}}});
+}stream=s;$('video').srcObject=s;await $('video').play();fitGuideToVisibleVideo();$('cameraPlaceholder').hidden=true;$('scanMode').textContent='Camera đang mở';$('scanStatus').textContent='Đặt phiếu phẳng, đủ 4 ô đen trong hình';if($('autoScan').checked)autoTimer=setInterval(autoScanOnce,750);void Promise.all([ensureCv(),ensureLayouts()]).catch(e=>{$('scanStatus').textContent='Chưa tải được bộ đọc ảnh: '+e.message;});}catch(e){toast('Camera: '+e.message);$('scanStatus').textContent=e.message;}}
 function stopCamera(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;}if(stream){stream.getTracks().forEach(x=>x.stop());stream=null;}$('video').srcObject=null;$('cameraPlaceholder').hidden=false;$('scanMode').textContent='Đã dừng';lastAuto=null;}
 $('startCamera').onclick=startCamera;$('stopCamera').onclick=stopCamera;
 $('autoScan').onchange=()=>{if(autoTimer){clearInterval(autoTimer);autoTimer=null;}if(stream&&$('autoScan').checked)autoTimer=setInterval(autoScanOnce,750);};
