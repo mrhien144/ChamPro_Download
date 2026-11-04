@@ -247,11 +247,11 @@ const child=(node,name)=>Array.from(node?.childNodes||[]).find(x=>x.nodeType===1
 const parse=s=>{const d=new DOMParser().parseFromString(s,'application/xml');if(d.getElementsByTagName('parsererror').length)throw Error('Không phân tích được XML trong Word');return d};
 const ser=d=>new XMLSerializer().serializeToString(d);
 const el=(doc,n)=>doc.createElementNS(W,'w:'+n);
-function tRun(doc,str,{bold=false,italic=false,underline=false,color=null,size=26}={}){
+function tRun(doc,str,{bold=false,italic=false,underline=false,color=null,highlight=false,size=26}={}){
  const r=el(doc,'r'),rp=el(doc,'rPr'),font=el(doc,'rFonts');
  for(const name of ['ascii','hAnsi','eastAsia','cs'])font.setAttributeNS(W,'w:'+name,'Times New Roman');rp.appendChild(font);
  if(bold)rp.appendChild(el(doc,'b'));if(italic)rp.appendChild(el(doc,'i'));if(underline){const u=el(doc,'u');u.setAttributeNS(W,'w:val','single');rp.appendChild(u)}
- if(color){const c=el(doc,'color');c.setAttributeNS(W,'w:val',color);rp.appendChild(c)}const sz=el(doc,'sz');sz.setAttributeNS(W,'w:val',String(size));rp.appendChild(sz);
+ if(color){const c=el(doc,'color');c.setAttributeNS(W,'w:val',color);rp.appendChild(c)}if(highlight){const h=el(doc,'highlight');h.setAttributeNS(W,'w:val',highlight===true?'yellow':String(highlight));rp.appendChild(h)}const sz=el(doc,'sz');sz.setAttributeNS(W,'w:val',String(size));rp.appendChild(sz);
  r.appendChild(rp);const t=el(doc,'t');t.setAttributeNS(XML,'xml:space','preserve');t.textContent=str;r.appendChild(t);return r;
 }
 function pPr(doc,{after=60,before=0,align=null,tabs=[],keepNext=false,bold=false}={}){
@@ -262,16 +262,30 @@ function pPr(doc,{after=60,before=0,align=null,tabs=[],keepNext=false,bold=false
 }
 function paragraph(doc,text,opts={}){const p=el(doc,'p');p.appendChild(pPr(doc,opts));p.appendChild(tRun(doc,String(text),{bold:opts.bold,color:opts.color,size:opts.size||26}));return p;}
 
-const HEADER_DEFAULTS={school:'TRƯỜNG THPT CHI LĂNG',leftTitle:'ĐỀ KIỂM TRA',examTitle:'ĐỀ KIỂM TRA / ÔN TẬP',subject:'TIẾNG ANH',minutes:'50',pages:''};
+const HEADER_DEFAULTS={school:'TRƯỜNG THPT CHI LĂNG',school2:'TRƯỜNG TH, THCS VÀ THPT SAO VIỆT',leftTitle:'ĐỀ THI CHÍNH THỨC',examTitle:'ĐỀ KIỂM TRA GIỮA HỌC KÌ I',schoolYear:'2026 - 2027',subject:'TIẾNG ANH 12',minutes:'50',pages:''};
 function headerConfig(data={}){
  const o={};for(const [k,def] of Object.entries(HEADER_DEFAULTS)){
   const raw=data&&data[k]!==undefined?data[k]:def;
   o[k]=String(raw??'').replace(/[\r\n\t]+/g,' ').trim().slice(0,k==='minutes'||k==='pages'?8:120);
  }return o;
 }
-function headerParagraph(doc,parts,{align='center',after=0,keepNext=false}={}){
- const p=el(doc,'p'),pr=pPr(doc,{after,align,keepNext});p.appendChild(pr);
- for(const part of parts){if(typeof part==='string')p.appendChild(tRun(doc,part));else p.appendChild(tRun(doc,part.text,{bold:!!part.bold,italic:!!part.italic,underline:!!part.underline,size:part.size||26}))}
+function headerParagraph(doc,parts,{align='center',after=0,before=0,keepNext=false,bottomLine=false,borderBox=false}={}){
+ const p=el(doc,'p'),pr=pPr(doc,{after,before,align,keepNext});
+ if(bottomLine||borderBox){
+  const bd=el(doc,'pBdr');
+  for(const k of (borderBox?['top','left','bottom','right']:['bottom'])){
+   const edge=el(doc,k);edge.setAttributeNS(W,'w:val','single');
+   edge.setAttributeNS(W,'w:sz',borderBox?'8':'6');
+   edge.setAttributeNS(W,'w:space',borderBox?'5':'2');
+   bd.appendChild(edge);
+  }
+  pr.appendChild(bd);
+ }
+ p.appendChild(pr);
+ for(const part of parts){
+  if(typeof part==='string')p.appendChild(tRun(doc,part));
+  else p.appendChild(tRun(doc,part.text,{bold:!!part.bold,italic:!!part.italic,underline:!!part.underline,color:part.color||null,highlight:part.highlight||false,size:part.size||26}));
+ }
  return p;
 }
 // Only the two exam-title rows use borderless OOXML tables. Options remain un-tabled.
@@ -287,17 +301,30 @@ function headerTable(doc,widths,cells,{boxedIndex=-1}={}){
  }tbl.appendChild(row);return tbl;
 }
 function renderExamHeading(doc,plan,raw,{asAnswers=false}={}){
- const h=headerConfig(raw),out=[];
- const left=[headerParagraph(doc,[{text:h.school,bold:true,underline:true,size:26}],{keepNext:true}),headerParagraph(doc,[{text:h.leftTitle,size:25}],{keepNext:!!h.pages})];
- if(h.pages)left.push(headerParagraph(doc,[{text:'(Đề thi có '+h.pages+' trang)',italic:true,size:24}]));
- const right=[headerParagraph(doc,[{text:h.examTitle,bold:true,size:26}],{keepNext:true}),headerParagraph(doc,[{text:'Môn thi: '+h.subject,bold:true,size:26}],{keepNext:true}),headerParagraph(doc,[{text:'Thời gian làm bài: '+h.minutes+' phút, không kể thời gian phát đề',italic:true,underline:true,size:22}])];
- out.push(headerTable(doc,[4650,5156],[left,right]));
- const bottomLeft=asAnswers?[headerParagraph(doc,[{text:'BẢNG ĐÁP ÁN',bold:true,size:26}],{align:'left'})]:[
-  headerParagraph(doc,[{text:'Họ, tên thí sinh: ',bold:true,size:26},{text:'.............................................................................',size:26}],{align:'left'}),
-  headerParagraph(doc,[{text:'Số báo danh: ',bold:true,size:26},{text:'..............................................',size:26}],{align:'left'})];
- const code=headerParagraph(doc,[{text:'Mã đề: '+plan.code,bold:true,size:26}],{align:'center'});
- out.push(headerTable(doc,[7650,2156],[bottomLeft,[code]],{boxedIndex:1}));
- out.push(headerParagraph(doc,[{text:' ',size:14}],{after:110}));return out;
+ const h=headerConfig(raw),out=[],RED='C00000';
+ const left=[
+  headerParagraph(doc,[{text:h.school,bold:true,size:26}],{keepNext:true,after:25}),
+  ...(h.school2?[headerParagraph(doc,[{text:h.school2,bold:true,size:25}],{keepNext:true,after:25})]:[]),
+  headerParagraph(doc,[{text:h.leftTitle,size:26}],{keepNext:true,after:25}),
+  headerParagraph(doc,[{text:'(Đề thi có ',italic:true,size:24},{text:h.pages||'...',italic:true,highlight:true,size:24},{text:' trang)',italic:true,size:24}],{after:70})
+ ];
+ const right=[
+  headerParagraph(doc,[{text:h.examTitle,bold:true,color:RED,size:27}],{keepNext:true,after:25}),
+  headerParagraph(doc,[{text:'NĂM HỌC: '+h.schoolYear,bold:true,color:RED,size:26}],{keepNext:true,after:25}),
+  headerParagraph(doc,[{text:'Bài thi: ',bold:true,color:RED,size:26},{text:h.subject,bold:true,color:RED,highlight:true,size:26}],{keepNext:true,after:25}),
+  headerParagraph(doc,[{text:'Thời gian làm bài: ',italic:true,size:22},{text:h.minutes||'...',italic:true,highlight:true,size:22},{text:' phút, không kể thời gian phát đề',italic:true,size:22}],{bottomLine:true,after:70})
+ ];
+ out.push(headerTable(doc,[4903,4903],[left,right]));
+ const bottomLeft=asAnswers?
+  [headerParagraph(doc,[{text:'BẢNG ĐÁP ÁN',bold:true,size:26}],{align:'left'})]:
+  [
+   headerParagraph(doc,[{text:'Họ, tên học sinh: ',bold:true,size:25},{text:'....................................................................',size:24}],{align:'left',after:15}),
+   headerParagraph(doc,[{text:'Số báo danh: ',bold:true,size:25},{text:'............................................................',size:24}],{align:'left'})
+  ];
+ const code=headerParagraph(doc,[{text:'Mã đề thi ',bold:true,size:27},{text:String(plan.code),bold:true,highlight:true,size:27}],{align:'center',borderBox:true,before:80,after:0});
+ out.push(headerTable(doc,[7286,2520],[bottomLeft,[code]]));
+ out.push(headerParagraph(doc,[{text:' ',size:12}],{after:90}));
+ return out;
 }
 function importXml(doc,xml){const d=parse(xml);return doc.importNode(d.documentElement,true);}
 
@@ -584,7 +611,7 @@ function doGenerate(){if(!state.exam)return toast('Hãy nhập đề trước.')
  const cfg=config();if(!Number.isInteger(cfg.quantity)||cfg.quantity<1||cfg.quantity>100||cfg.startCode<1||cfg.startCode+cfg.quantity>9999){return status('planStatus','Số lượng từ 1 đến 100; mã đề trong khoảng 1–9999.','error');}
  try{state.plans=createPlan(state.exam,cfg);const issues2=validatePlans(state.exam,state.plans);renderPlans();status('planStatus',issues2.length?`Có ${issues2.length} vấn đề — chưa thể xuất.`:`Đã tạo ${state.plans.length} mã đề. Đã đối chiếu câu hỏi, nhóm và đáp án.`,issues2.length?'error':'success');}catch(e){status('planStatus',e.message,'error');}}
 function blobDownload(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),15000)}
-const documentHeader=()=>Object.fromEntries(['school','leftTitle','examTitle','subject','minutes','pages'].map(k=>[k,$('hdr'+k[0].toUpperCase()+k.slice(1)).value]));
+const documentHeader=()=>Object.fromEntries(['school','school2','leftTitle','examTitle','schoolYear','subject','minutes','pages'].map(k=>[k,$('hdr'+k[0].toUpperCase()+k.slice(1)).value]));
 async function doExport(type,btn){
  if(type!=='bundle')return;
  if(!state.exam||!state.plans.length){
@@ -644,13 +671,15 @@ try{const c=JSON.parse(localStorage.getItem('hienSoftEnglishMixerSettings')||'nu
 
 <div class="subheading">Thông tin đầu đề Word (theo mẫu THPT)</div>
 <div class="settings-grid exam-heading-settings">
- <div><label for="hdrSchool">Tên trường</label><input id="hdrSchool" type="text" value="TRƯỜNG THPT CHI LĂNG" maxlength="120"></div>
- <div><label for="hdrLeftTitle">Tên đề bên trái</label><input id="hdrLeftTitle" type="text" value="ĐỀ KIỂM TRA" maxlength="120"></div>
- <div><label for="hdrExamTitle">Tiêu đề kỳ kiểm tra</label><input id="hdrExamTitle" type="text" value="ĐỀ KIỂM TRA / ÔN TẬP" maxlength="120"></div>
- <div><label for="hdrSubject">Môn thi</label><input id="hdrSubject" type="text" value="TIẾNG ANH" maxlength="120"></div>
+ <div><label for="hdrSchool">Tên trường 1</label><input id="hdrSchool" type="text" value="TRƯỜNG THPT CHI LĂNG" maxlength="120"></div>
+ <div><label for="hdrSchool2">Tên trường 2 (có thể để trống)</label><input id="hdrSchool2" type="text" value="TRƯỜNG TH, THCS VÀ THPT SAO VIỆT" maxlength="120"></div>
+ <div><label for="hdrLeftTitle">Loại đề (bên trái)</label><input id="hdrLeftTitle" type="text" value="ĐỀ THI CHÍNH THỨC" maxlength="120"></div>
+ <div><label for="hdrExamTitle">Tên kỳ kiểm tra (màu đỏ)</label><input id="hdrExamTitle" type="text" value="ĐỀ KIỂM TRA GIỮA HỌC KÌ I" maxlength="120"></div>
+ <div><label for="hdrSchoolYear">Năm học</label><input id="hdrSchoolYear" type="text" value="2026 - 2027" maxlength="30"></div>
+ <div><label for="hdrSubject">Bài thi</label><input id="hdrSubject" type="text" value="TIẾNG ANH 12" maxlength="120"></div>
  <div><label for="hdrMinutes">Thời gian làm bài (phút)</label><input id="hdrMinutes" type="number" min="1" max="300" value="50"></div>
- <div><label for="hdrPages">Số trang mỗi mã đề (nếu đã biết)</label><input id="hdrPages" type="text" inputmode="numeric" maxlength="8" placeholder="Để trống nếu chưa xác định"></div>
-</div><div class="status">Đầu đề Word có tên trường, kỳ kiểm tra, môn thi, thời gian, họ tên, số báo danh và ô mã đề. Số trang chỉ in khi đã nhập để tránh ghi sai sau khi trộn.</div>
+ <div><label for="hdrPages">Số trang của mỗi mã đề</label><input id="hdrPages" type="text" inputmode="numeric" maxlength="8" placeholder="... nếu chưa xác định"></div>
+</div><div class="status">Đầu đề Word theo mẫu: hai dòng tên trường, tên kỳ kiểm tra và năm học màu đỏ, bài thi và các giá trị quan trọng đánh dấu vàng, họ tên học sinh, số báo danh, mã đề thi đóng khung. Nếu chưa nhập số trang, Word sẽ hiển thị dấu ... để người dùng hoàn thiện.</div>
 <div class="subheading">Tải bộ đề hoàn chỉnh</div><div class="download-grid"><button id="downloadBundle" disabled data-export="bundle" class="button blue export">⬇ Tải bộ đề và đáp án (ZIP)</button></div><p class="export-hint">Tệp ZIP gồm <strong>mỗi mã đề một file Word (.docx)</strong> và <strong>một bảng đáp án tổng hợp Excel (.xlsx)</strong>. Không cần tải từng file riêng.</p><div id="exportStatus" class="status">Hãy tạo mã đề để bật nút tải.</div></section>
 </section></div></main><footer><div class="wrap footerinner"><div><strong>ENGLISH EXAM MIXER · HienSoft</strong><p>Bản quyền thuộc về Nguyễn Sỹ Hiển – HienSoft.</p></div><div class="footlinks"><a href="/tron-de/">Trộn đề các môn</a><a href="https://mrhien.com/">mrhien.com</a></div></div></footer>
 <div id="toast" role="status" aria-live="polite"></div></body></html>
