@@ -14,6 +14,7 @@
 .hs-navlinks a[aria-current="page"]{background:#eaf2ff;color:#1751c8;box-shadow:inset 0 -3px #3068ed}
 @media(max-width:1100px){.sitehead .hs-english-nav{flex-wrap:wrap;justify-content:center;gap:3px 12px;padding-top:7px;padding-bottom:7px}.hs-english-nav .brand{width:100%;justify-content:center}.hs-navlinks{width:100%;justify-content:center}}
 @media(max-width:600px){.sitehead .hs-english-nav{width:calc(100% - 16px)}.hs-english-nav .brand{gap:8px}.hs-english-nav .hs-brand-logo{width:58px;height:48px;flex-basis:58px}.hs-english-nav .hs-brand-title strong{font-size:15px}.hs-english-nav .hs-brand-title small{font-size:10px}.hs-navlinks{justify-content:flex-start;gap:4px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:2px 2px 5px}.hs-navlinks::-webkit-scrollbar{display:none}.hs-navlinks a{font-size:12px;padding:8px 10px;min-height:36px}}
+#downloadBundle{min-height:56px;padding:14px 25px;font-size:16px;font-weight:850;max-width:100%}.export-hint{font-size:13px;line-height:1.65;color:var(--muted);margin:13px 0 18px}.export-hint strong{color:var(--ink)}
 </style><script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script><script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script><script type="module">const EngEngine=(()=>{
 /** English Exam Mixer: pure linked-group shuffle and validation. No DOM required. */
 const LETTERS=['A','B','C','D'];
@@ -500,10 +501,48 @@ async function exportAnswersXlsx(plans){const matrix=answerMatrix(plans),rows=[[
 }
 async function exportSeparateDocx(exam,plans,opts={}){const z=new JSZip();for(const plan of plans){const blob=await exportExamDocx(exam,[plan],{...opts,combined:false});z.file(`De_TiengAnh_${plan.code}.docx`,blob)}return z.generateAsync({type:'blob',compression:'DEFLATE'});}
 
-return {exportExamDocx,exportSeparateDocx,exportAnswersXlsx};})()
+/**
+ * Một tệp ZIP duy nhất: mỗi mã đề Word riêng + bảng đáp án Excel tổng hợp.
+ * Giữ nguyên quá trình xác thực file DOCX trong exportExamDocx.
+ */
+async function exportFullPackageZip(exam,plans,{header=null,onProgress=null}={}){
+ if(!Array.isArray(plans)||!plans.length)throw Error('Chưa có mã đề hợp lệ để đóng gói.');
+ const zip=new JSZip(),used=new Set(),wordNames=[];
+ for(let index=0;index<plans.length;index++){
+  const plan=plans[index],code=String(plan.code);
+  if(!/^\d{1,4}$/.test(code)||used.has(code))throw Error('Mã đề không hợp lệ hoặc bị trùng: '+code);
+  used.add(code);
+  const fileName='De_Tieng_Anh_Ma_'+code+'.docx';
+  const docx=await exportExamDocx(exam,[plan],{header,combined:false});
+  if(!docx.size)throw Error('Mã đề '+code+' tạo ra tệp Word rỗng.');
+  zip.file(fileName,docx);
+  wordNames.push(fileName);
+  if(typeof onProgress==='function')onProgress(index+1,plans.length,'word');
+ }
+ const answerName='Bang_Dap_An_Tat_Ca_Ma_De.xlsx';
+ const xlsx=await exportAnswersXlsx(plans);
+ if(!xlsx.size)throw Error('Tệp đáp án Excel rỗng.');
+ zip.file(answerName,xlsx);
+ if(typeof onProgress==='function')onProgress(plans.length,plans.length,'excel');
+ const archive=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:5}});
+ const check=await JSZip.loadAsync(await archive.arrayBuffer(),{checkCRC32:true});
+ const filenames=Object.keys(check.files).filter(name=>!check.files[name].dir);
+ if(filenames.length!==wordNames.length+1 || !check.file(answerName) || wordNames.some(name=>!check.file(name)))
+  throw Error('Gói ZIP không đủ các file Word và bảng đáp án. Không tải tệp chưa hợp lệ.');
+ // Kiểm tra ZIP lồng bên trong: đầu đề Word và bảng Excel phải tồn tại.
+ for(const name of wordNames){
+  const word=await JSZip.loadAsync(await check.file(name).async('arraybuffer'));
+  if(!word.file('word/document.xml'))throw Error('Mã đề '+name+' không chứa nội dung Word.');
+ }
+ const answer=await JSZip.loadAsync(await check.file(answerName).async('arraybuffer'));
+ if(!answer.file('xl/workbook.xml')||!answer.file('xl/worksheets/sheet1.xml'))
+  throw Error('File đáp án Excel không đủ thành phần.');
+ return archive;
+}
+return {exportExamDocx,exportSeparateDocx,exportAnswersXlsx,exportFullPackageZip};})()
 const {importDocx,importPdf,importPasted,importAnswerFile}=EngParser;
 const {LETTERS,KINDS,validateSource,createPlan,validatePlans}=EngEngine;
-const {exportExamDocx,exportSeparateDocx,exportAnswersXlsx}=EngExport;
+const {exportExamDocx,exportSeparateDocx,exportAnswersXlsx,exportFullPackageZip}=EngExport;
 
 
 
@@ -546,16 +585,34 @@ function doGenerate(){if(!state.exam)return toast('Hãy nhập đề trước.')
  try{state.plans=createPlan(state.exam,cfg);const issues2=validatePlans(state.exam,state.plans);renderPlans();status('planStatus',issues2.length?`Có ${issues2.length} vấn đề — chưa thể xuất.`:`Đã tạo ${state.plans.length} mã đề. Đã đối chiếu câu hỏi, nhóm và đáp án.`,issues2.length?'error':'success');}catch(e){status('planStatus',e.message,'error');}}
 function blobDownload(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),15000)}
 const documentHeader=()=>Object.fromEntries(['school','leftTitle','examTitle','subject','minutes','pages'].map(k=>[k,$('hdr'+k[0].toUpperCase()+k.slice(1)).value]));
-async function doExport(type,btn){if(!state.exam||!state.plans.length)return;const issues=validatePlans(state.exam,state.plans);if(issues.length){status('exportStatus','Xuất bị khóa: '+issues.map(x=>x.scope+': '+x.message).slice(0,3).join('; '),'error');return;}
- const header=documentHeader();btn.disabled=true;status('exportStatus','Đang tạo tệp Word/Excel thật và kiểm tra cấu trúc...');try{let blob,name;
-  switch(type){case'separate':blob=await exportSeparateDocx(state.exam,state.plans,{header});name='English_Exam_Mixer_De_Rieng.zip';break;
-   case'combined':blob=await exportExamDocx(state.exam,state.plans,{header});name='English_Exam_Mixer_Tat_Ca_Ma.docx';break;
-   case'teacher':blob=await exportExamDocx(state.exam,state.plans,{teacher:true,header});name='English_Exam_Mixer_Giao_Vien.docx';break;
-   case'answers':blob=await exportExamDocx(state.exam,state.plans,{asAnswers:true,header});name='English_Exam_Mixer_Dap_An.docx';break;
-   case'xlsx':blob=await exportAnswersXlsx(state.plans);name='English_Exam_Mixer_Dap_An.xlsx';break;
-   default:throw Error('Lựa chọn xuất không tồn tại');
-  }blobDownload(blob,name);status('exportStatus',`Đã tạo ${name} (${Math.round(blob.size/1024)} KB).`,'success');
- }catch(e){status('exportStatus',`Lỗi tạo tệp: ${e.message||e}`,'error');}finally{btn.disabled=false;}}
+async function doExport(type,btn){
+ if(type!=='bundle')return;
+ if(!state.exam||!state.plans.length){
+  status('exportStatus','Hãy tạo và kiểm tra mã đề trước khi tải.','error');return;
+ }
+ const issues=validatePlans(state.exam,state.plans);
+ if(issues.length){
+  status('exportStatus','Chưa thể tải: '+issues.slice(0,3).map(x=>x.scope+': '+x.message).join('; '),'error');return;
+ }
+ const originalLabel=btn.textContent;
+ btn.disabled=true;btn.textContent='Đang chuẩn bị bộ đề...';
+ status('exportStatus','Đang tạo từng mã đề Word và bảng đáp án Excel.');
+ try{
+  const archive=await exportFullPackageZip(state.exam,state.plans,{
+   header:documentHeader(),
+   onProgress:(done,total,kind)=>{
+    status('exportStatus',kind==='excel'?
+      'Đã tạo '+total+' mã đề Word; đang kiểm tra và đóng gói bảng đáp án Excel.':
+      'Đang tạo file Word mã đề '+done+'/'+total+'...');
+   }
+  });
+  const filename='English_Exam_Mixer_Bo_De_Va_Dap_An.zip';
+  blobDownload(archive,filename);
+  status('exportStatus','Đã tạo '+filename+' với '+state.plans.length+' file đề Word và 1 file đáp án Excel ('+Math.round(archive.size/1024)+' KB).','success');
+ }catch(e){
+  status('exportStatus','Không thể tạo bộ đề: '+(e.message||e),'error');
+ }finally{btn.disabled=false;btn.textContent=originalLabel;}
+}
 $('examFile').addEventListener('change',e=>handleFile(e.target.files?.[0]));$('parsePaste').addEventListener('click',()=>{try{state.exam=importPasted($('pasteText').value);state.history=[];state.plans=[];renderAll();status('sourceStatus',`Đã nhận diện ${state.exam.total} câu từ văn bản dán. Tất cả đáp án cần được kiểm tra.`, 'success')}catch(e){status('sourceStatus',e.message,'error')}});
 const drop=$('dropzone');['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')}));['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));drop.addEventListener('drop',e=>handleFile(e.dataTransfer?.files?.[0]));drop.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('examFile').click()}});
 $('answerFile').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file||!state.exam)return toast('Hãy tải đề trước khi nhập đáp án.');try{const answers=await importAnswerFile(file);if(!answers.size)return toast('Không tìm được đáp án theo định dạng 1 A, 2 B...');storeHistory();let count=0;for(const q of state.exam.groups.flatMap(g=>g.questions)){if(answers.has(q.number)){q.answer=answers.get(q.number);q.answerSource='file';q.conflict=false;count++}}resetPlans();renderAll();status('sourceStatus',`Đã nhận ${count}/${answers.size} đáp án từ ${file.name}.`,'success')}catch(err){toast('Không đọc được file đáp án: '+err.message)}});
@@ -594,7 +651,6 @@ try{const c=JSON.parse(localStorage.getItem('hienSoftEnglishMixerSettings')||'nu
  <div><label for="hdrMinutes">Thời gian làm bài (phút)</label><input id="hdrMinutes" type="number" min="1" max="300" value="50"></div>
  <div><label for="hdrPages">Số trang mỗi mã đề (nếu đã biết)</label><input id="hdrPages" type="text" inputmode="numeric" maxlength="8" placeholder="Để trống nếu chưa xác định"></div>
 </div><div class="status">Đầu đề Word có tên trường, kỳ kiểm tra, môn thi, thời gian, họ tên, số báo danh và ô mã đề. Số trang chỉ in khi đã nhập để tránh ghi sai sau khi trộn.</div>
-<div class="subheading">Xuất đề Word (.docx)</div><div class="download-grid"><button disabled data-export="separate" class="button blue export">Từng mã đề (ZIP)</button><button disabled data-export="combined" class="button blue export">Tất cả mã đề (Word)</button><button disabled data-export="teacher" class="button secondary export">Bản giáo viên (Word)</button></div>
-<div class="subheading">Xuất đáp án</div><div class="download-grid"><button disabled data-export="xlsx" class="button blue export">Bảng đáp án Excel</button><button disabled data-export="answers" class="button secondary export">Bảng đáp án Word</button></div><div id="exportStatus" class="status">Chưa có mã đề hợp lệ.</div></section>
+<div class="subheading">Tải bộ đề hoàn chỉnh</div><div class="download-grid"><button id="downloadBundle" disabled data-export="bundle" class="button blue export">⬇ Tải bộ đề và đáp án (ZIP)</button></div><p class="export-hint">Tệp ZIP gồm <strong>mỗi mã đề một file Word (.docx)</strong> và <strong>một bảng đáp án tổng hợp Excel (.xlsx)</strong>. Không cần tải từng file riêng.</p><div id="exportStatus" class="status">Hãy tạo mã đề để bật nút tải.</div></section>
 </section></div></main><footer><div class="wrap footerinner"><div><strong>ENGLISH EXAM MIXER · HienSoft</strong><p>Bản quyền thuộc về Nguyễn Sỹ Hiển – HienSoft.</p></div><div class="footlinks"><a href="/tron-de/">Trộn đề các môn</a><a href="https://mrhien.com/">mrhien.com</a></div></div></footer>
 <div id="toast" role="status" aria-live="polite"></div></body></html>
