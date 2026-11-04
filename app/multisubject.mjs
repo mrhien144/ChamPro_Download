@@ -11,7 +11,8 @@ export function makeReport(db,selectedGroup,subjectIds=null){
  const group=listGroups(db.exams).find(g=>g.key===selectedGroup);if(!group)return null;
  const exams=group.exams.filter(e=>e.subject),subjectNames=[...new Set(exams.map(e=>norm(e.subject)))];
  const chosen=(subjectIds||subjectNames).filter(s=>subjectNames.includes(s));
- const people=db.students.filter(s=>!group.gradeClass||norm(s.classroom).toLowerCase()===group.gradeClass.toLowerCase()).sort((a,b)=>{const x=splitName(a.name),y=splitName(b.name);return x.given.localeCompare(y.given,'vi')||x.family.localeCompare(y.family,'vi')||String(a.sbd).localeCompare(String(b.sbd));});
+ const matchClass=(student,grade)=>{const query=norm(grade).toLowerCase(),cls=norm(student.classroom).toLowerCase();if(!query)return true;if(cls===query)return true;const block=query.match(/^(?:khối\s*)?(10|11|12)$/);return Boolean(block&&cls.startsWith(block[1]));};
+ const people=db.students.filter(s=>matchClass(s,group.gradeClass)).sort((a,b)=>{const x=splitName(a.name),y=splitName(b.name);return x.given.localeCompare(y.given,'vi')||x.family.localeCompare(y.family,'vi')||String(a.sbd).localeCompare(String(b.sbd));});
  const rows=people.map(s=>{
   const scores={};
   for(const subject of subjectNames){const ids=new Set(exams.filter(e=>norm(e.subject)===subject).map(e=>e.id));const r=db.results.filter(r=>r.studentId===s.id&&ids.has(r.examId)).sort((a,b)=>String(b.savedAt).localeCompare(String(a.savedAt)))[0];scores[subject]=r&&Number.isFinite(Number(r.score))?Number(r.score):null;}
