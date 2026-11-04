@@ -780,7 +780,13 @@ async function verifyDocxPackage(blob){
  }
  for(const id of needed)if(!declared.has(id))throw new Error('Word tham chiếu tệp hình hoặc công thức không tồn tại: '+id);
  for(const part of required.filter(x=>x.endsWith('.xml')))xmlParse(await check.file(part).async('string'));
- xmlParse(await check.file('word/footer-hiensoft.xml').async('string'));
+ const footerXml=await check.file('word/footer-hiensoft.xml').async('string');
+ const footerDoc=xmlParse(footerXml);
+ const footerText=Array.from(footerDoc.getElementsByTagNameNS(W,'t')).map(n=>n.textContent).join('');
+ if(!footerText.includes('Nên người – Tiến bộ – Thành đạt'))
+  throw new Error('Xuất Word bị thiếu khẩu hiệu ở chân trang bên trái; vui lòng tải lại trang (Ctrl+F5) và thử lại.');
+ if(!footerText.includes('Mã đề '))
+  throw new Error('Xuất Word bị thiếu mã đề trong chân trang.');
  const sourceMedia=Object.keys(check.files).filter(name=>name.startsWith('word/media/')||name.startsWith('word/embeddings/')).length;
  if(sourceMedia<1&&find(doc,'drawing').length)throw new Error('Word thiếu tệp hình nhúng');
  return true;
