@@ -1,0 +1,78 @@
+/* ChấmPro visual refresh — scoped to static site pages only.
+   Does not style /app/ or /tron-de/ and does not alter business logic. */
+:root{--hs-ink:#132b49;--hs-soft:#60758d;--hs-line:#e1eaf5}
+body{background:#f6f9fd}
+.sitehead,header.hs-sitebar{box-shadow:0 6px 30px rgba(24,48,78,.045);border-bottom:1px solid #e8eef7}
+.brand,.hs-brand{gap:10px}
+.brand .hs-logo,header.hs-sitebar .hs-brand .hs-logo{display:block;width:67px;height:53px;object-fit:contain;flex-shrink:0}
+.brand span:last-child,header.hs-sitebar .hs-brand>span:last-child{letter-spacing:-.6px;font-weight:850;color:#153761}
+header.hs-sitebar .hs-brand{color:#153761;text-decoration:none}
+header.hs-sitebar .hs-navwrap{min-height:76px}
+header.hs-sitebar .hs-links a{border-radius:10px}
+header.hs-sitebar .hs-links a:hover{background:#eaf4fc;color:#0e559d}
+header.hs-sitebar .hs-links a[aria-current="page"]{background:#eaf4ff;color:#0e559d}
+/* Home: fewer giant gaps, refined hierarchy and product-like cards */
+.sitehead~main .hero{background:radial-gradient(ellipse at 88% 20%,#205a97 0,transparent 40%),linear-gradient(125deg,#092d4a,#102d5a 70%,#204a83)}
+.sitehead~main .hero .container{padding-top:62px;padding-bottom:66px;min-height:460px;gap:36px}
+.sitehead~main .hero h1{font-size:clamp(35px,4.6vw,56px);letter-spacing:-1.6px;max-width:680px;margin:18px 0}
+.sitehead~main .hero p{font-size:16px;line-height:1.75;max-width:610px}
+.sitehead~main .hero-panel{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:22px}
+.sitehead~main .panel-tile{border:1px solid #e2edfa;box-shadow:0 3px 10px rgba(16,39,69,.035)}
+.sitehead~main .section{padding:60px 0}
+.sitehead~main .sectionintro{margin-bottom:26px}
+.sitehead~main .sectionintro h2{font-size:clamp(28px,3vw,37px);letter-spacing:-.8px}
+.sitehead~main .sectionintro p{max-width:640px;margin:0 auto;line-height:1.7}
+.sitehead~main .cardgrid{gap:18px}
+.sitehead~main .toolcard{padding:25px;min-height:0;border-radius:18px;box-shadow:0 8px 28px rgba(17,44,76,.055)}
+.sitehead~main .toolcard h3{margin:0 0 9px;font-size:21px}
+.sitehead~main .toolcard p{margin:0 0 14px;font-size:14.5px;line-height:1.7}
+.sitehead~main .info{background:#eef5ff}
+.sitehead~main .info-layout{gap:34px}
+.sitehead~main .howto{gap:11px}
+.sitehead~main .howto .item{border-radius:14px}
+.sitehead~main .support{padding:26px 30px;border-radius:20px}
+/* Informational articles: comfortable reading, white paper and tidy rhythm */
+body:has(.paper){background:#f7f9fc;color:var(--hs-ink);font-size:16px;line-height:1.72}
+body:has(.paper) .hero{padding:38px 0 43px;background:radial-gradient(ellipse at 90% 10%,rgba(57,127,193,.35),transparent 37%),linear-gradient(125deg,#102947,#174878)}
+body:has(.paper) .hero h1{font-size:clamp(29px,3.7vw,43px);line-height:1.22;letter-spacing:-.9px;margin:10px 0 12px}
+body:has(.paper) .hero p{font-size:16px;line-height:1.65;max-width:780px}
+body:has(.paper) .main{max-width:1140px;gap:24px;grid-template-columns:minmax(0,2.4fr) minmax(235px,.9fr);padding-top:28px;padding-bottom:55px}
+body:has(.paper) .paper,body:has(.paper) .side{border:1px solid #e3ebf5;background:#fff;border-radius:20px;box-shadow:0 12px 32px rgba(22,58,100,.055)}
+body:has(.paper) .paper{padding:30px 34px;overflow-wrap:anywhere}
+body:has(.paper) .paper>h2{font-size:clamp(21px,2vw,24px);line-height:1.35;letter-spacing:-.45px;color:#183b71;margin:29px 0 12px;padding-left:14px;border-left:4px solid #26a4aa;scroll-margin-top:100px}
+body:has(.paper) .paper>h2:first-child{margin-top:0}
+body:has(.paper) .paper h3{color:#194c7e;font-size:18px;margin:20px 0 9px}
+body:has(.paper) .paper p{font-size:15.5px;line-height:1.78;margin:9px 0 12px}
+body:has(.paper) .paper ul,body:has(.paper) .paper ol{padding-left:24px;margin:10px 0 15px}
+body:has(.paper) .paper li{margin:6px 0;line-height:1.7}
+body:has(.paper) .paper li p{margin:6px 0}
+body:has(.paper) .box{margin:15px 0;border-radius:14px;padding:16px 18px}
+body:has(.paper) .box p:last-child{margin-bottom:0}
+body:has(.paper) .paper .cards{gap:14px;margin:15px 0}
+body:has(.paper) .paper .card{border-radius:14px;background:#f8fbff;padding:17px}
+body:has(.paper) .paper .cta{margin:9px 9px 9px 0;border-radius:11px}
+body:has(.paper) .side{padding:22px;top:92px}
+body:has(.paper) .side h2{font-size:15px;color:#183b71}
+body:has(.paper) .side a{line-height:1.45;padding:9px 4px;font-size:13px}
+body:has(.paper) .side a:hover{background:#f0f7ff;border-radius:7px;text-decoration:none}
+body:has(.paper) .footer{margin-top:0}
+@media(max-width:940px){
+ body:has(.paper) .main{grid-template-columns:1fr}
+ body:has(.paper) .side{position:static}
+ .brand .hs-logo,header.hs-sitebar .hs-brand .hs-logo{width:55px;height:44px}
+ .sitehead~main .hero .container{padding-top:48px;padding-bottom:52px}
+}
+@media(max-width:600px){
+ .brand .hs-logo,header.hs-sitebar .hs-brand .hs-logo{width:50px;height:40px}
+ header.hs-sitebar .hs-navwrap{padding:8px 12px}
+ .sitehead~main .section{padding:46px 0}
+ .sitehead~main .toolcard{padding:20px}
+ .sitehead~main .hero .container{padding-top:43px;padding-bottom:49px}
+ body:has(.paper) .hero{padding:30px 0 36px}
+ body:has(.paper) .main{padding-top:15px;padding-bottom:35px}
+ body:has(.paper) .paper{padding:22px 18px}
+ body:has(.paper) .paper p{font-size:15px}
+ body:has(.paper) .paper>h2{font-size:21px}
+ body:has(.paper) .side{padding:19px}
+}
+@media(prefers-reduced-motion:reduce){.sitehead~main .toolcard:hover{transform:none}}
