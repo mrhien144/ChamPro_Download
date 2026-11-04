@@ -192,12 +192,14 @@ function rotatedCanvas(original,degrees){
  g.drawImage(original,0,0);
  return c;
 }
-let lastGoodOrientation=0;
+let lastGoodOrientation=0,scanDirectionAttempt=0;
 async function trySheetOrientations(c,layout,cv,exam,manual=false){
  const results=[],errors=[];
  const normal=[lastGoodOrientation,0,90,270,180].filter((v,i,all)=>all.indexOf(v)===i);
- // Avoid the expensive four-way search on every live camera frame.
- const directions=manual?normal:normal.slice(0,lastGoodOrientation?2:1);
+ // Most frames use only the previous valid angle; periodically try all angles
+ // until a real student and exam code are read, including sideways sensor frames.
+ const fullSearch=manual||(++scanDirectionAttempt%4===0&&!lastAuto);
+ const directions=fullSearch?normal:normal.slice(0,1);
  for(const deg of directions){
   // Yield before entering synchronous OpenCV: update the progress message on Samsung.
   await new Promise(resolve=>requestAnimationFrame(resolve));
@@ -227,7 +229,7 @@ async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;
    fitGuideToVisibleVideo();
    $('scanStatus').textContent='Đã tự hiệu chỉnh hướng phiếu '+match.deg+'°';
   }
-  $('captureGuide').classList.add('detected');setTimeout(()=>$('captureGuide').classList.remove('detected'),550);$('scanInfo').textContent=`Đã đọc SBD ${result.sbd||'?'}, mã đề ${result.examCode||'?'}; độ tin cậy ${(result.confidence*100).toFixed(0)}%; ${result.uncertain.length} ô cần xem. ${(performance.now()-t0).toFixed(0)} ms`;
+  if(match.knownCode&&match.knownStudent&&result.confidence>=.9){$('captureGuide').classList.add('detected');setTimeout(()=>$('captureGuide').classList.remove('detected'),550);}$('scanInfo').textContent=`Đã đọc SBD ${result.sbd||'?'}, mã đề ${result.examCode||'?'}; độ tin cậy ${(result.confidence*100).toFixed(0)}%; ${result.uncertain.length} ô cần xem. ${(performance.now()-t0).toFixed(0)} ms`;
   $('scanStatus').textContent='Đã nhận diện SBD '+(result.sbd||'?')+' · mã đề '+(result.examCode||'?')+' · '+(performance.now()-t0).toFixed(0)+' ms';
   if(manual){openReview(exam,result);return;}
   const student=db.students.find(s=>s.sbd===result.sbd),issues=validateForSave(exam,student,result);
