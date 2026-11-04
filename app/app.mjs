@@ -12,7 +12,8 @@ function toast(m){$('toast').textContent=m;clearTimeout(toast._t);toast._t=setTi
 function navigate(page){document.body.classList.toggle('scan-active',page==='scan');document.querySelectorAll('.page').forEach(x=>x.classList.toggle('shown',x.id==='page-'+page));document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===page));if(page!=='scan')stopCamera();window.scrollTo({top:0,behavior:'smooth'});}
 function parseLines(text){return String(text||'').split(/\r?\n/).map(x=>x.trim());}
 function sendFile(name,text,type='text/plain;charset=utf-8'){const b=new Blob([text],{type}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),3000);}
-function examOptions(target,all=false){const prev=target.value;target.innerHTML=(all?'<option value="">Tất cả</option>':'<option value="">-- Chọn kỳ kiểm tra --</option>')+db.exams.map(e=>`<option value="${esc(e.id)}">${esc([e.gradeClass,e.name,e.subject].filter(Boolean).join(' · '))}</option>`).join('');if([...target.options].some(x=>x.value===prev))target.value=prev;}
+function examOptions(target,all=false){const prev=target.value;target.innerHTML=(all?'<option value="">Tất cả</option>':'<option value="">-- Chọn kỳ kiểm tra --</option>')+db.exams.map(e=>`<option value="${esc(e.id)}">${esc([e.gradeClass,e.name,e.subject].filter(Boolean).join(' · '))}</option>`).join('');if([...target.options].some(x=>x.value===prev)&&prev)target.value=prev;
+ else if(!all&&db.exams.length)target.value=db.exams[0].id;}
 function selectedExam(selector='scanExam'){return db.exams.find(x=>x.id===$(selector).value);}
 function render(){
  $('statExams').textContent=new Set(db.exams.map(e=>JSON.stringify([e.gradeClass||'',e.name]))).size;$('statStudents').textContent=db.students.length;$('statResults').textContent=db.results.length;$('statLast').textContent=db.results.length?String(db.results.at(-1).score)+'đ':'—';
@@ -134,11 +135,20 @@ function fitGuideToVisibleVideo(){
  v.style.setProperty('--camera-rotation',cameraRotation+'deg');
  if(rotated){v.style.width=surface.clientHeight+'px';v.style.height=surface.clientWidth+'px';}
  else {v.style.width='';v.style.height='';}
- const metrics=cameraGuideMetrics(surface.clientWidth,surface.clientHeight,rotated?v.videoHeight:v.videoWidth,rotated?v.videoWidth:v.videoHeight);
- if(!metrics){guide.style.width='';guide.style.height='';if(note)note.textContent='Khung phiếu A4 · giữ điện thoại dọc';return;}
- guide.style.width=Math.round(metrics.markerW)+'px';
- guide.style.height=Math.round(metrics.markerH)+'px';
- if(note)note.textContent='Khung phiếu A4 dọc · Ảnh gốc '+v.videoWidth+'×'+v.videoHeight+(rotated?' · Xoay '+cameraRotation+'°':'');
+ // The video uses object-fit: cover. Calculate the A4 marker guide from the
+ // visible portrait viewport, not from the uncropped landscape camera ratio.
+ // The original, un-cropped camera frame is still used to read OMR.
+ const sw=surface.clientWidth,sh=surface.clientHeight;
+ if(!(sw>0&&sh>0&&v.videoWidth&&v.videoHeight)){
+  guide.style.width='';guide.style.height='';
+  if(note)note.textContent='Khung phiếu A4 · giữ điện thoại dọc';
+  return;
+ }
+ const markerH=Math.min(sh*.88,sw*.91/FIDUCIAL_ASPECT);
+ const markerW=markerH*FIDUCIAL_ASPECT;
+ guide.style.width=Math.round(markerW)+'px';
+ guide.style.height=Math.round(markerH)+'px';
+ if(note)note.textContent='Camera toàn khung · vùng A4 '+v.videoWidth+'×'+v.videoHeight+(rotated?' · Xoay '+cameraRotation+'°':'');
 }
 $('video').addEventListener('loadedmetadata',fitGuideToVisibleVideo);
 $('video').addEventListener('resize',fitGuideToVisibleVideo);
