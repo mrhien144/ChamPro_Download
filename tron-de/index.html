@@ -73,7 +73,24 @@ const serialize=doc=>new XMLSerializer().serializeToString(doc);
 const bold=(r)=>{const b=el(r.ownerDocument,'b'); const props=child(r,'rPr')||r.insertBefore(el(r.ownerDocument,'rPr'),r.firstChild);props.appendChild(b)};
 const addRun=(p,text,{strong=false,italic=false,underline=false,size=24}={})=>{const doc=p.ownerDocument,r=el(doc,'r'),rPr=el(doc,'rPr'); const fs=el(doc,'rFonts');for(const k of ['ascii','hAnsi','cs','eastAsia'])fs.setAttributeNS(W,'w:'+k,'Times New Roman');rPr.appendChild(fs); const sz=el(doc,'sz');sz.setAttributeNS(W,'w:val',String(size));rPr.appendChild(sz);if(strong)rPr.appendChild(el(doc,'b'));if(italic)rPr.appendChild(el(doc,'i'));if(underline){let u=el(doc,'u');u.setAttributeNS(W,'w:val','single');rPr.appendChild(u)}r.appendChild(rPr);const t=el(doc,'t');t.setAttributeNS(XML,'xml:space','preserve');t.textContent=text;r.appendChild(t);p.appendChild(r);return r};
 const addTab=(p)=>{let r=el(p.ownerDocument,'r');r.appendChild(el(p.ownerDocument,'tab'));p.appendChild(r);return r};
-const makeP=(doc,opts={})=>{const p=el(doc,'p'),pPr=el(doc,'pPr'); if(opts.align){const j=el(doc,'jc');j.setAttributeNS(W,'w:val',opts.align);pPr.appendChild(j)} if(opts.tabs){let ts=el(doc,'tabs');for(const [where,pos] of opts.tabs){let tb=el(doc,'tab');tb.setAttributeNS(W,'w:val',where);tb.setAttributeNS(W,'w:pos',String(pos));ts.appendChild(tb)}pPr.appendChild(ts)}let spacing=el(doc,'spacing');spacing.setAttributeNS(W,'w:before',String(opts.before??0));spacing.setAttributeNS(W,'w:after',String(opts.after??0));spacing.setAttributeNS(W,'w:line',String(opts.line??244));spacing.setAttributeNS(W,'w:lineRule','auto');pPr.appendChild(spacing);if(opts.keep){pPr.appendChild(el(doc,'keepNext'))}p.appendChild(pPr);return p};
+// WordprocessingML paragraph properties must follow ECMA-376's child ordering.
+// Never put keepNext after spacing or jc before tabs: Microsoft Word may reject the DOCX.
+const PPR_ORDER=['pStyle','keepNext','keepLines','pageBreakBefore','framePr','widowControl','numPr','suppressLineNumbers','pBdr','shd','tabs','suppressAutoHyphens','kinsoku','wordWrap','overflowPunct','topLinePunct','autoSpaceDE','autoSpaceDN','bidi','adjustRightInd','snapToGrid','spacing','ind','contextualSpacing','mirrorIndents','suppressOverlap','jc','textDirection','textAlignment','textboxTightWrap','outlineLvl','divId','cnfStyle','rPr','sectPr','pPrChange'];
+const RPR_ORDER=['rStyle','rFonts','b','bCs','i','iCs','caps','smallCaps','strike','dstrike','outline','shadow','emboss','imprint','noProof','snapToGrid','vanish','webHidden','color','spacing','w','kern','position','sz','szCs','highlight','u','effect','bdr','shd','fitText','vertAlign','rtl','cs','em','lang','eastAsianLayout','specVanish','oMath','rPrChange'];
+function reorderProps(elm,order){
+ if(!elm)return;
+ const kids=Array.from(elm.childNodes).filter(n=>n.nodeType===1);
+ const rank=n=>{const i=order.indexOf(local(n));return i<0?order.length-2:i};
+ kids.sort((a,b)=>rank(a)-rank(b)).forEach(child=>elm.appendChild(child));
+}
+const makeP=(doc,opts={})=>{
+ const p=el(doc,'p'),pPr=el(doc,'pPr');
+ if(opts.keep)pPr.appendChild(el(doc,'keepNext'));
+ if(opts.tabs){const ts=el(doc,'tabs');for(const [where,pos] of opts.tabs){let tb=el(doc,'tab');tb.setAttributeNS(W,'w:val',where);tb.setAttributeNS(W,'w:pos',String(pos));ts.appendChild(tb)}pPr.appendChild(ts)}
+ const spacing=el(doc,'spacing');spacing.setAttributeNS(W,'w:before',String(opts.before??0));spacing.setAttributeNS(W,'w:after',String(opts.after??0));spacing.setAttributeNS(W,'w:line',String(opts.line??244));spacing.setAttributeNS(W,'w:lineRule','auto');pPr.appendChild(spacing);
+ if(opts.align){const jc=el(doc,'jc');jc.setAttributeNS(W,'w:val',opts.align);pPr.appendChild(jc)}
+ reorderProps(pPr,PPR_ORDER);p.appendChild(pPr);return p
+};
 const paragraphs=(nodes)=>nodes.filter(n=>local(n)==='p');
 function txtTokens(p){let arr=[]; function visit(n){ if(n.nodeType!==1)return;let name=local(n);if(name==='r'){
  let pr=child(n,'rPr'), underline=!!pr && find(pr,'u').some(u=>u.getAttributeNS(W,'val')!=='none'), isBold=!!pr && !!find(pr,'b').length;
@@ -283,7 +300,28 @@ async function loadExam(file){const bytes=await file.arrayBuffer(),zip=await JSZ
  return {zip,doc,sections,warnings,groupLines,classificationNotes,total:all.length,fileName:file.name,sourceBytes:bytes};}
 function questionText(q){const x=q.parsed;if(!x)return normalize(q.blocks.map(ptext).join(' '));return normalize(x.stem.map(ptext).join(' ').replace(/^Câu\s*\d+\s*[.:]\s*/i,''));}
 function changeNumber(block,n){const p=block.cloneNode(true);let toks=txtTokens(p),str=toks.map(x=>x.ch).join(''),m=str.match(/^\s*Câu\s*\d+\s*[.:]\s*/i);if(m){let k=m[0].length,cnt=0;for(const t of find(p,'t')){let old=t.textContent,out='';for(const chr of old){if(cnt++>=k)out+=chr}t.textContent=out;} let start=el(p.ownerDocument,'r');const rp=el(p.ownerDocument,'rPr');rp.appendChild(el(p.ownerDocument,'b'));start.appendChild(rp);const w=el(p.ownerDocument,'t');w.setAttributeNS(XML,'xml:space','preserve');w.textContent=`Câu ${n}. `;start.appendChild(w);let first=Array.from(p.childNodes).find(c=>local(c)==='r');p.insertBefore(start,first||null)}return p}
-function formatParagraph(p,opts={}){let doc=p.ownerDocument,pr=child(p,'pPr');if(!pr){pr=el(doc,'pPr');p.insertBefore(pr,p.firstChild)}for(let c of Array.from(pr.childNodes)){if(['keepNext','keepLines','pageBreakBefore','spacing','tabs','ind','jc'].includes(local(c)))pr.removeChild(c)}let spacing=el(doc,'spacing');spacing.setAttributeNS(W,'w:before','0');spacing.setAttributeNS(W,'w:after',String(opts.after??0));spacing.setAttributeNS(W,'w:line','236');spacing.setAttributeNS(W,'w:lineRule','auto');pr.appendChild(spacing);if(opts.keepNext)pr.appendChild(el(doc,'keepNext'));if(opts.indent){let ind=el(doc,'ind');ind.setAttributeNS(W,'w:left',String(opts.indent));pr.appendChild(ind)}if(opts.tabPositions){let ts=el(doc,'tabs');for(let pos of opts.tabPositions){let tab=el(doc,'tab');tab.setAttributeNS(W,'w:val','left');tab.setAttributeNS(W,'w:pos',String(pos));ts.appendChild(tab)}pr.appendChild(ts)}for(const run of find(p,'r')){let rp=child(run,'rPr');if(!rp){rp=el(doc,'rPr');run.insertBefore(rp,run.firstChild)}for(let c of Array.from(rp.childNodes)){if(['sz','szCs','rFonts'].includes(local(c)))rp.removeChild(c)}let fonts=el(doc,'rFonts');for(const k of ['ascii','hAnsi','cs','eastAsia'])fonts.setAttributeNS(W,'w:'+k,'Times New Roman');rp.appendChild(fonts);let sz=el(doc,'sz');sz.setAttributeNS(W,'w:val','24');rp.appendChild(sz)}for(let br of find(p,'lastRenderedPageBreak'))br.parentNode?.removeChild(br);return p}
+function formatParagraph(p,opts={}){
+ const doc=p.ownerDocument;let pr=child(p,'pPr');if(!pr){pr=el(doc,'pPr');p.insertBefore(pr,p.firstChild)}
+ for(const c of Array.from(pr.childNodes)){if(['keepNext','keepLines','pageBreakBefore','spacing','tabs','ind','jc'].includes(local(c)))pr.removeChild(c)}
+ if(opts.keepNext)pr.appendChild(el(doc,'keepNext'));
+ if(opts.tabPositions){const ts=el(doc,'tabs');for(const pos of opts.tabPositions){const tb=el(doc,'tab');tb.setAttributeNS(W,'w:val','left');tb.setAttributeNS(W,'w:pos',String(pos));ts.appendChild(tb)}pr.appendChild(ts)}
+ const spacing=el(doc,'spacing');spacing.setAttributeNS(W,'w:before','0');spacing.setAttributeNS(W,'w:after',String(opts.after??0));spacing.setAttributeNS(W,'w:line','236');spacing.setAttributeNS(W,'w:lineRule','auto');pr.appendChild(spacing);
+ if(opts.indent){const ind=el(doc,'ind');ind.setAttributeNS(W,'w:left',String(opts.indent));pr.appendChild(ind)}
+ // Remove paragraph-level section breaks. Moving them with questions corrupts layout/relationships.
+ for(const sect of Array.from(pr.childNodes).filter(c=>local(c)==='sectPr'))pr.removeChild(sect);
+ reorderProps(pr,PPR_ORDER);
+ for(const run of find(p,'r')){
+  // OLE / MathType, drawings and embedded figures retain their original run properties.
+  if(find(run,'object').length||find(run,'pict').length||find(run,'drawing').length||find(run,'oMath').length)continue;
+  let rp=child(run,'rPr');if(!rp){rp=el(doc,'rPr');run.insertBefore(rp,run.firstChild)}
+  for(const c of Array.from(rp.childNodes)){if(['sz','szCs','rFonts'].includes(local(c)))rp.removeChild(c)}
+  const font=el(doc,'rFonts');for(const k of ['ascii','hAnsi','cs','eastAsia'])font.setAttributeNS(W,'w:'+k,'Times New Roman');rp.appendChild(font);
+  const sz=el(doc,'sz');sz.setAttributeNS(W,'w:val','24');rp.appendChild(sz);
+  reorderProps(rp,RPR_ORDER);
+ }
+ for(const br of find(p,'lastRenderedPageBreak'))br.parentNode?.removeChild(br);
+ return p;
+}
 function optionParagraph(doc,opt,newLabel,teacher=false){const p=makeP(doc,{after:0,line:236});
  const ind=el(doc,'ind');ind.setAttributeNS(W,'w:left','300');ind.setAttributeNS(W,'w:hanging','0');child(p,'pPr').appendChild(ind);
  addRun(p,newLabel+'. ',{strong:true,underline:teacher&&opt.correct});for(const r of reconstruct(doc,opt.tokens))p.appendChild(r);
@@ -438,8 +476,14 @@ async function addFooter(zip,doc,sectPr,code){let root=xmlParse(`<w:ftr xmlns:w=
  function field(name){let r=el(root,'r'),begin=el(root,'fldChar');r.appendChild(footerRunPr(root));begin.setAttributeNS(W,'w:fldCharType','begin');r.appendChild(begin);p.appendChild(r);let inst=el(root,'r'),ins=el(root,'instrText');inst.appendChild(footerRunPr(root));ins.setAttributeNS(XML,'xml:space','preserve');ins.textContent=` ${name} `;inst.appendChild(ins);p.appendChild(inst);let endr=el(root,'r'),end=el(root,'fldChar');endr.appendChild(footerRunPr(root));end.setAttributeNS(W,'w:fldCharType','end');endr.appendChild(end);p.appendChild(endr)}field('PAGE');addRun(p,'/');field('NUMPAGES');addRun(p,` – Mã đề ${code}`);ftr.appendChild(p);
  const relPath='word/_rels/document.xml.rels';let relDoc=xmlParse(await zip.file(relPath).async('string'));let rels=relDoc.documentElement,all=Array.from(rels.childNodes).filter(x=>x.nodeType===1);let used=new Set(all.map(x=>x.getAttribute('Id'))),rid=1;while(used.has('rId'+rid))rid++;let id='rId'+rid;let rel=relDoc.createElementNS(PR,'Relationship');rel.setAttribute('Id',id);rel.setAttribute('Type',R+'/footer');rel.setAttribute('Target','footer-hiensoft.xml');rels.appendChild(rel);zip.file(relPath,serialize(relDoc));zip.file('word/footer-hiensoft.xml',serialize(root));
  let ctPath='[Content_Types].xml',ctDoc=xmlParse(await zip.file(ctPath).async('string'));if(!Array.from(ctDoc.documentElement.childNodes).some(x=>x.nodeType===1&&x.getAttribute('PartName')==='/word/footer-hiensoft.xml')){let over=ctDoc.createElementNS(CT,'Override');over.setAttribute('PartName','/word/footer-hiensoft.xml');over.setAttribute('ContentType','application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml');ctDoc.documentElement.appendChild(over)}zip.file(ctPath,serialize(ctDoc));
- let fr=el(doc,'footerReference');fr.setAttributeNS(W,'w:type','default');fr.setAttributeNS(R,'r:id',id);sectPr.appendChild(fr)}
-function setSection(doc,s){const sect=s||el(doc,'sectPr');for(const c of Array.from(sect.childNodes))if(['headerReference','footerReference','pgSz','pgMar','cols','titlePg'].includes(local(c)))sect.removeChild(c);let pg=el(doc,'pgSz');pg.setAttributeNS(W,'w:w','11906');pg.setAttributeNS(W,'w:h','16838');sect.appendChild(pg);let mar=el(doc,'pgMar');for(const [k,v] of Object.entries({top:825,bottom:850,left:900,right:900,header:350,footer:400,gutter:0}))mar.setAttributeNS(W,'w:'+k,String(v));sect.appendChild(mar);return sect}
+ let fr=el(doc,'footerReference');fr.setAttributeNS(W,'w:type','default');fr.setAttributeNS(R,'r:id',id);sectPr.insertBefore(fr,sectPr.firstChild)}
+function setSection(doc,original){
+ const sect=el(doc,'sectPr');
+ const pg=el(doc,'pgSz');pg.setAttributeNS(W,'w:w','11906');pg.setAttributeNS(W,'w:h','16838');sect.appendChild(pg);
+ const mar=el(doc,'pgMar');for(const [k,v] of Object.entries({top:825,bottom:850,left:900,right:900,header:350,footer:400,gutter:0}))mar.setAttributeNS(W,'w:'+k,String(v));sect.appendChild(mar);
+ const grid=original?child(original,'docGrid'):null;if(grid)sect.appendChild(grid.cloneNode(true));
+ return sect;
+}
 function stemOf(q){return q.parsed?.stem||q.blocks}
 // Only normal w:drawing illustrations may be repositioned. Never touch w:object,
 // v:shape, OLE, OMML, or MathType placeholders inside mathematical expressions.
