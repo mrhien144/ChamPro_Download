@@ -35,3 +35,18 @@
 .guide.detected .tl,.guide.detected .tr,.guide.detected .bl,.guide.detected .br{
  border-color:#a9ff72;background:rgba(80,255,53,.15)
 }
+
+/* Focus camera nearly full viewport on phone, retain slim menu and scan controls. */
+@media(max-width:760px){
+ body.scan-active .top{display:none}
+ body.scan-active .side{top:0;padding:3px 6px}
+ body.scan-active .main{padding:0 0 60px}
+ body.scan-active #page-scan>.page-heading{display:none}
+ body.scan-active .scan-layout{gap:0}
+ body.scan-active .camera-card{border-radius:0}
+ body.scan-active .camera-top{padding:8px 12px}
+ body.scan-active .camera-surface{height:calc(100dvh - 188px);min-height:330px;max-height:none}
+ body.scan-active .camera-footer{padding:6px 10px 10px}
+ body.scan-active .camera-footer .actions{margin-top:5px}
+ body.scan-active .side-panel{margin:10px 8px}
+}
