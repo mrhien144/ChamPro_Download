@@ -626,7 +626,7 @@ async function addFooter(zip,doc,sectPr,code){
  const p=makeP(root,{tabs:[['right',9500]],line:245,after:0});
  const motto=addRun(p,'Nên người – Tiến bộ – Thành đạt');
  const mottoPr=child(motto,'rPr'),mottoColor=el(root,'color');
- mottoColor.setAttributeNS(W,'w:val','888888');mottoPr.appendChild(mottoColor);
+ mottoColor.setAttributeNS(W,'w:val','000000');mottoPr.appendChild(mottoColor);
  reorderProps(mottoPr,RPR_ORDER);
  addTab(p);
  addRun(p,'Trang ');
