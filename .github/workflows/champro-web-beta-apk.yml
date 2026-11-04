@@ -1,0 +1,54 @@
+name: ChấmPro Web Beta APK (debug)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - name: Test scoring engine before building APK
+        run: node --test tests/*.test.mjs
+      - name: Prepare Capacitor application from the SAME web source
+        run: |
+          mkdir -p _champro_android/app
+          cp -R app/. _champro_android/app/
+          cp android-build/package.json _champro_android/package.json
+          cp android-build/capacitor.config.json _champro_android/capacitor.config.json
+      - name: Install and generate Android project
+        working-directory: _champro_android
+        run: |
+          npm install --no-audit --no-fund
+          npx cap add android
+          npx cap sync android
+      - name: Configure camera permission for WebView
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('_champro_android/android/app/src/main/AndroidManifest.xml')
+          s=p.read_text()
+          if 'android.permission.CAMERA' not in s:
+              s=s.replace('<application', '<uses-permission android:name="android.permission.CAMERA" />\n    <application', 1)
+          p.write_text(s)
+          PY
+      - name: Build debug test APK
+        working-directory: _champro_android/android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChamPro-Web-Beta-debug-APK
+          path: _champro_android/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
