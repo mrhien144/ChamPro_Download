@@ -1,5 +1,5 @@
 <!doctype html><html lang="vi">
-<!-- HienSoft Trộn Đề Web v0.4.2, embedded as a self-contained page. Processing occurs in the browser only. --><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>HienSoft Trộn Đề – Trộn Word, giữ MathType và đáp án</title><meta name="description" content="Trộn đề Word theo từng phần, giữ công thức MathType và hình ảnh, tạo nhiều mã đề và đáp án Excel. Xử lý trực tiếp trong trình duyệt."><style>
+<!-- HienSoft Trộn Đề Web v0.4.3, embedded as a self-contained page. Processing occurs in the browser only. --><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>HienSoft Trộn Đề – Trộn Word, giữ MathType và đáp án</title><meta name="description" content="Trộn đề Word theo từng phần, giữ công thức MathType và hình ảnh, tạo nhiều mã đề và đáp án Excel. Xử lý trực tiếp trong trình duyệt."><style>
 :root{--ink:#103052;--blue:#006aab;--cyan:#0788ca;--line:#dce6ed;--paper:#fff;--page:#f4f9fc;--muted:#617a8d;--good:#0d805e;--warn:#986a05}*{box-sizing:border-box}body{font-family:Inter,'Segoe UI',Arial,sans-serif;background:var(--page);color:var(--ink);margin:0;line-height:1.56}.wide{max-width:1210px;margin:auto;padding-left:24px;padding-right:24px}.topbar{background:#fff;border-bottom:1px solid #dce7f0;position:sticky;top:0;z-index:20}.headrow{height:80px;display:flex;justify-content:space-between;align-items:center}.brand{display:flex;align-items:center;gap:12px}.brandmark{height:46px;width:46px;background:linear-gradient(130deg,#005b97,#04b3d8);color:white;border-radius:14px;display:grid;place-items:center;font-weight:900;letter-spacing:-1px}.brand strong{font-size:20px;display:block;line-height:1.1}.brand span{color:#658199;font-size:12px}.righthead{display:flex;gap:25px;align-items:center}.righthead a,.foot a{color:#086c9f;text-decoration:none}.privacy{font-size:13px;background:#e7f8ef;color:#146a48;padding:8px 12px;border-radius:50px}.privacy i{display:inline-block;background:#1caa6a;width:7px;height:7px;border-radius:50%;margin-right:5px}.navhome{font-size:14px;font-weight:700}.hero{padding:55px 0 45px;max-width:880px}.eyebrow{font-size:12px;letter-spacing:2px;color:var(--cyan);font-weight:900}.hero h1{font-size:clamp(36px,4vw,56px);letter-spacing:-1.8px;line-height:1.12;margin:15px 0}.hero h1 em{font-style:normal;color:var(--blue)}.hero p{font-size:17px;color:#48687e;max-width:820px;margin:0}.heroTags{display:flex;flex-wrap:wrap;gap:8px;margin-top:19px}.heroTags span{padding:7px 11px;border-radius:8px;border:1px solid #cde5f0;background:#fff;color:#22678b;font-size:12px;font-weight:700}.cols{display:grid;grid-template-columns:minmax(0,1fr) 290px;align-items:start;gap:22px}.maincol{min-width:0}.panel{background:#fff;border:1px solid #d9e5ec;border-radius:18px;padding:26px 30px;margin-bottom:20px;box-shadow:0 5px 24px #1c48600b}.panelHead{display:flex;gap:14px;margin-bottom:22px}.step{width:37px;height:37px;border-radius:10px;background:#e5f2f9;color:#005f9d;font-weight:900;display:grid;place-items:center;flex-shrink:0}.panel h2{margin:0;font-size:20px;letter-spacing:-.4px}.panelHead p{margin:2px 0 0;color:var(--muted);font-size:13px}.dropzone{display:flex;flex-direction:column;align-items:center;padding:27px 15px;background:#f7fbfe;border:1.5px dashed #86bfdc;border-radius:12px;cursor:pointer;text-align:center;gap:5px}.dropIcon{font-size:30px;color:var(--blue);line-height:1}.dropzone strong{font-size:16px}.dropzone small{color:var(--muted)}.dropzone input{max-width:260px;margin-top:13px;font-size:13px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:17px}.stats>div{padding:14px 9px;background:#eef7fb;border-radius:10px;text-align:center}.stats strong{display:block;font-size:20px}.stats small{display:block;color:var(--muted);font-size:11px}.miniNote{color:#51788a;font-size:13px;margin-top:6px}.warnings{font-size:12px;margin-top:10px}.warnings ul{margin:3px 0 0 18px;padding:0}.warnhead{color:#a76816}.good{color:var(--good)}.field{display:flex;flex-direction:column;gap:7px;font-size:13px;font-weight:700;color:#234b65;min-width:0}.field input,.field select{height:43px;border:1px solid #cbdce6;border-radius:9px;color:#173b55;background:#fff;padding:0 12px;font-size:14px;font-family:inherit;max-width:100%;width:100%}.field input:focus,.field select:focus{outline:2px solid #6ab6db;border-color:#6ab6db}.checks{display:grid;gap:12px;margin:20px 0}.checks label{display:flex;gap:10px;align-items:flex-start;font-size:14px}.checks input{width:17px;height:17px;accent-color:#0078b5}.two,.three{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;margin-top:15px}.three{grid-template-columns:repeat(3,minmax(0,1fr))}.small{font-size:12px}.muted{color:var(--muted);margin-top:9px}.notice{font-size:13px;margin-top:20px;padding:13px 15px;background:#f0f8fc;border-left:3px solid #0f8bba;border-radius:5px}.actions p{font-size:12px;color:#617a8d;margin:12px 0 0}button{font:inherit;cursor:pointer}.primary{background:#006a9d;color:white;border:none;border-radius:9px;font-weight:900;letter-spacing:.1px;padding:15px 20px;box-shadow:0 5px 14px #006a9d29}.primary:hover{background:#004f7e}.primary:disabled{background:#8aafc1;cursor:not-allowed}.primary span{float:right;margin-left:20px}.secondary{background:#eff8ff;color:#00618e;border:1px solid #b4d8eb;border-radius:9px;padding:15px 17px;font-weight:800}.buttons{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.successResult{background:#e9f9ef;color:#19684e;border:1px solid #c6ebd7;border-radius:10px;padding:16px;margin-top:20px}.sidecol{display:flex;flex-direction:column;gap:13px}.sideCard{background:#fff;border:1px solid var(--line);border-radius:15px;padding:22px}.sideIcon{font-size:25px;color:var(--blue)}.sideCard h3{font-size:16px;margin:8px 0 4px}.sideCard p{font-size:13px;color:#5e778a;margin:0}.sideCard.warn{border-color:#ebdfc6;background:#fffdf6}.sideCard.warn strong{color:#90600d}#message{padding:14px 16px;border-radius:9px;background:#eaf4fb;color:#005f9d;margin-bottom:14px;font-size:13px}#message[data-kind=error]{background:#fdeced;color:#a32928}#message[data-kind=success]{background:#e4faed;color:#11734b}.practice{background:#fff;border:1px solid var(--line);border-radius:18px;margin:25px 0;padding:30px}.practiceTop{display:flex;justify-content:space-between;align-items:center}.practiceTop h2{margin:0}.timer{font-size:24px;font-weight:900;color:#0b6f9f}.question{border:1px solid #e0e9ef;border-radius:11px;padding:16px 20px;margin:14px 0}.qtitle{margin-bottom:12px}.option{display:flex;gap:10px;padding:8px 11px;border:1px solid #e6edf1;border-radius:7px;cursor:pointer;margin:4px 0}.option:hover{background:#f2f9fc}.option input,.tf-row input{accent-color:#007baf}.tf-row{display:flex;align-items:center;gap:12px;margin:9px 0;padding:9px;background:#f7fafc;border-radius:6px}.tf-row span{flex:1}.tf-row label{white-space:nowrap}.short-answer input{margin-left:12px;padding:9px;border:1px solid #bdcfdd;border-radius:6px}.reviewrow{border-bottom:1px solid #eef2f4;padding:7px 0;font-size:13px}.foot{margin-top:50px;padding:25px 0;border-top:1px solid #e1eaf0;font-size:13px;color:#6a8091}@media(max-width:900px){.cols{grid-template-columns:1fr}.sidecol{display:grid;grid-template-columns:1fr 1fr}}@media(max-width:650px){.wide{padding:0 15px}.headrow{height:72px}.righthead .privacy{display:none}.hero{padding:38px 0 30px}.panel{padding:18px}.two,.three{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.sidecol{grid-template-columns:1fr}.tf-row{flex-wrap:wrap}.tf-row span{flex-basis:100%}.navhome{font-size:11px}}
 
 .examImages{display:flex;gap:12px;flex-wrap:wrap;margin:11px 0}.examImages img{object-fit:contain;max-width:100%;max-height:280px;border:1px solid #e1e9ed;border-radius:5px}.warning{border-left:3px solid #cb850b;background:#fffaea;padding:8px;margin:7px 0;font-size:13px;color:#8c5a16}
@@ -92,9 +92,9 @@ const makeP=(doc,opts={})=>{
  reorderProps(pPr,PPR_ORDER);p.appendChild(pPr);return p
 };
 const paragraphs=(nodes)=>nodes.filter(n=>local(n)==='p');
-function txtTokens(p){let arr=[]; function visit(n){ if(n.nodeType!==1)return;let name=local(n);if(name==='r'){
+function txtTokens(p){let arr=[]; function visit(n){ if(n.nodeType!==1)return;let name=local(n);if(name==='oMath'||name==='oMathPara'){arr.push({ch:'\uFFFC',node:n,math:true,under:false,bold:false});return;}if(name==='r'){
  let pr=child(n,'rPr'), underline=!!pr && find(pr,'u').some(u=>u.getAttributeNS(W,'val')!=='none'), isBold=!!pr && !!find(pr,'b').length;
- for(let c of Array.from(n.childNodes)) {const cn=local(c);if(cn==='t'){for(const ch of c.textContent)arr.push({ch,run:n,under:underline,bold:isBold})}else if(['drawing','pict','object'].includes(cn)){arr.push({ch:'\uFFFC',node:n,under:underline,bold:isBold})}else if(cn==='tab'||cn==='br')arr.push({ch:' ',run:n,under:underline,bold:isBold})}return;
+ for(let c of Array.from(n.childNodes)) {const cn=local(c);if(cn==='t'){for(const ch of c.textContent)arr.push({ch,run:n,under:underline,bold:isBold})}else if(['drawing','pict','object','oMath','oMathPara'].includes(cn)){arr.push({ch:'\uFFFC',node:cn==='oMath'||cn==='oMathPara'?c:n,math:cn==='oMath'||cn==='oMathPara',under:underline,bold:isBold})}else if(cn==='tab'||cn==='br')arr.push({ch:' ',run:n,under:underline,bold:isBold})}return;
  } if(name==='hyperlink'||name==='smartTag'||name==='ins')Array.from(n.childNodes).forEach(visit);
  }Array.from(p.childNodes).forEach(visit);return arr;
 }
@@ -225,6 +225,37 @@ function getSection(text){
  }
  return null;
 }
+
+function isAdministrativeText(text){
+ const t=normalize(String(text||''));
+ if(!t||t.length>180)return false;
+ return /^(?:(?:đề\s*(?:kiểm\s*tra|thi)|bài\s*kiểm\s*tra)\b|(?:họ\s*(?:và\s*)?tên|số\s*báo\s*danh|mã\s*đề|thời\s*gian\s*làm\s*bài|phòng\s*thi)\s*[:：]?|(?:sở|phòng)\s*(?:gd(?:\s*&\s*đt)?|giáo\s*dục)\b|trường\s*(?:thpt|thcs|tiểu\s*học)\b)/i.test(t);
+}
+async function readNumberedQuestions(zip){
+ const file=zip.file('word/numbering.xml');if(!file)return ()=>null;
+ const xml=xmlParse(await file.async('string')),abstracts=new Map(),nums=new Map(),styles=new Map();
+ const val=(n,k='val')=>n?.getAttributeNS(W,k)||n?.getAttribute('w:'+k)||n?.getAttribute(k)||'';
+ for(const n of find(xml,'abstractNum')){
+  const levels=new Map();
+  for(const lvl of find(n,'lvl'))levels.set(val(lvl,'ilvl'),{fmt:val(child(lvl,'numFmt')),text:val(child(lvl,'lvlText'))});
+  abstracts.set(val(n,'abstractNumId'),levels);
+ }
+ for(const n of find(xml,'num'))nums.set(val(n,'numId'),val(child(n,'abstractNumId')));
+ const styleFile=zip.file('word/styles.xml');
+ if(styleFile)for(const style of find(xmlParse(await styleFile.async('string')),'style')){
+  const np=child(child(style,'pPr'),'numPr');
+  if(np)styles.set(val(style,'styleId'),np);
+ }
+ return (p,expected)=>{
+  if(local(p)!=='p')return null;
+  const pr=child(p,'pPr'),np=child(pr,'numPr')||styles.get(val(child(pr,'pStyle')));
+  if(!np)return null;
+  const numId=val(child(np,'numId')),ilvl=val(child(np,'ilvl'))||'0';
+  const level=abstracts.get(nums.get(numId))?.get(ilvl);
+  if(level?.fmt!=='decimal'||!/^(?:câu(?:\s+hỏi)?|question)\s*%[1-9](?:\s*[.:\)–-]|$)/i.test(level?.text||''))return null;
+  return expected;
+ };
+}
 function findQuestionNumber(text,section,expected){
  const t=normalize(String(text||''));
  let m=t.match(/^(?:Câu(?:\s+hỏi)?|Question)\s*(?:số\s*)?(\d+)\s*[.:\)–-]\s*/i);
@@ -233,10 +264,13 @@ function findQuestionNumber(text,section,expected){
  m=t.match(/^(\d+)\s*[.:\)]\s+(?=\S)/);
  return m&&+m[1]===expected?+m[1]:null;
 }
-async function loadExam(file){const bytes=await file.arrayBuffer(),zip=await JSZip.loadAsync(bytes),source=await zip.file('word/document.xml')?.async('string');if(!source)throw Error('Không tìm thấy tài liệu Word hợp lệ (.docx)');const doc=xmlParse(source),body=doc.getElementsByTagNameNS(W,'body')[0];if(!body)throw Error('DOCX thiếu body');let section='I',q=null,sections={I:[],II:[],III:[]},lead=[],warnings=[],groupLines=[];let before=[],explain=false,explicitSections=new Set(),classificationNotes=[];
+async function loadExam(file){const bytes=await file.arrayBuffer(),zip=await JSZip.loadAsync(bytes),source=await zip.file('word/document.xml')?.async('string');if(!source)throw Error('Không tìm thấy tài liệu Word hợp lệ (.docx)');const doc=xmlParse(source),body=doc.getElementsByTagNameNS(W,'body')[0];if(!body)throw Error('DOCX thiếu body');const numberedQuestion=await readNumberedQuestions(zip);let section='I',q=null,sections={I:[],II:[],III:[]},lead=[],warnings=[],groupLines=[];let before=[],explain=false,explicitSections=new Set(),classificationNotes=[];
  for(const node of Array.from(body.childNodes)){
   if(local(node)==='sectPr')continue;let text=elementText(node);let newSec=getSection(text);if(newSec){explicitSections.add(newSec);if(q){q.blocks=q.blocks.concat(before);before=[]}section=newSec;q=null;explain=false;continue}
-  let mNum=findQuestionNumber(text,section,(sections[section]?.length||0)+1);
+  if(isAdministrativeText(text))continue;
+  const expectedNumber=(sections[section]?.length||0)+1;
+  let mNum=findQuestionNumber(text,section,expectedNumber);
+  if(mNum===null)mNum=numberedQuestion(node,expectedNumber);
   if(mNum!==null){q={section,originalNumber:mNum,blocks:[node],preamble:before};sections[section].push(q);before=[];explain=false;continue}
   if(/^LỜI\s+GIẢI\s*:?/i.test(text)){explain=true;if(q)q.hasExplanation=true;continue}
   if(explain)continue;
@@ -299,7 +333,16 @@ async function loadExam(file){const bytes=await file.arrayBuffer(),zip=await JSZ
  }
  return {zip,doc,sections,warnings,groupLines,classificationNotes,total:all.length,fileName:file.name,sourceBytes:bytes};}
 function questionText(q){const x=q.parsed;if(!x)return normalize(q.blocks.map(ptext).join(' '));return normalize(x.stem.map(ptext).join(' ').replace(/^Câu\s*\d+\s*[.:]\s*/i,''));}
-function changeNumber(block,n){const p=block.cloneNode(true);let toks=txtTokens(p),str=toks.map(x=>x.ch).join(''),m=str.match(/^\s*Câu\s*\d+\s*[.:]\s*/i);if(m){let k=m[0].length,cnt=0;for(const t of find(p,'t')){let old=t.textContent,out='';for(const chr of old){if(cnt++>=k)out+=chr}t.textContent=out;} let start=el(p.ownerDocument,'r');const rp=el(p.ownerDocument,'rPr');rp.appendChild(el(p.ownerDocument,'b'));start.appendChild(rp);const w=el(p.ownerDocument,'t');w.setAttributeNS(XML,'xml:space','preserve');w.textContent=`Câu ${n}. `;start.appendChild(w);let first=Array.from(p.childNodes).find(c=>local(c)==='r');p.insertBefore(start,first||null)}return p}
+function changeNumber(block,n){
+ const p=block.cloneNode(true),toks=txtTokens(p),str=toks.map(x=>x.ch).join(''),m=str.match(/^\s*Câu\s*\d+\s*[.:\)]\s*/i);
+ if(m){let left=m[0].length;for(const t of find(p,'t')){if(left<=0)break;const chars=Array.from(t.textContent),n=Math.min(left,chars.length);t.textContent=chars.slice(n).join('');left-=n}}
+ const pr=child(p,'pPr');
+ if(pr){const np=child(pr,'numPr');if(np)pr.removeChild(np);const ps=child(pr,'pStyle');if(ps&&ps.getAttributeNS(W,'val')==='ListParagraph')pr.removeChild(ps)}
+ const r=el(p.ownerDocument,'r'),rp=el(p.ownerDocument,'rPr');rp.appendChild(el(p.ownerDocument,'b'));r.appendChild(rp);
+ const t=el(p.ownerDocument,'t');t.setAttributeNS(XML,'xml:space','preserve');t.textContent='Câu '+n+'. ';r.appendChild(t);
+ const first=Array.from(p.childNodes).find(x=>['r','hyperlink','oMath'].includes(local(x)));p.insertBefore(r,first||null);
+ return p;
+}
 function formatParagraph(p,opts={}){
  const doc=p.ownerDocument;let pr=child(p,'pPr');if(!pr){pr=el(doc,'pPr');p.insertBefore(pr,p.firstChild)}
  for(const c of Array.from(pr.childNodes)){if(['keepNext','keepLines','pageBreakBefore','spacing','tabs','ind','jc'].includes(local(c)))pr.removeChild(c)}
@@ -332,13 +375,27 @@ function optionParagraph(doc,opt,newLabel,teacher=false){const p=makeP(doc,{afte
 function optionWidth(s){if(typeof document!=='undefined'&&document.createElement){try{const c=document.createElement('canvas'),ctx=c.getContext('2d');if(ctx){ctx.font='12pt "Times New Roman"';return ctx.measureText(s).width*0.75}}catch(_){}}
  let w=0;for(const x of s){if(x===' ')w+=3;else if('.,:;!iIl1|'.includes(x))w+=3.4;else if('MWmwĐÔ'.includes(x))w+=8.5;else if(/[A-ZÀ-Ỹ]/.test(x))w+=7.2;else w+=5.8}return w;
 }
+function embeddedOptionWidth(token){
+ const node=token.node;if(!node)return 0;
+ if(token.math){
+  const t=Array.from(node.getElementsByTagName('*')).filter(x=>local(x)==='t').map(x=>x.textContent).join('');
+  return Math.min(240,Math.max(18,optionWidth(t)+10));
+ }
+ const ext=Array.from(node.getElementsByTagNameNS(WP,'extent')||[])[0],cx=ext&&Number(ext.getAttribute('cx'));
+ if(cx>0)return cx/12700;
+ for(const x of Array.from(node.getElementsByTagName('*')).filter(x=>local(x)==='shape')){
+  const st=x.getAttribute('style')||'';
+  const pt=st.match(/(?:^|;)\s*width\s*:\s*([\d.]+)\s*pt/i);if(pt)return Number(pt[1]);
+  const px=st.match(/(?:^|;)\s*width\s*:\s*([\d.]+)\s*px/i);if(px)return Number(px[1])*.75;
+ }
+ return 140;
+}
 function appendOption(p,doc,opt,label,teacher){addRun(p,label+'. ',{strong:true,underline:teacher&&opt.correct});for(const r of reconstruct(doc,opt.tokens))p.appendChild(r)}
 function optionsLayout(doc,items,teacher){
  // Keep all answers as ordinary Word paragraphs (no layout tables).
  // Physical widths are measured at Times New Roman 12 pt. Fixed Word tab
  // stops align A/B/C/D vertically throughout a printed exam.
- const measured=items.map((it,i)=>optionWidth(String.fromCharCode(65+i)+'. '+it.display));
- const hasEmbedded=items.some(it=>it.tokens.some(t=>t.node));
+ const measured=items.map((it,i)=>optionWidth(String.fromCharCode(65+i)+'. '+it.tokens.filter(t=>!t.node).map(t=>t.ch).join(''))+it.tokens.filter(t=>t.node).reduce((sum,t)=>sum+embeddedOptionWidth(t),0));
  const indent=300, edge=10106; // printable width, A4 with 900-twip margins
  const fourTabs=[2580,5030,7480],twoTabs=[5030];
  // Each cell has at least 9 pt of breathing room to avoid line wrapping.
@@ -347,7 +404,7 @@ function optionsLayout(doc,items,teacher){
    const i=index % (tabs.length+1);
    return width + 9 <= (stops[i+1]-stops[i])/20;
  });
- const columns=!hasEmbedded&&canUse(fourTabs)?4:!hasEmbedded&&canUse(twoTabs)?2:1;
+ const columns=canUse(fourTabs)?4:canUse(twoTabs)?2:1;
  if(columns===1)return items.map((it,i)=>optionParagraph(doc,it,String.fromCharCode(65+i),teacher));
  const out=[],twips=columns===4?fourTabs:twoTabs;
  for(let base=0;base<4;base+=columns){
