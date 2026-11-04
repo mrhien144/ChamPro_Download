@@ -81,11 +81,20 @@ function cameraGuideMetrics(sw,sh,videoW,videoH){
 }
 function fitGuideToVisibleVideo(){
  const v=$('video'),surface=$('cameraSurface'),guide=$('captureGuide'),note=$('videoFormatNote');
- const metrics=cameraGuideMetrics(surface.clientWidth,surface.clientHeight,v.videoWidth,v.videoHeight);
+ // Some Android browsers expose rear-camera frames in landscape even in portrait.
+ // Rotate presentation and capture identically rather than squeezing a landscape frame into an A4 guide.
+ const portraitPage=surface.clientHeight>=surface.clientWidth*.95;
+ const rotate=portraitPage&&v.videoWidth>v.videoHeight*1.12;
+ v.classList.toggle('rotate-landscape',rotate);
+ if(rotate){
+  v.style.width=surface.clientHeight+'px';
+  v.style.height=surface.clientWidth+'px';
+ }else{v.style.width='';v.style.height='';}
+ const metrics=cameraGuideMetrics(surface.clientWidth,surface.clientHeight,rotate?v.videoHeight:v.videoWidth,rotate?v.videoWidth:v.videoHeight);
  if(!metrics){guide.style.width='';guide.style.height='';if(note)note.textContent='Khung phiếu A4 · camera dọc';return;}
  guide.style.width=Math.round(metrics.markerW)+'px';
  guide.style.height=Math.round(metrics.markerH)+'px';
- if(note)note.textContent=(metrics.aspect>1.05?'Camera xuất khung ngang · ưu tiên dọc để thấy đủ phiếu':'Khung A4 dọc')+' · '+v.videoWidth+'×'+v.videoHeight;
+ if(note)note.textContent=(rotate?'Đã xoay camera ngang sang dọc':'Khung hình chữ nhật dọc')+' · '+v.videoWidth+'×'+v.videoHeight;
 }
 $('video').addEventListener('loadedmetadata',fitGuideToVisibleVideo);
 $('video').addEventListener('resize',fitGuideToVisibleVideo);
@@ -100,9 +109,18 @@ function stopCamera(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;}if(
 $('startCamera').onclick=startCamera;$('stopCamera').onclick=stopCamera;
 $('autoScan').onchange=()=>{if(autoTimer){clearInterval(autoTimer);autoTimer=null;}if(stream&&$('autoScan').checked)autoTimer=setInterval(autoScanOnce,750);};
 $('torch').onclick=async()=>{try{const t=stream?.getVideoTracks()[0];if(!t)throw Error('Camera chưa mở');const can=t.getCapabilities?.();if(!can?.torch)throw Error('Thiết bị hoặc trình duyệt không hỗ trợ đèn');await t.applyConstraints({advanced:[{torch:!Boolean(t.getSettings().torch)}]});}catch(e){toast(e.message);}};
-function captureVideo(){const v=$('video');if(!stream||!v.videoWidth)throw Error('Camera chưa sẵn sàng');const c=$('capture'),a=Math.min(1,1700/Math.max(v.videoWidth,v.videoHeight));c.width=Math.round(v.videoWidth*a);c.height=Math.round(v.videoHeight*a);c.getContext('2d',{willReadFrequently:true}).drawImage(v,0,0,c.width,c.height);return c;}
+function captureVideo(){
+ const v=$('video');if(!stream||!v.videoWidth)throw Error('Camera chưa sẵn sàng');
+ const rotate=v.classList.contains('rotate-landscape'),limit=1500;
+ const a=Math.min(1,limit/Math.max(v.videoWidth,v.videoHeight)),w=Math.round(v.videoWidth*a),h=Math.round(v.videoHeight*a);
+ const c=$('capture');c.width=rotate?h:w;c.height=rotate?w:h;
+ const ctx=c.getContext('2d',{willReadFrequently:true});
+ if(rotate){ctx.translate(c.width,0);ctx.rotate(Math.PI/2);ctx.drawImage(v,0,0,w,h);}
+ else ctx.drawImage(v,0,0,w,h);
+ return c;
+}
 function imageCanvas(img){const c=$('capture'),scale=Math.min(1,2000/Math.max(img.naturalWidth,img.naturalHeight));c.width=Math.round(img.naturalWidth*scale);c.height=Math.round(img.naturalHeight*scale);c.getContext('2d',{willReadFrequently:true}).drawImage(img,0,0,c.width,c.height);return c;}
-async function readCanvas(c,manual=false){if(captureBusy)return;const exam=selectedExam();if(!exam){if(manual)toast('Hãy tạo và chọn kỳ kiểm tra trước');return;}
+async function readCanvas(c,manual=false){if(captureBusy)return;const exam=selectedExam();if(!exam){$('scanStatus').textContent='Chưa chọn môn/kỳ kiểm tra. Hãy tạo đề, nhập đáp án và chọn kỳ kiểm tra trước khi chấm.';if(manual)toast('Hãy tạo và chọn kỳ kiểm tra trước');return;}
  captureBusy=true;if(manual)lastReviewImage=c.toDataURL('image/jpeg',.65);const t0=performance.now();$('scanStatus').textContent='Đang đọc bốn ô đen…';try{
   const [cv,geometry]=await Promise.all([ensureCv(),ensureLayouts()]);
   const key='ChamPro_Phieu_'+(exam.form==='120'?'120Cau':'3Phan')+'_MaDe'+exam.digits;
