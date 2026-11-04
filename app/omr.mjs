@@ -72,7 +72,7 @@ export function readSheet(canvas,layout,cv){
  let src=null,gray=null,warped=null,M=null,srcPts=null,dstPts=null;
  try{
   src=cv.imread(canvas);gray=new cv.Mat();cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);
-  const marks=detectMarkers(gray,cv);const scale=2.35;
+  const marks=detectMarkers(gray,cv);const scale=1.65;
   srcPts=cv.matFromArray(4,1,cv.CV_32FC2,marks.flat());
   dstPts=cv.matFromArray(4,1,cv.CV_32FC2,layout.markers.flat().map(v=>v*scale));
   M=cv.getPerspectiveTransform(srcPts,dstPts);
