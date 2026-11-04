@@ -219,6 +219,8 @@ async function trySheetOrientations(c,layout,cv,exam,manual=false){
  return results[0];
 }
 async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;const exam=selectedExam();if(!exam){$('scanStatus').textContent='Chưa chọn môn/kỳ kiểm tra. Hãy tạo đề, nhập đáp án và chọn kỳ kiểm tra trước khi chấm.';if(manual)toast('Hãy tạo và chọn kỳ kiểm tra trước');return;}
+ if(!manual&&!db.students.length){$('scanStatus').textContent='Chưa có danh sách học sinh. Vào mục Học sinh để nhập SBD trước khi chấm tự động.';return;}
+ if(!manual&&!Object.keys(exam.keys||{}).length){$('scanStatus').textContent='Chưa có bộ đáp án cho '+(exam.subject||exam.name)+'. Vào Đề & đáp án để nhập mã đề trước khi chấm.';return;}
  captureBusy=true;if(manual)lastReviewImage=c.toDataURL('image/jpeg',.65);const t0=performance.now();$('scanStatus').textContent='Đang phân tích phiếu…';await new Promise(resolve=>requestAnimationFrame(resolve));try{
   const [cv,geometry]=await Promise.all([ensureCv(),ensureLayouts()]);
   const key='ChamPro_Phieu_'+(exam.form==='120'?'120Cau':'3Phan')+'_MaDe'+exam.digits;
