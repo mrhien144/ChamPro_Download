@@ -192,47 +192,53 @@ function rotatedCanvas(original,degrees){
  g.drawImage(original,0,0);
  return c;
 }
-function trySheetOrientations(c,layout,cv,exam){
+let lastGoodOrientation=0;
+async function trySheetOrientations(c,layout,cv,exam,manual=false){
  const results=[],errors=[];
- // The first attempt matches the preview. Fallback angles only run on poor reads.
- for(const deg of [0,90,270,180]){
+ const normal=[lastGoodOrientation,0,90,270,180].filter((v,i,all)=>all.indexOf(v)===i);
+ // Avoid the expensive four-way search on every live camera frame.
+ const directions=manual?normal:normal.slice(0,lastGoodOrientation?2:1);
+ for(const deg of directions){
+  // Yield before entering synchronous OpenCV: update the progress message on Samsung.
+  await new Promise(resolve=>requestAnimationFrame(resolve));
   try{
-   const result=readSheet(rotatedCanvas(c,deg),layout,cv);
+   const result=readSheet(rotatedCanvas(c,deg),layout,cv,exam.counts);
    const knownStudent=db.students.some(x=>x.sbd===result.sbd);
    const knownCode=Boolean(exam.keys?.[result.examCode]);
    const score=(knownStudent?3:0)+(knownCode?3:0)+(result.confidence||0)*3-
     Math.min(2,(result.uncertain?.length||0)*.025);
    results.push({result,deg,score,knownStudent,knownCode});
-   if(knownCode&&knownStudent&&result.confidence>=.98&&!result.uncertain.length)break;
+   if(knownCode&&knownStudent&&result.confidence>=.98&&!result.uncertain.length){lastGoodOrientation=deg;break;}
   }catch(e){errors.push(deg+'°: '+e.message);}
  }
- if(!results.length)throw Error('Không nhận diện được bốn góc phiếu ở mọi hướng. '+errors.join(' | ').slice(0,240));
+ if(!results.length)throw Error('Không xác định được mốc phiếu ('+errors.slice(0,2).join(' | ').slice(0,180)+')');
  results.sort((a,b)=>b.score-a.score);
+ if(results[0].knownStudent&&results[0].knownCode)lastGoodOrientation=results[0].deg;
  return results[0];
 }
 async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;const exam=selectedExam();if(!exam){$('scanStatus').textContent='Chưa chọn môn/kỳ kiểm tra. Hãy tạo đề, nhập đáp án và chọn kỳ kiểm tra trước khi chấm.';if(manual)toast('Hãy tạo và chọn kỳ kiểm tra trước');return;}
- captureBusy=true;if(manual)lastReviewImage=c.toDataURL('image/jpeg',.65);const t0=performance.now();$('scanStatus').textContent='Đang đọc bốn ô đen…';try{
+ captureBusy=true;if(manual)lastReviewImage=c.toDataURL('image/jpeg',.65);const t0=performance.now();$('scanStatus').textContent='Đang phân tích phiếu…';await new Promise(resolve=>requestAnimationFrame(resolve));try{
   const [cv,geometry]=await Promise.all([ensureCv(),ensureLayouts()]);
   const key='ChamPro_Phieu_'+(exam.form==='120'?'120Cau':'3Phan')+'_MaDe'+exam.digits;
   if(!geometry[key])throw Error('Không có tọa độ mẫu phiếu '+key);
-  const match=trySheetOrientations(c,geometry[key],cv,exam),result=match.result;
+  const match=await trySheetOrientations(c,geometry[key],cv,exam,manual),result=match.result;
   if(match.deg&&origin==='camera'&&stream&&match.knownCode&&match.knownStudent&&result.confidence>=.9){
    cameraRotation=(cameraRotation+match.deg)%360;
    fitGuideToVisibleVideo();
    $('scanStatus').textContent='Đã tự hiệu chỉnh hướng phiếu '+match.deg+'°';
   }
   $('captureGuide').classList.add('detected');setTimeout(()=>$('captureGuide').classList.remove('detected'),550);$('scanInfo').textContent=`Đã đọc SBD ${result.sbd||'?'}, mã đề ${result.examCode||'?'}; độ tin cậy ${(result.confidence*100).toFixed(0)}%; ${result.uncertain.length} ô cần xem. ${(performance.now()-t0).toFixed(0)} ms`;
-  $('scanStatus').textContent='Đã đọc ảnh · '+(performance.now()-t0).toFixed(0)+' ms';
+  $('scanStatus').textContent='Đã nhận diện SBD '+(result.sbd||'?')+' · mã đề '+(result.examCode||'?')+' · '+(performance.now()-t0).toFixed(0)+' ms';
   if(manual){openReview(exam,result);return;}
   const student=db.students.find(s=>s.sbd===result.sbd),issues=validateForSave(exam,student,result);
-  if(result.confidence<.98)issues.push('SBD hoặc mã đề chưa đủ tin cậy');
-  if(issues.length){lastAuto=null;$('scanStatus').textContent='Cần kiểm tra: '+issues.slice(0,2).join('; ');return;}
+  if(result.confidence<.95)issues.push('SBD hoặc mã đề chưa đủ tin cậy');
+  if(issues.length){lastAuto=null;$('scanStatus').textContent='Chưa thể lưu: '+issues.slice(0,3).join('; ');$('scanInfo').textContent+=' | '+issues.join('; ');return;}
   const fingerprint=JSON.stringify([exam.id,result.sbd,result.examCode,result.I.slice(0,exam.counts.I),result.II.slice(0,exam.counts.II),result.III.slice(0,exam.counts.III)]);
   if(lastAuto?.fingerprint!==fingerprint||Date.now()-lastAuto.time>7000){lastAuto={fingerprint,time:Date.now()};$('scanStatus').textContent='Đã nhận diện. Giữ yên để xác nhận lần hai…';return;}
   if(lastSaved===exam.id+student.id+result.examCode){$('scanStatus').textContent='Bài này vừa chấm; hãy đổi phiếu tiếp theo';return;}
-  const done=saveResult(exam,student,result,true);lastSaved=exam.id+student.id+result.examCode;lastAuto=null;
+  const done=saveResult(exam,student,result,true);lastSaved=exam.id+student.id+result.examCode;lastAuto=null;lastGoodOrientation=match.deg;
   $('scanStatus').textContent='Đã chấm: '+done.score+'/'+done.max+' điểm';
- }catch(e){if(manual)toast('Không nhận diện được: '+e.message+'; có thể nhập thủ công.');$('scanStatus').textContent='Chưa đọc được: '+e.message;lastAuto=null;if(manual){openReview(exam,{sbd:'',examCode:'',I:[],II:[],III:[],confidence:0,uncertain:['Chưa đọc được ảnh – nhập tay']});}}
+ }catch(e){if(manual)toast('Không nhận diện được: '+e.message+'; có thể nhập thủ công.');$('scanStatus').textContent='Không nhận diện: '+e.message;$('scanInfo').textContent='Lỗi nhận diện: '+e.message;lastAuto=null;if(manual){openReview(exam,{sbd:'',examCode:'',I:[],II:[],III:[],confidence:0,uncertain:['Chưa đọc được ảnh – nhập tay']});}}
  finally{captureBusy=false;}}
 async function autoScanOnce(){if(!stream||captureBusy||$('reviewDialog').open||!$('autoScan').checked)return;try{await readCanvas(captureVideo(),false);}catch(e){$('scanStatus').textContent=e.message;}}
 $('snap').onclick=async()=>{try{await readCanvas(captureVideo(),true);}catch(e){toast(e.message)}};
