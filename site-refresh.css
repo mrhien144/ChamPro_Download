@@ -76,3 +76,36 @@ body:has(.paper) .footer{margin-top:0}
  body:has(.paper) .side{padding:19px}
 }
 @media(prefers-reduced-motion:reduce){.sitehead~main .toolcard:hover{transform:none}}
+
+
+/* Landing page finishing touches — 2026-11-04 */
+.sitehead .navigation .brand{display:inline-flex;align-items:center;gap:10px;text-decoration:none}
+.sitehead .navigation .brand .hs-logo{width:68px;height:54px;object-fit:contain;border:0;box-shadow:none;background:none}
+.sitehead .navigation .brand .brand-name{white-space:nowrap;color:#173866;font-weight:850;line-height:1.2}
+.sitehead~main .hero .container{grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr)}
+.sitehead~main .hero h1{overflow-wrap:normal;text-wrap:balance}
+.sitehead~main .heroactions{margin-top:24px}
+.sitehead~main .hero-panel .panel-grid{gap:12px}
+.sitehead~main .quickbar .container{padding-top:15px;padding-bottom:15px}
+.sitehead~main .quickbar span{line-height:1.4}
+.sitehead~main .toolcard{align-items:flex-start}
+.sitehead~main .toolcard>span:last-child{min-width:0}
+.sitehead~main .toolcard h3{font-weight:800}
+.sitehead~main .sectionintro h2{text-wrap:balance}
+.sitehead~main .howto small{line-height:1.6}
+@media(max-width:940px){
+ .sitehead~main .hero .container{grid-template-columns:1fr}
+ .sitehead .navigation .brand .hs-logo{width:56px;height:46px}
+}
+@media(max-width:630px){
+ .sitehead .navigation{min-height:70px}
+ .sitehead .navigation .brand{gap:5px}
+ .sitehead .navigation .brand .hs-logo{width:47px;height:39px}
+ .sitehead .navigation .brand .brand-name{font-size:18px}
+ .sitehead~main .hero h1{font-size:clamp(32px,8.4vw,42px);line-height:1.18}
+ .sitehead~main .hero .container{gap:20px}
+ .sitehead~main .hero-panel{padding:16px}
+ .sitehead~main .toolcard{gap:13px}
+ .sitehead~main .toolcard p{line-height:1.65}
+ .sitehead~main .quickbar .container{gap:8px 15px;justify-content:flex-start}
+}
