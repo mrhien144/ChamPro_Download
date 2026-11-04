@@ -286,11 +286,11 @@ function pPr(doc,{after=60,before=0,align=null,tabs=[],keepNext=false,bold=false
 }
 function paragraph(doc,text,opts={}){const p=el(doc,'p');p.appendChild(pPr(doc,opts));p.appendChild(tRun(doc,String(text),{bold:opts.bold,color:opts.color,size:opts.size||26}));return p;}
 
-const HEADER_DEFAULTS={school:'TRƯỜNG THPT CHI LĂNG',school2:'TRƯỜNG TH, THCS VÀ THPT SAO VIỆT',leftTitle:'ĐỀ THI CHÍNH THỨC',examTitle:'ĐỀ KIỂM TRA GIỮA HỌC KÌ I',schoolYear:'2026 - 2027',subject:'TIẾNG ANH 12',minutes:'50',pages:''};
+const HEADER_DEFAULTS={school:'TRƯỜNG THPT CHI LĂNG',school2:'TRƯỜNG TH, THCS VÀ THPT SAO VIỆT',leftTitle:'ĐỀ THI CHÍNH THỨC',examTitle:'ĐỀ KIỂM TRA GIỮA HỌC KÌ I',schoolYear:'2026 - 2027',subject:'TIẾNG ANH 12',minutes:'50'};
 function headerConfig(data={}){
  const o={};for(const [k,def] of Object.entries(HEADER_DEFAULTS)){
   const raw=data&&data[k]!==undefined?data[k]:def;
-  o[k]=String(raw??'').replace(/[\r\n\t]+/g,' ').trim().slice(0,k==='minutes'||k==='pages'?8:120);
+  o[k]=String(raw??'').replace(/[\r\n\t]+/g,' ').trim().slice(0,k==='minutes'?8:120);
  }return o;
 }
 function headerParagraph(doc,parts,{align='center',after=0,before=0,keepNext=false,bottomLine=false,borderBox=false}={}){
@@ -324,29 +324,37 @@ function headerTable(doc,widths,cells,{boxedIndex=-1}={}){
   tc.appendChild(pr);for(const p of cells[i])tc.appendChild(p);row.appendChild(tc);
  }tbl.appendChild(row);return tbl;
 }
-function renderExamHeading(doc,plan,raw,{asAnswers=false}={}){
+function pageCountLine(doc,totalPagesField){
+ const line=headerParagraph(doc,[{text:'(Đề thi có ',italic:true,size:24}],{after:70});
+ for(const r of footerField(doc,totalPagesField,{size:24,color:'000000',italic:true}))line.appendChild(r);
+ line.appendChild(tRun(doc,' trang)',{italic:true,size:24}));
+ return line;
+}
+function renderExamHeading(doc,plan,raw,{asAnswers=false,totalPagesField='NUMPAGES'}={}){
  const h=headerConfig(raw),out=[];
+ // Giữ nguyên nội dung/căn chỉnh hai cột mẫu THPT, tất cả Times New Roman 12 màu đen.
  const left=[
   headerParagraph(doc,[{text:h.school,bold:true,size:24}],{keepNext:true,after:25}),
   ...(h.school2?[headerParagraph(doc,[{text:h.school2,bold:true,size:24}],{keepNext:true,after:25})]:[]),
   headerParagraph(doc,[{text:h.leftTitle,size:24}],{keepNext:true,after:25}),
-  headerParagraph(doc,[{text:'(Đề thi có ',italic:true,size:24},{text:h.pages||'...',italic:true,highlight:true,size:24},{text:' trang)',italic:true,size:24}],{after:70})
+  pageCountLine(doc,totalPagesField)
  ];
  const right=[
   headerParagraph(doc,[{text:h.examTitle,bold:true,size:24}],{keepNext:true,after:25}),
   headerParagraph(doc,[{text:'NĂM HỌC: '+h.schoolYear,bold:true,size:24}],{keepNext:true,after:25}),
-  headerParagraph(doc,[{text:'Bài thi: ',bold:true,size:24},{text:h.subject,bold:true,highlight:true,size:24}],{keepNext:true,after:25}),
-  headerParagraph(doc,[{text:'Thời gian làm bài: ',italic:true,size:24},{text:h.minutes||'...',italic:true,highlight:true,size:24},{text:' phút, không kể thời gian phát đề',italic:true,size:24}],{bottomLine:true,after:70})
+  headerParagraph(doc,[{text:'Bài thi: '+h.subject,bold:true,size:24}],{keepNext:true,after:25}),
+  headerParagraph(doc,[{text:'Thời gian làm bài: '+(h.minutes||'50')+' phút, không kể thời gian phát đề',italic:true,size:24}],{bottomLine:true,after:70})
  ];
  out.push(headerTable(doc,[4903,4903],[left,right]));
- const bottomLeft=asAnswers?
+ const student=asAnswers?
   [headerParagraph(doc,[{text:'BẢNG ĐÁP ÁN',bold:true,size:24}],{align:'left'})]:
   [
    headerParagraph(doc,[{text:'Họ, tên học sinh: ',bold:true,size:24},{text:'....................................................................',size:24}],{align:'left',after:15}),
    headerParagraph(doc,[{text:'Số báo danh: ',bold:true,size:24},{text:'............................................................',size:24}],{align:'left'})
   ];
- const code=headerParagraph(doc,[{text:'Mã đề thi ',bold:true,size:24},{text:String(plan.code),bold:true,highlight:true,size:24}],{align:'center',borderBox:true,before:80,after:0});
- out.push(headerTable(doc,[7286,2520],[bottomLeft,[code]]));
+ // Mã đề lấy trực tiếp từ kết quả trộn, tuyệt đối không dùng giá trị cố định.
+ const code=headerParagraph(doc,[{text:'Mã đề thi '+String(plan.code),bold:true,size:24}],{align:'center',borderBox:true,before:80,after:0});
+ out.push(headerTable(doc,[7286,2520],[student,[code]]));
  out.push(headerParagraph(doc,[{text:' ',size:12}],{after:90}));
  return out;
 }
@@ -355,18 +363,19 @@ function importXml(doc,xml){const d=parse(xml);return doc.importNode(d.documentE
 const FOOTER_LEFT='Nên người – Tiến bộ – Thành đạt';
 // Field codes are calculated by Word at layout time. A single-code DOCX uses
 // NUMPAGES; a combined DOCX uses SECTIONPAGES for each individual exam code.
-function footerField(doc,instruction){
+function footerField(doc,instruction,{size=22,color='7A7A7A',italic=false}={}){
  const result=[],begin=el(doc,'r'),bc=el(doc,'fldChar');
- bc.setAttributeNS(W,'w:fldCharType','begin');begin.appendChild(bc);result.push(begin);
+ bc.setAttributeNS(W,'w:fldCharType','begin');bc.setAttributeNS(W,'w:dirty','true');begin.appendChild(bc);result.push(begin);
  const ri=el(doc,'r'),rp=el(doc,'rPr'),fonts=el(doc,'rFonts');
  for(const k of ['ascii','hAnsi','eastAsia','cs'])fonts.setAttributeNS(W,'w:'+k,'Times New Roman');
  rp.appendChild(fonts);
- const sz=el(doc,'sz');sz.setAttributeNS(W,'w:val','22');rp.appendChild(sz);
- const color=el(doc,'color');color.setAttributeNS(W,'w:val','7A7A7A');rp.appendChild(color);
+ if(italic)rp.appendChild(el(doc,'i'));
+ const sz=el(doc,'sz');sz.setAttributeNS(W,'w:val',String(size));rp.appendChild(sz);
+ const c=el(doc,'color');c.setAttributeNS(W,'w:val',color);rp.appendChild(c);
  ri.appendChild(rp);
  const code=el(doc,'instrText');code.setAttributeNS(XML,'xml:space','preserve');code.textContent=' '+instruction+' ';ri.appendChild(code);result.push(ri);
  const sep=el(doc,'r'),sc=el(doc,'fldChar');sc.setAttributeNS(W,'w:fldCharType','separate');sep.appendChild(sc);result.push(sep);
- result.push(tRun(doc,'1',{size:22,color:'7A7A7A'}));
+ result.push(tRun(doc,'1',{size,color,italic}));
  const end=el(doc,'r'),ec=el(doc,'fldChar');ec.setAttributeNS(W,'w:fldCharType','end');end.appendChild(ec);result.push(end);
  return result;
 }
@@ -404,12 +413,33 @@ async function linkExamFooter(zip,plan,totalField){
  zip.file(relPath,ser(rels));return id;
 }
 async function requestWordFieldUpdates(zip){
- const settingsFile=zip.file('word/settings.xml');if(!settingsFile)return;
- const settings=parse(await settingsFile.async('string')),root=settings.documentElement;
+ const settingsPath='word/settings.xml';
+ const settingsFile=zip.file(settingsPath);
+ let settings,root;
+ if(settingsFile){
+  settings=parse(await settingsFile.async('string'));root=settings.documentElement;
+ }else{
+  settings=parse('<w:settings xmlns:w="'+W+'"></w:settings>');root=settings.documentElement;
+  const ctPath='[Content_Types].xml',ct=parse(await zip.file(ctPath).async('string'));
+  const present=Array.from(ct.documentElement.childNodes).some(n=>n.nodeType===1&&n.getAttribute('PartName')==='/word/settings.xml');
+  if(!present){const entry=ct.createElementNS('http://schemas.openxmlformats.org/package/2006/content-types','Override');
+   entry.setAttribute('PartName','/word/settings.xml');
+   entry.setAttribute('ContentType','application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml');
+   ct.documentElement.appendChild(entry);zip.file(ctPath,ser(ct));}
+  const relPath='word/_rels/document.xml.rels',rel=parse(await zip.file(relPath).async('string'));
+  const refs=Array.from(rel.documentElement.childNodes).filter(n=>n.nodeType===1);
+  if(!refs.some(n=>(n.getAttribute('Type')||'')===R+'/settings')){
+   const used=new Set(refs.map(n=>n.getAttribute('Id')));
+   let idx=1;while(used.has('rId'+idx))idx++;
+   const entry=rel.createElementNS(PR,'Relationship');
+   entry.setAttribute('Id','rId'+idx);entry.setAttribute('Type',R+'/settings');
+   entry.setAttribute('Target','settings.xml');
+   rel.documentElement.appendChild(entry);zip.file(relPath,ser(rel));
+  }
+ }
  let update=child(root,'updateFields');
- if(!update){update=el(settings,'updateFields');root.insertBefore(update,child(root,'hdrShapeDefaults')||child(root,'footnotePr')||child(root,'compat')||null)}
- update.setAttributeNS(W,'w:val','true');
- zip.file('word/settings.xml',ser(settings));
+ if(!update){update=el(settings,'updateFields');root.appendChild(update)}
+ update.setAttributeNS(W,'w:val','true');zip.file(settingsPath,ser(settings));
 }
 function sectionBreakParagraph(doc,sectionProperties){
  const p=el(doc,'p'),pr=el(doc,'pPr');
@@ -499,7 +529,7 @@ async function exportExamDocx(exam,plans,{teacher=false,combined=true,asAnswers=
  const groups=new Map(exam.groups.map(g=>[g.id,g]));
  for(let pi=0;pi<plans.length;pi++){
   const plan=plans[pi];
-  for(const heading of renderExamHeading(doc,plan,header,{asAnswers}))body.appendChild(heading);
+  for(const heading of renderExamHeading(doc,plan,header,{asAnswers,totalPagesField:plans.length===1?'NUMPAGES':'SECTIONPAGES'}))body.appendChild(heading);
   if(asAnswers){body.appendChild(answerTable(doc,plan));}
   else for(const planned of plan.groups){
    const group=groups.get(planned.groupId);
@@ -637,7 +667,7 @@ function doGenerate(){if(!state.exam)return toast('Hãy nhập đề trước.')
  const cfg=config();if(!Number.isInteger(cfg.quantity)||cfg.quantity<1||cfg.quantity>100||cfg.startCode<1||cfg.startCode+cfg.quantity>9999){return status('planStatus','Số lượng từ 1 đến 100; mã đề trong khoảng 1–9999.','error');}
  try{state.plans=createPlan(state.exam,cfg);const issues2=validatePlans(state.exam,state.plans);renderPlans();status('planStatus',issues2.length?`Có ${issues2.length} vấn đề — chưa thể xuất.`:`Đã tạo ${state.plans.length} mã đề. Đã đối chiếu câu hỏi, nhóm và đáp án.`,issues2.length?'error':'success');}catch(e){status('planStatus',e.message,'error');}}
 function blobDownload(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),15000)}
-const documentHeader=()=>Object.fromEntries(['school','school2','leftTitle','examTitle','schoolYear','subject','minutes','pages'].map(k=>[k,$('hdr'+k[0].toUpperCase()+k.slice(1)).value]));
+const documentHeader=()=>Object.fromEntries(['school','school2','leftTitle','examTitle','schoolYear','subject','minutes'].map(k=>[k,$('hdr'+k[0].toUpperCase()+k.slice(1)).value]));
 async function doExport(type,btn){
  if(type!=='bundle')return;
  if(!state.exam||!state.plans.length){
@@ -704,8 +734,7 @@ try{const c=JSON.parse(localStorage.getItem('hienSoftEnglishMixerSettings')||'nu
  <div><label for="hdrSchoolYear">Năm học</label><input id="hdrSchoolYear" type="text" value="2026 - 2027" maxlength="30"></div>
  <div><label for="hdrSubject">Bài thi</label><input id="hdrSubject" type="text" value="TIẾNG ANH 12" maxlength="120"></div>
  <div><label for="hdrMinutes">Thời gian làm bài (phút)</label><input id="hdrMinutes" type="number" min="1" max="300" value="50"></div>
- <div><label for="hdrPages">Số trang của mỗi mã đề</label><input id="hdrPages" type="text" inputmode="numeric" maxlength="8" placeholder="... nếu chưa xác định"></div>
-</div><div class="status">Đầu đề Word theo mẫu: hai dòng tên trường, tên kỳ kiểm tra và năm học màu đỏ, bài thi và các giá trị quan trọng đánh dấu vàng, họ tên học sinh, số báo danh, mã đề thi đóng khung. Nếu chưa nhập số trang, Word sẽ hiển thị dấu ... để người dùng hoàn thiện.</div>
+</div><div class="status">Đầu đề Word theo mẫu: hai dòng tên trường, tên kỳ kiểm tra và năm học màu đỏ, bài thi và các giá trị quan trọng đánh dấu vàng, họ tên học sinh, số báo danh, mã đề thi đóng khung. Số trang được Word tự tính theo độ dài thực tế của từng mã đề khi mở tài liệu, không cần nhập tay.</div>
 <div class="subheading">Tải bộ đề hoàn chỉnh</div><div class="download-grid"><button id="downloadBundle" disabled data-export="bundle" class="button blue export">⬇ Tải bộ đề và đáp án (ZIP)</button></div><p class="export-hint">Tệp ZIP gồm <strong>mỗi mã đề một file Word (.docx)</strong> và <strong>một bảng đáp án tổng hợp Excel (.xlsx)</strong>. Không cần tải từng file riêng.</p><div id="exportStatus" class="status">Hãy tạo mã đề để bật nút tải.</div></section>
 </section></div></main><footer><div class="wrap footerinner"><div><strong>ENGLISH EXAM MIXER · HienSoft</strong><p>Bản quyền thuộc về Nguyễn Sỹ Hiển – HienSoft.</p></div><div class="footlinks"><a href="/tron-de/">Trộn đề các môn</a><a href="https://mrhien.com/">mrhien.com</a></div></div></footer>
 <div id="toast" role="status" aria-live="polite"></div></body></html>
