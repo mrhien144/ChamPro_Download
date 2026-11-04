@@ -201,3 +201,18 @@
   }
   body.scan-active .camera-card{width:100%;}
 }
+
+/* CAMERA R5: large transparent alignment targets with tolerance for small fiducials. */
+#captureGuide .tl,#captureGuide .tr,#captureGuide .bl,#captureGuide .br{
+  width:clamp(68px,19vw,92px);
+  height:clamp(68px,19vw,92px);
+  box-sizing:border-box;
+  border:4px solid #69ffe2;
+  border-radius:13px;
+  background:rgba(0,255,195,.035);
+  box-shadow:0 0 0 2px #06353b99,0 0 16px #18ffc77d;
+}
+#captureGuide.detected .tl,#captureGuide.detected .tr,#captureGuide.detected .bl,#captureGuide.detected .br{
+ border-color:#b2ff63;background:rgba(113,255,45,.055);
+}
+#captureGuide span{bottom:10%;background:rgba(9,24,37,.68);font-size:11px;}
