@@ -344,7 +344,7 @@ function renderExamHeading(doc,plan,raw,{asAnswers=false,totalPagesField='NUMPAG
  ];
  // A separate full-width line prevents the exam time from wrapping in a half-width table cell.
  out.push(headerTable(doc,[4903,4903],[left,right]));
- const time=headerParagraph(doc,[{text:'Thời gian làm bài: '+(h.minutes||'50')+' phút, không kể thời gian phát đề',italic:true,size:24}],{align:'right',after:0});
+ const time=headerParagraph(doc,[{text:('Thời gian làm bài: '+(h.minutes||'50')+' phút, không kể thời gian phát đề').replace(/ /g,'\u00A0'),italic:true,size:24}],{align:'right',after:0});
  out.push(time);
  const pages=pageCountLine(doc,totalPagesField);
  out.push(headerTable(doc,[4903,4903],[[pages],[headerParagraph(doc,[{text:' ',size:2}],{after:0})]]));
