@@ -51,7 +51,7 @@
 <div class="muted small"><strong>I.5</strong> giữ Câu 5 Phần I tại vị trí cũ; <strong>I.5B</strong> giữ phương án B câu đó; <strong>II.3c</strong> giữ ý c của Câu 3 Phần II; <strong>III.2</strong> giữ Câu 2 Phần III. <strong>I.8*</strong> giữ nguyên cả Câu 8 lẫn tất cả phương án. Ngăn cách nhiều mã bằng dấu phẩy, chấm phẩy hoặc khoảng trắng.</div>
 <details class="hs-lock-detail" id="lockPanel"><summary>Chọn trực tiếp câu và phương án cần khóa</summary><div class="hs-lock-grid"><label class="field">Phần<select id="lockSection"><option value="I">Phần I</option><option value="II">Phần II</option><option value="III">Phần III</option></select></label><label class="field">Câu trong Word<select id="lockQuestion"><option value="">Tải Word lên để chọn câu</option></select></label></div><label class="hs-lock-check"><input type="checkbox" id="lockKeepQuestion"> Giữ nguyên vị trí câu này khi trộn</label><label class="hs-lock-check"><input type="checkbox" id="lockWholeQuestion"> Khóa toàn bộ câu và tất cả phương án</label><div class="hs-lock-choice-row" id="lockChoiceRow"></div><div id="lockRuleStatus" class="muted small" role="status" aria-live="polite"></div></details>
 <div class="two"><label class="field">Khóa ý Đúng/Sai ở tất cả câu (tùy chọn)<input id="lockTF" value="" placeholder="Ví dụ: a,d"></label><div class="miniNote">Khóa chung áp dụng toàn bộ Phần II; còn <strong>II.3c</strong> chỉ tác động riêng Câu 3.</div></div><div class="muted small" id="groupDetected">Tự nhận dòng “Dựa vào ... trả lời các câu 7–9”; có thể khai báo thủ công.</div></section>
-<section class="panel"><div class="panelHead"><span class="step">03</span><div><h2>Mã đề và hình thức in</h2><p>Định dạng học sinh và đáp án tạo từ cùng một ánh xạ trộn.</p></div></div><div class="three"><label class="field">Số mã đề<input id="codesCount" type="number" min="1" max="40" value="4"></label><label class="field">Mã đề<input id="digits" type="number" min="3" max="4" value="3"></label><label class="field">Mã bắt đầu<input id="firstCode" type="number" min="0" value="101"></label></div><div class="two"><label class="field">Đơn vị / Trường<input id="school" value="TRƯỜNG THPT CHI LĂNG"></label><label class="field">Tiêu đề đề thi<input id="examTitle" value="ĐỀ KIỂM TRA / ÔN TẬP"></label></div><div class="two"><label class="field">Dòng thứ hai bên trái đầu trang<input id="leftSubtitle" value="ĐỀ KIỂM TRA" placeholder="Ví dụ: ĐỀ THI CHÍNH THỨC"></label><div class="miniNote" style="align-self:center">Tiêu đề được căn thành hai khối như PDF mẫu, không dùng bảng để dàn trang.</div></div><div class="three"><label class="field">Môn thi<input id="subject" value="Sinh học"></label><label class="field">Thời gian (phút)<input id="minutes" type="number" min="1" max="600" value="50"></label><label class="field">Hạt trộn (để tái tạo)<input id="seed" type="number" value="2472026"></label></div><div class="notice"><strong>Định dạng Word v0.3.0:</strong> A4 · Times New Roman 12 · tiêu đề hai khối căn giữa như PDF mẫu · phương án trắc nghiệm tiết kiệm giấy · mã đề ở đầu trang và chân trang. Không sử dụng bảng chỉ để căn phương án; bảng số liệu khoa học vẫn được giữ.</div></section>
+<section class="panel"><div class="panelHead"><span class="step">03</span><div><h2>Mã đề và hình thức in</h2><p>Định dạng học sinh và đáp án tạo từ cùng một ánh xạ trộn.</p></div></div><div class="three"><label class="field">Số mã đề<input id="codesCount" type="number" min="1" max="40" value="4"></label><label class="field">Mã đề<input id="digits" type="number" min="3" max="4" value="3"></label><label class="field">Mã bắt đầu<input id="firstCode" type="number" min="0" value="101"></label></div><div class="two"><label class="field">Đơn vị / Trường<input id="school" value="TRƯỜNG THPT CHI LĂNG"></label><label class="field">Tiêu đề đề thi<input id="examTitle" value="ĐỀ KIỂM TRA GIỮA HỌC KÌ I"></label></div><div class="two"><label class="field">Trường thứ hai bên trái đầu trang<input id="leftSubtitle" value="TRƯỜNG TH, THCS VÀ THPT SAO VIỆT" placeholder="Ví dụ: TRƯỜNG TH, THCS VÀ THPT SAO VIỆT"></label><div class="miniNote" style="align-self:center">Tiêu đề được căn thành hai khối như PDF mẫu, không dùng bảng để dàn trang.</div></div><div class="three"><label class="field">Môn thi<input id="subject" value="Sinh học"></label><label class="field">Thời gian (phút)<input id="minutes" type="number" min="1" max="600" value="50"></label><label class="field">Hạt trộn (để tái tạo)<input id="seed" type="number" value="2472026"></label></div><div class="notice"><strong>Định dạng Word v0.3.0:</strong> A4 · Times New Roman 12 · tiêu đề hai khối căn giữa như PDF mẫu · phương án trắc nghiệm tiết kiệm giấy · mã đề ở đầu trang và chân trang. Không sử dụng bảng chỉ để căn phương án; bảng số liệu khoa học vẫn được giữ.</div></section>
 <section class="panel actions"><div id="message" data-kind="info" hidden></div><button id="generate" class="primary" disabled>TRỘN ĐỀ & TẠO FILE WORD <span>↗</span></button><p>Bản này bảo toàn thành phần trong Word gốc; hãy kiểm tra bản Word xuất ra, nhất là câu có công thức OLE, trước khi in chính thức.</p><div id="downloads" hidden><div id="result" class="successResult"></div><div class="buttons"><button id="download" class="primary">↓ TẢI TOÀN BỘ ZIP</button><button id="practice" class="secondary">▶ LÀM THỬ MÃ ĐỀ ĐẦU TIÊN</button></div></div></section></div>
 <aside class="sidecol"><div class="sideCard"><span class="sideIcon">◎</span><h3>Giữ nguyên cấu trúc</h3><p>Thay đổi vị trí câu mà vẫn giữ nguyên những phần nhúng như ảnh, Equation, MathType OLE và bảng dữ liệu trong tệp Word.</p></div><div class="sideCard"><span class="sideIcon">⊞</span><h3>Gói xuất đầy đủ</h3><p>Đề học sinh và đề giáo viên cho từng mã · Excel đáp án · bảng đối chiếu câu gốc – câu mới.</p></div><div class="sideCard"><span class="sideIcon">⌛</span><h3>Không lưu trên hosting</h3><p>Không có tệp đầu vào, mã đề hoặc đáp án được tải lên máy chủ. Khi đóng trang, dữ liệu trộn sẽ không còn được duy trì trên server.</p></div><div class="sideCard warn"><strong>Giới hạn cần lưu ý</strong><p>MathType OLE có thể được giữ trong Word nhưng không hiển thị chính xác khi làm thử trên web. Chế độ làm thử là bản cục bộ, không phải một phòng thi có chống gian lận.</p></div></aside></div>
 <section id="practiceArea" hidden class="practice"><div class="practiceTop"><h2>Làm thử đề trắc nghiệm</h2><div id="clock" class="timer">50:00</div></div><div id="testStatus">Đang làm bài</div><div id="paper"></div><div class="buttons"><button id="submit" class="primary">NỘP BÀI & CHẤM ĐIỂM</button></div><div id="answerReview" hidden></div></section></main>
@@ -118,7 +118,7 @@ function txtTokens(p){let arr=[]; function visit(n){ if(n.nodeType!==1)return;le
  } if(name==='hyperlink'||name==='smartTag'||name==='ins')Array.from(n.childNodes).forEach(visit);
  }Array.from(p.childNodes).forEach(visit);return arr;
 }
-function reconstruct(doc,tokens){let content=[],group=[],prev=null;function flush(){if(!group.length)return;let run=el(doc,'r');if(prev?.run){let rp=child(prev.run,'rPr');if(rp){let clone=rp.cloneNode(true);for(const u of Array.from(clone.childNodes))if(local(u)==='u')clone.removeChild(u);run.appendChild(clone)}}const t=el(doc,'t');t.setAttributeNS(XML,'xml:space','preserve');t.textContent=group.map(x=>x.ch).join('');run.appendChild(t);content.push(run);group=[]}for(let item of tokens){if(item.node){flush();content.push(item.node.cloneNode(true));prev=null;continue}if(prev?.run!==item.run){flush();prev=item}group.push(item)}flush();return content}
+function reconstruct(doc,tokens,preserveUnderline=false){let content=[],group=[],prev=null;function flush(){if(!group.length)return;let run=el(doc,'r');if(prev?.run){let rp=child(prev.run,'rPr');if(rp){let clone=rp.cloneNode(true);if(!preserveUnderline)for(const u of Array.from(clone.childNodes))if(local(u)==='u')clone.removeChild(u);run.appendChild(clone)}}const t=el(doc,'t');t.setAttributeNS(XML,'xml:space','preserve');t.textContent=group.map(x=>x.ch).join('');run.appendChild(t);content.push(run);group=[]}for(let item of tokens){if(item.node){flush();content.push(item.node.cloneNode(true));prev=null;continue}if(prev?.run!==item.run){flush();prev=item}group.push(item)}flush();return content}
 function answerUnderline(token){return !!token?.under}
 function optionSegments(q){
  if(q.section!=='I')return null;
@@ -142,8 +142,8 @@ function optionSegments(q){
    const doc=blocks[0].ownerDocument;
    const stemP=el(doc,'p'),optP=el(doc,'p'),pr=child(blocks[0],'pPr');
    if(pr){stemP.appendChild(pr.cloneNode(true));optP.appendChild(pr.cloneNode(true))}
-   for(const run of reconstruct(doc,first.slice(0,at)))stemP.appendChild(run);
-   for(const run of reconstruct(doc,first.slice(at)))optP.appendChild(run);
+   for(const run of reconstruct(doc,first.slice(0,at),true))stemP.appendChild(run);
+   for(const run of reconstruct(doc,first.slice(at),true))optP.appendChild(run);
    const fake={...q,blocks:[stemP,optP,...blocks.slice(1)]};
    return optionSegments(fake);
   }
@@ -543,35 +543,71 @@ function planExam(exam,options,codeIndex=0){
 
 // Header uses centered Word tab stops (not invisible tables) to reproduce the two
 // balanced blocks in the user's official 2026 PDF template.
-function renderHeader(doc,opts,code){const out=[];
- const left=opts.school||'TRƯỜNG THPT CHI LĂNG';
- const right=opts.examTitle||'ĐỀ KIỂM TRA / ÔN TẬP';
- const subj=opts.subject||'Sinh học';
- const centered=(leftText,rightText,{leftBold=false,rightBold=false,leftItalic=false,rightItalic=false,leftUnderline=false,rightUnderline=false,after=0}={})=>{
-   const p=makeP(doc,{tabs:[['center',2430],['center',7580]],line:244,after});
-   addTab(p);addRun(p,leftText,{strong:leftBold,italic:leftItalic,underline:leftUnderline});
-   addTab(p);addRun(p,rightText,{strong:rightBold,italic:rightItalic,underline:rightUnderline});
-   return p;
+// Official exam title: two equal Word table cells, so long lines cannot overlap.
+function renderHeader(doc,opts,code){
+ const black=(p,text,{strong=false,italic=false}={})=>{
+  const run=addRun(p,text,{strong,italic,size:24}),pr=child(run,'rPr'),c=el(doc,'color');
+  c.setAttributeNS(W,'w:val','000000');pr.appendChild(c);reorderProps(pr,RPR_ORDER);return run;
  };
- out.push(centered(left,right,{leftBold:true,rightBold:true,leftUnderline:true}));
- out.push(centered(opts.leftSubtitle||'ĐỀ KIỂM TRA', 'Môn thi: '+subj.toLocaleUpperCase('vi-VN'),{rightBold:true}));
- // The number of pages is a live Word NUMPAGES field, not a guessed constant.
- let p=makeP(doc,{tabs:[['center',2430],['center',7580]],line:244,after:85});
- addTab(p);addRun(p,'(Đề thi có ',{italic:true});
- let fld=el(doc,'fldSimple');fld.setAttributeNS(W,'w:instr','NUMPAGES \\# "00"');
- let rr=el(doc,'r'),rp=el(doc,'rPr'),font=el(doc,'rFonts'),sz=el(doc,'sz');
- for(const k of ['ascii','hAnsi','eastAsia','cs'])font.setAttributeNS(W,'w:'+k,'Times New Roman');
- sz.setAttributeNS(W,'w:val','24');rp.appendChild(font);rp.appendChild(sz);rp.appendChild(el(doc,'i'));rr.appendChild(rp);
- let tx=el(doc,'t');tx.textContent='04';rr.appendChild(tx);fld.appendChild(rr);p.appendChild(fld);
- addRun(p,' trang)',{italic:true});addTab(p);
- addRun(p,`Thời gian làm bài: ${opts.minutes||50} phút, không kể thời gian phát đề`,{italic:true,underline:true});out.push(p);
- p=makeP(doc,{tabs:[['right',10000]],line:244});
- addRun(p,'Họ, tên thí sinh: ....................................................................',{strong:true});addTab(p);
- const codeRun=addRun(p,'   Mã đề: '+code+'   ',{strong:true}),cr=child(codeRun,'rPr');
- let border=el(doc,'bdr');border.setAttributeNS(W,'w:val','single');border.setAttributeNS(W,'w:sz','8');border.setAttributeNS(W,'w:space','4');cr.appendChild(border);
- out.push(p);
- p=makeP(doc,{line:244,after:75});addRun(p,'Số báo danh: ...........................................................................',{strong:true});out.push(p);
- return out;
+ const para=(value,style={},align='center')=>{
+  const p=makeP(doc,{align,line:245,after:50,keep:true});black(p,value,style);return p;
+ };
+ const table=(widths)=>{
+  const tbl=el(doc,'tbl'),pr=el(doc,'tblPr'),w=el(doc,'tblW');
+  w.setAttributeNS(W,'w:w',String(widths.reduce((a,b)=>a+b,0)));w.setAttributeNS(W,'w:type','dxa');pr.appendChild(w);
+  const borders=el(doc,'tblBorders');
+  for(const side of ['top','left','bottom','right','insideH','insideV']){const b=el(doc,side);b.setAttributeNS(W,'w:val','nil');borders.appendChild(b)}
+  pr.appendChild(borders);tbl.appendChild(pr);
+  const grid=el(doc,'tblGrid');for(const size of widths){const g=el(doc,'gridCol');g.setAttributeNS(W,'w:w',String(size));grid.appendChild(g)}tbl.appendChild(grid);
+  const tr=el(doc,'tr');tbl.appendChild(tr);
+  return {tbl,tr};
+ };
+ const cell=(tr,width,paragraphs)=>{
+  const tc=el(doc,'tc'),pr=el(doc,'tcPr'),tw=el(doc,'tcW');
+  tw.setAttributeNS(W,'w:w',String(width));tw.setAttributeNS(W,'w:type','dxa');pr.appendChild(tw);tc.appendChild(pr);
+  for(const p of paragraphs)tc.appendChild(p);tr.appendChild(tc);
+ };
+ const pages=()=>{
+  const p=makeP(doc,{align:'center',line:245,after:80,keep:true});
+  black(p,'(Đề thi có ',{italic:true});
+  const field=el(doc,'fldSimple');field.setAttributeNS(W,'w:instr','NUMPAGES');
+  field.setAttributeNS(W,'w:dirty','1');
+  const r=el(doc,'r'),pr=el(doc,'rPr'),fs=el(doc,'rFonts'),sz=el(doc,'sz'),c=el(doc,'color');
+  for(const k of ['ascii','hAnsi','eastAsia','cs'])fs.setAttributeNS(W,'w:'+k,'Times New Roman');
+  sz.setAttributeNS(W,'w:val','24');c.setAttributeNS(W,'w:val','000000');
+  pr.appendChild(fs);pr.appendChild(el(doc,'i'));pr.appendChild(c);pr.appendChild(sz);
+  reorderProps(pr,RPR_ORDER);r.appendChild(pr);const t=el(doc,'t');t.textContent='1';r.appendChild(t);
+  field.appendChild(r);p.appendChild(field);black(p,' trang)',{italic:true});return p;
+ };
+ const title=table([5053,5053]);
+ cell(title.tr,5053,[
+  para(opts.school||'TRƯỜNG THPT CHI LĂNG',{strong:true}),
+  para(opts.leftSubtitle||'TRƯỜNG TH, THCS VÀ THPT SAO VIỆT',{strong:true}),
+  para('ĐỀ THI CHÍNH THỨC'),
+  pages()
+ ]);
+ cell(title.tr,5053,[
+  para(opts.examTitle||'ĐỀ KIỂM TRA GIỮA HỌC KÌ I',{strong:true}),
+  para('NĂM HỌC: '+(opts.academicYear||'2026 - 2027'),{strong:true}),
+  para('Bài thi: '+(opts.subject||'Sinh học').toLocaleUpperCase('vi-VN'),{strong:true}),
+  para('Thời gian làm bài: '+(opts.minutes||50)+' phút, không kể thời gian phát đề',{italic:true})
+ ]);
+ const info=table([7579,2527]);
+ const studentP=makeP(doc,{line:245,after:0,keep:true});
+ black(studentP,'Họ, tên học sinh : ..................................................................',{strong:true});
+ const numberP=makeP(doc,{line:245,after:0,keep:true});
+ black(numberP,'Số báo danh : ........................................................................',{strong:true});
+ cell(info.tr,7579,[studentP,numberP]);
+ const codeP=makeP(doc,{align:'center',line:245,keep:true});
+ black(codeP,'Mã đề thi '+code,{strong:true});
+ const pp=child(codeP,'pPr'),pb=el(doc,'pBdr');
+ for(const edge of ['top','left','bottom','right']){
+  const b=el(doc,edge);b.setAttributeNS(W,'w:val','single');b.setAttributeNS(W,'w:sz','8');b.setAttributeNS(W,'w:space','5');pb.appendChild(b);
+ }
+ pp.appendChild(pb);reorderProps(pp,PPR_ORDER);
+ cell(info.tr,2527,[codeP]);
+ const spacer=makeP(doc,{line:245,after:45});
+ return [title.tbl,info.tbl,spacer];
 }
 function secHeading(doc,sec,n){const txt=sec==='I'?`PHẦN I: Thí sinh trả lời từ câu 1 đến câu ${n}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.`:sec==='II'?`PHẦN II: Thí sinh trả lời từ câu 1 đến câu ${n}. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai.`:`PHẦN III: Thí sinh trả lời từ câu 1 đến câu ${n}.`;let p=makeP(doc,{before:70,after:40,line:245});addRun(p,txt,{strong:true});return p}
 function footerRunPr(doc){const pr=el(doc,'rPr'),f=el(doc,'rFonts'),sz=el(doc,'sz');for(const k of ['ascii','hAnsi','cs','eastAsia'])f.setAttributeNS(W,'w:'+k,'Times New Roman');sz.setAttributeNS(W,'w:val','24');pr.appendChild(f);pr.appendChild(sz);return pr;}
