@@ -353,8 +353,8 @@ function renderExamHeading(doc,plan,raw,{asAnswers=false,totalPagesField='NUMPAG
    headerParagraph(doc,[{text:'Số báo danh: ',bold:true,size:24},{text:'............................................................',size:24}],{align:'left'})
   ];
  // Mã đề lấy trực tiếp từ kết quả trộn, tuyệt đối không dùng giá trị cố định.
- const code=headerParagraph(doc,[{text:'Mã đề thi '+String(plan.code),bold:true,size:24}],{align:'center',borderBox:true,before:80,after:0});
- out.push(headerTable(doc,[7286,2520],[student,[code]]));
+ const code=headerParagraph(doc,[{text:'Mã đề thi '+String(plan.code),bold:true,size:24}],{align:'center',before:80,after:0});
+ out.push(headerTable(doc,[7286,2520],[student,[code]],{boxedIndex:1}));
  out.push(headerParagraph(doc,[{text:' ',size:12}],{after:90}));
  return out;
 }
@@ -582,7 +582,7 @@ async function exportAnswersXlsx(exam,plans){
  z.file('_rels/.rels',`<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`);
  z.file('xl/workbook.xml',`<?xml version="1.0"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Đáp án" sheetId="1" r:id="rId1"/></sheets></workbook>`);
  z.file('xl/_rels/workbook.xml.rels',`<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`);
- z.file('xl/worksheets/sheet1.xml',`<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${excelCol(rows[0].length)}${rows.length}"/><sheetViews><sheetView workbookViewId="0"/></sheetViews><cols><col min="1" max="1" width="16" customWidth="1"/><col min="2" max="${rows[0].length}" width="13" customWidth="1"/></cols><sheetFormatPr defaultRowHeight="18"/><sheetData>${sheet}</sheetData></worksheet>`);
+ z.file('xl/worksheets/sheet1.xml',`<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${excelCol(rows[0].length)}${rows.length}"/><sheetViews><sheetView workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="18"/><cols><col min="1" max="1" width="16" customWidth="1"/><col min="2" max="${rows[0].length}" width="13" customWidth="1"/></cols><sheetData>${sheet}</sheetData></worksheet>`);
  return z.generateAsync({type:'blob',compression:'DEFLATE'});
 }
 async function exportSeparateDocx(exam,plans,opts={}){const z=new JSZip();for(const plan of plans){const blob=await exportExamDocx(exam,[plan],{...opts,combined:false});z.file(`De_TiengAnh_${plan.code}.docx`,blob)}return z.generateAsync({type:'blob',compression:'DEFLATE'});}
