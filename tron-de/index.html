@@ -216,9 +216,9 @@ function findQuestionNumber(text,section,expected){
  m=t.match(/^(\d+)\s*[.:\)]\s+(?=\S)/);
  return m&&+m[1]===expected?+m[1]:null;
 }
-async function loadExam(file){const bytes=await file.arrayBuffer(),zip=await JSZip.loadAsync(bytes),source=await zip.file('word/document.xml')?.async('string');if(!source)throw Error('Không tìm thấy tài liệu Word hợp lệ (.docx)');const doc=xmlParse(source),body=doc.getElementsByTagNameNS(W,'body')[0];if(!body)throw Error('DOCX thiếu body');let section='I',q=null,sections={I:[],II:[],III:[]},lead=[],warnings=[],groupLines=[];let before=[],explain=false;
+async function loadExam(file){const bytes=await file.arrayBuffer(),zip=await JSZip.loadAsync(bytes),source=await zip.file('word/document.xml')?.async('string');if(!source)throw Error('Không tìm thấy tài liệu Word hợp lệ (.docx)');const doc=xmlParse(source),body=doc.getElementsByTagNameNS(W,'body')[0];if(!body)throw Error('DOCX thiếu body');let section='I',q=null,sections={I:[],II:[],III:[]},lead=[],warnings=[],groupLines=[];let before=[],explain=false,explicitSections=new Set(),classificationNotes=[];
  for(const node of Array.from(body.childNodes)){
-  if(local(node)==='sectPr')continue;let text=elementText(node);let newSec=getSection(text);if(newSec){if(q){q.blocks=q.blocks.concat(before);before=[]}section=newSec;q=null;explain=false;continue}
+  if(local(node)==='sectPr')continue;let text=elementText(node);let newSec=getSection(text);if(newSec){explicitSections.add(newSec);if(q){q.blocks=q.blocks.concat(before);before=[]}section=newSec;q=null;explain=false;continue}
   let mNum=findQuestionNumber(text,section,(sections[section]?.length||0)+1);
   if(mNum!==null){q={section,originalNumber:mNum,blocks:[node],preamble:before};sections[section].push(q);before=[];explain=false;continue}
   if(/^LỜI\s+GIẢI\s*:?/i.test(text)){explain=true;if(q)q.hasExplanation=true;continue}
@@ -228,7 +228,35 @@ async function loadExam(file){const bytes=await file.arrayBuffer(),zip=await JSZ
     else q.blocks.push(node);
   } else if(text || find(node,'drawing').length) before.push(node)
  }
- let all=Object.values(sections).flat();for(const question of all){const parsed=question.section==='I'?optionSegments(question):question.section==='II'?tfSegments(question):shortSegments(question);question.parsed=parsed;if(!parsed)warnings.push(`Phần ${question.section} – câu gốc ${question.originalNumber}: chưa xác định đủ cấu trúc câu/phương án`);else if(question.section==='I' && parsed.options.filter(x=>x.correct).length!==1)warnings.push(`Phần I – câu ${question.originalNumber}: không nhận diện duy nhất một đáp án gạch chân`);else if(question.section==='III'&&!parsed.answer)warnings.push(`Phần III – câu ${question.originalNumber}: thiếu đáp án A.`)}
+ // Recognize strong structural signals when Word omits section headings.
+ // Never infer the correct answer from Biology/Math subject knowledge.
+ if(!explicitSections.has('II')||!explicitSections.has('III')){
+  const allBefore=Object.values(sections).flat();
+  for(const item of allBefore){
+   const mc=optionSegments({...item,section:'I'});
+   const tf=tfSegments({...item,section:'II'});
+   const sh=shortSegments({...item,section:'III'});
+   const raw=item.blocks.map(ptext).join(' ');
+   if(item.section==='I'&&!explicitSections.has('II')&&!mc&&tf){
+    item.section='II';classificationNotes.push('Tự nhận dạng Phần II từ các ý a–d: câu '+item.originalNumber);
+   }else if(item.section!=='III'&&!explicitSections.has('III')&&!mc&&!tf&&sh.answer&&
+     (/(?:đáp\s*án|đ\/a|answer|kết\s*quả)\s*[:：\-]/i.test(raw)||/^\s*[-+]?\d+(?:[,.]\d+)?\s*$/.test(sh.answer))){
+    item.section='III';classificationNotes.push('Tự nhận dạng Phần III từ đáp án ngắn: câu '+item.originalNumber);
+   }
+  }
+  sections={I:[],II:[],III:[]};
+  for(const item of allBefore)sections[item.section].push(item);
+ }
+ let all=Object.values(sections).flat();
+ for(const question of all){
+  const parsed=question.section==='I'?optionSegments(question):question.section==='II'?tfSegments(question):shortSegments(question);
+  question.parsed=parsed;
+  if(!parsed){warnings.push('Phần '+question.section+' – câu '+question.originalNumber+': chưa nhận diện đủ cấu trúc hoặc phương án.');continue}
+  if(parsed.answerConflict){warnings.push('Phần '+question.section+' – câu '+question.originalNumber+': đáp án gạch chân và đáp án ghi rõ mâu thuẫn; cần xác nhận.');continue}
+  if(question.section==='I'&&parsed.options.filter(x=>x.correct).length!==1)warnings.push('Phần I – câu '+question.originalNumber+': chưa xác định chắc chắn đáp án đúng.');
+  if(question.section==='II'&&parsed.tfUncertain)warnings.push('Phần II – câu '+question.originalNumber+': không xác định được đầy đủ đáp án Đúng/Sai; cần xác nhận.');
+  if(question.section==='III'&&!parsed.answer)warnings.push('Phần III – câu '+question.originalNumber+': chưa xác định được đáp án trả lời ngắn.');
+ }
 
  // Build browser-only image URLs from embedded OOXML media; never fetch external URLs.
  const relFile=zip.file('word/_rels/document.xml.rels');
@@ -252,7 +280,7 @@ async function loadExam(file){const bytes=await file.arrayBuffer(),zip=await JSZ
    if(cache[path])q.imageUrls.push(cache[path]);
   }
  }
- return {zip,doc,sections,warnings,groupLines,total:all.length,fileName:file.name,sourceBytes:bytes};}
+ return {zip,doc,sections,warnings,groupLines,classificationNotes,total:all.length,fileName:file.name,sourceBytes:bytes};}
 function questionText(q){const x=q.parsed;if(!x)return normalize(q.blocks.map(ptext).join(' '));return normalize(x.stem.map(ptext).join(' ').replace(/^Câu\s*\d+\s*[.:]\s*/i,''));}
 function changeNumber(block,n){const p=block.cloneNode(true);let toks=txtTokens(p),str=toks.map(x=>x.ch).join(''),m=str.match(/^\s*Câu\s*\d+\s*[.:]\s*/i);if(m){let k=m[0].length,cnt=0;for(const t of find(p,'t')){let old=t.textContent,out='';for(const chr of old){if(cnt++>=k)out+=chr}t.textContent=out;} let start=el(p.ownerDocument,'r');const rp=el(p.ownerDocument,'rPr');rp.appendChild(el(p.ownerDocument,'b'));start.appendChild(rp);const w=el(p.ownerDocument,'t');w.setAttributeNS(XML,'xml:space','preserve');w.textContent=`Câu ${n}. `;start.appendChild(w);let first=Array.from(p.childNodes).find(c=>local(c)==='r');p.insertBefore(start,first||null)}return p}
 function formatParagraph(p,opts={}){let doc=p.ownerDocument,pr=child(p,'pPr');if(!pr){pr=el(doc,'pPr');p.insertBefore(pr,p.firstChild)}for(let c of Array.from(pr.childNodes)){if(['keepNext','keepLines','pageBreakBefore','spacing','tabs','ind','jc'].includes(local(c)))pr.removeChild(c)}let spacing=el(doc,'spacing');spacing.setAttributeNS(W,'w:before','0');spacing.setAttributeNS(W,'w:after',String(opts.after??0));spacing.setAttributeNS(W,'w:line','236');spacing.setAttributeNS(W,'w:lineRule','auto');pr.appendChild(spacing);if(opts.keepNext)pr.appendChild(el(doc,'keepNext'));if(opts.indent){let ind=el(doc,'ind');ind.setAttributeNS(W,'w:left',String(opts.indent));pr.appendChild(ind)}if(opts.tabPositions){let ts=el(doc,'tabs');for(let pos of opts.tabPositions){let tab=el(doc,'tab');tab.setAttributeNS(W,'w:val','left');tab.setAttributeNS(W,'w:pos',String(pos));ts.appendChild(tab)}pr.appendChild(ts)}for(const run of find(p,'r')){let rp=child(run,'rPr');if(!rp){rp=el(doc,'rPr');run.insertBefore(rp,run.firstChild)}for(let c of Array.from(rp.childNodes)){if(['sz','szCs','rFonts'].includes(local(c)))rp.removeChild(c)}let fonts=el(doc,'rFonts');for(const k of ['ascii','hAnsi','cs','eastAsia'])fonts.setAttributeNS(W,'w:'+k,'Times New Roman');rp.appendChild(fonts);let sz=el(doc,'sz');sz.setAttributeNS(W,'w:val','24');rp.appendChild(sz)}for(let br of find(p,'lastRenderedPageBreak'))br.parentNode?.removeChild(br);return p}
@@ -296,7 +324,7 @@ function optionsLayout(doc,items,teacher){
  }
  return out;
 }
-function tfParagraphs(item,newLabel,teacher=false){const doc=item.blocks[0].ownerDocument;const out=item.blocks.map(b=>b.cloneNode(true));let p=out[0],tokens=txtTokens(p),s=tokens.map(x=>x.ch).join(''),m=s.match(/^\s*\(?[abcd]\s*[).:\-]\s*/i);if(m){let cut=m[0].length,used=0;for(const t of find(p,'t')){let newVal='';for(const ch of t.textContent){if(used++>=cut)newVal+=ch}t.textContent=newVal}let first=Array.from(p.childNodes).find(c=>local(c)==='r');let run=el(doc,'r'),rPr=el(doc,'rPr');rPr.appendChild(el(doc,'b'));if(teacher&&item.correct){let u=el(doc,'u');u.setAttributeNS(W,'w:val','single');rPr.appendChild(u)}run.appendChild(rPr);let t=el(doc,'t');t.textContent=newLabel+') ';t.setAttributeNS(XML,'xml:space','preserve');run.appendChild(t);p.insertBefore(run,first||null)}return out.map(o=>formatParagraph(o,{indent:300}))}
+function tfParagraphs(item,newLabel,teacher=false){const doc=item.blocks[0].ownerDocument;const out=item.blocks.map(b=>b.cloneNode(true));out.forEach(b=>b.removeAttribute?.('data-original-underlined'));let p=out[0],tokens=txtTokens(p),s=tokens.map(x=>x.ch).join(''),m=s.match(/^\s*\(?[abcd]\s*[).:\-]\s*/i);if(m){let cut=m[0].length,used=0;for(const t of find(p,'t')){let newVal='';for(const ch of t.textContent){if(used++>=cut)newVal+=ch}t.textContent=newVal}let first=Array.from(p.childNodes).find(c=>local(c)==='r');let run=el(doc,'r'),rPr=el(doc,'rPr');rPr.appendChild(el(doc,'b'));if(teacher&&item.correct){let u=el(doc,'u');u.setAttributeNS(W,'w:val','single');rPr.appendChild(u)}run.appendChild(rPr);let t=el(doc,'t');t.textContent=newLabel+') ';t.setAttributeNS(XML,'xml:space','preserve');run.appendChild(t);p.insertBefore(run,first||null)}return out.map(o=>formatParagraph(o,{indent:300}))}
 function paragraphWithNumber(q,n,source){const arr=source.map(b=>b.cloneNode(true)),p=arr.find(x=>local(x)==='p');if(p){let idx=arr.indexOf(p);arr[idx]=changeNumber(p,n)}return arr.map(x=>local(x)==='p'?formatParagraph(x):x)}
 function shuffleArray(items,rng){const a=[...items];for(let i=a.length-1;i>0;i--){let j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function seeded(seed){let n=seed>>>0;return()=>{n+=0x6D2B79F5;let t=n;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296}}
@@ -520,7 +548,7 @@ function applyExcelAnswers(exam,answers){let changes=0,conflicts=[];let offset=0
 // src/excel.js
 // Minimal XLSX Open XML writer; no external network services.
 const escape=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-async function makeAnswerXlsx(plans,codes,exam){const zip=new JSZip();const sections=['I','II','III'];let rows=[['Câu\\Mã đề','000',...codes]];let number=0;for(const s of sections){let n=plans[0].order[s].length;for(let i=1;i<=n;i++){let q=exam?.sections?.[s]?.[i-1],x=q?.parsed;let original=s==='I'?(x?.options?.find(o=>o.correct)?.original||''):s==='II'?(x?.items?.map(o=>o.correct?'Đ':'S').join('')||''):(x?.answer||'');rows.push([String(++number),original,...plans.map(p=>p.answer[`${s}-${i}`]||'')])}}
+async function makeAnswerXlsx(plans,codes,exam){const zip=new JSZip();const sections=['I','II','III'];let rows=[['Câu\\Mã đề','000',...codes]];let number=0;for(const s of sections){let n=plans[0].order[s].length;for(let i=1;i<=n;i++){let q=exam?.sections?.[s]?.[i-1],x=q?.parsed;let original=s==='I'?(x?.options?.find(o=>o.correct)?.original||''):s==='II'?(x?.tfUncertain?'':(x?.items?.map(o=>o.correct?'Đ':'S').join('')||'')):(x?.answer||'');rows.push([String(++number),original,...plans.map(p=>p.answer[`${s}-${i}`]||'')])}}
  const sheet=rows.map((row,ri)=>`<row r="${ri+1}">${row.map((v,ci)=>`<c r="${col(ci)}${ri+1}" t="inlineStr"><is><t>${escape(v)}</t></is></c>`).join('')}</row>`).join('');
  zip.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>');
  zip.file('_rels/.rels','<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
