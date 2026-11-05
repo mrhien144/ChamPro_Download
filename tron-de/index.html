@@ -316,7 +316,11 @@ async function loadExam(file){const bytes=await file.arrayBuffer(),zip=await JSZ
   // Bare 1), 2), 3) lines inside an existing question are numbered statements,
   // not new questions. Prefer explicit "Câu N" headings; use Word list numbering
   // only at a section boundary before the first recognized question.
-  if(mNum===null&&!q)mNum=numberedQuestion(node,expectedNumber);
+  // Automatic Word numbering with a genuine "Câu %1:" / "Câu %1." list
+  // starts a new question even when a previous question is still active.
+  // numberedQuestion() checks the OOXML list format; it does not treat
+  // ordinary numbered assertions "1) / 2)" as new questions.
+  if(mNum===null)mNum=numberedQuestion(node,expectedNumber);
   if(mNum!==null){q={section,originalNumber:mNum,blocks:[node],preamble:before};sections[section].push(q);before=[];explain=false;continue}
   if(/^LỜI\s+GIẢI\s*:?/i.test(text)){explain=true;if(q)q.hasExplanation=true;continue}
   if(explain)continue;
