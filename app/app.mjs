@@ -1,6 +1,8 @@
 import {grade,parseRows,toCsv,validateForSave} from './grader.mjs';
-import {readSheet} from './omr.mjs';
+import {readSheet} from './omr-native.mjs';
 const $=id=>document.getElementById(id);
+// Canvas-only OMR: no heavy OpenCV startup on Samsung browsers.
+
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const storedKey='champro-web-beta-v1';
 const fresh=()=>({schema:1,exams:[],students:[],results:[]});
@@ -158,7 +160,7 @@ async function startCamera(){if(stream)return;try{if(!navigator.mediaDevices?.ge
 let s;try{s=await navigator.mediaDevices.getUserMedia(cameraOptions);}catch(firstError){
  // Some browsers/cameras reject portrait constraints; fall back to rear camera.
  s=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'}}});
-}stream=s;$('video').srcObject=s;await $('video').play();fitGuideToVisibleVideo();$('cameraPlaceholder').hidden=true;$('scanMode').textContent='Camera đang mở';$('scanStatus').textContent='Đặt phiếu phẳng, đủ 4 ô đen trong hình';if($('autoScan').checked)autoTimer=setInterval(autoScanOnce,750);void Promise.all([ensureCv(),ensureLayouts()]).catch(e=>{$('scanStatus').textContent='Chưa tải được bộ đọc ảnh: '+e.message;});}catch(e){toast('Camera: '+e.message);$('scanStatus').textContent=e.message;}}
+}stream=s;$('video').srcObject=s;await $('video').play();fitGuideToVisibleVideo();$('cameraPlaceholder').hidden=true;$('scanMode').textContent='Camera đang mở';$('scanStatus').textContent='Đặt phiếu phẳng, đủ 4 ô đen trong hình';if($('autoScan').checked)autoTimer=setInterval(autoScanOnce,750);void ensureLayouts().catch(e=>{$('scanStatus').textContent='Không tải được tọa độ phiếu: '+e.message;});}catch(e){toast('Camera: '+e.message);$('scanStatus').textContent=e.message;}}
 function stopCamera(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;}if(stream){stream.getTracks().forEach(x=>x.stop());stream=null;}$('video').srcObject=null;$('cameraPlaceholder').hidden=false;$('scanMode').textContent='Đã dừng';lastAuto=null;}
 $('startCamera').onclick=startCamera;$('stopCamera').onclick=stopCamera;
 $('rotateCamera').onclick=()=>{cameraRotation=cameraRotation===0?270:cameraRotation===270?90:0;fitGuideToVisibleVideo();$('scanStatus').textContent=cameraRotation?'Đã xoay khung hình '+cameraRotation+'°; tiếp tục quét.':'Đã khôi phục hướng camera gốc.';};
@@ -222,7 +224,7 @@ async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;
  if(!manual&&!db.students.length){$('scanStatus').textContent='Chưa có danh sách học sinh. Vào mục Học sinh để nhập SBD trước khi chấm tự động.';return;}
  if(!manual&&!Object.keys(exam.keys||{}).length){$('scanStatus').textContent='Chưa có bộ đáp án cho '+(exam.subject||exam.name)+'. Vào Đề & đáp án để nhập mã đề trước khi chấm.';return;}
  captureBusy=true;if(manual)lastReviewImage=c.toDataURL('image/jpeg',.65);const t0=performance.now();$('scanStatus').textContent='Đang phân tích phiếu…';await new Promise(resolve=>requestAnimationFrame(resolve));try{
-  const [cv,geometry]=await Promise.all([ensureCv(),ensureLayouts()]);
+  const geometry=await ensureLayouts(),cv=null;
   const key='ChamPro_Phieu_'+(exam.form==='120'?'120Cau':'3Phan')+'_MaDe'+exam.digits;
   if(!geometry[key])throw Error('Không có tọa độ mẫu phiếu '+key);
   const match=await trySheetOrientations(c,geometry[key],cv,exam,manual),result=match.result;
@@ -247,7 +249,7 @@ async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;
 async function autoScanOnce(){if(!stream||captureBusy||$('reviewDialog').open||!$('autoScan').checked)return;try{await readCanvas(captureVideo(),false);}catch(e){$('scanStatus').textContent=e.message;}}
 $('snap').onclick=async()=>{try{await readCanvas(captureVideo(),true);}catch(e){toast(e.message)}};
 $('openPhoto').onclick=async()=>{const file=$('photoFile').files[0];if(!file)return toast('Hãy chọn ảnh phiếu trước');const url=URL.createObjectURL(file),img=new Image();img.onload=async()=>{try{await readCanvas(imageCanvas(img),true,'photo');}catch(e){toast(e.message);}finally{URL.revokeObjectURL(url);}};img.onerror=()=>{URL.revokeObjectURL(url);toast('Không mở được ảnh')};img.src=url;};
-$('testEngine').onclick=async()=>{try{await Promise.all([ensureCv(),ensureLayouts()]);toast('OpenCV và 4 mẫu phiếu đã sẵn sàng');}catch(e){toast(e.message);}};
+$('testEngine').onclick=async()=>{try{const geometry=await ensureLayouts();if(Object.keys(geometry).length<4)throw Error('Thiếu mẫu phiếu');toast('Bộ đọc ảnh nhẹ và 4 mẫu phiếu đã sẵn sàng');}catch(e){toast(e.message);}};
 function openReview(exam,omr){review={exam,omr};const student=db.students.find(s=>s.sbd===omr.sbd);const info=omr.uncertain?.length?`<p class="warning">Có ${omr.uncertain.length} ô chưa rõ. Hãy kiểm tra với ảnh phiếu trước khi lưu.</p>`:'<p class="success">Đã nhận dạng. Kiểm tra SBD, mã đề và đáp án trước khi lưu.</p>';
  const field=(p,num,val,opts)=>`<label>${p} ${num}<input data-p="${p}" data-q="${num-1}" ${opts||''} value="${esc(val)}"></label>`;
  $('reviewBody').innerHTML=info+(lastReviewImage?`<details><summary>Ảnh phiếu đang kiểm tra (không lưu vào kết quả)</summary><img src="${lastReviewImage}" alt="Ảnh phiếu để đối chiếu" style="display:block;width:100%;max-height:460px;object-fit:contain;background:#0b1724;margin:8px 0 15px"></details>`:'')+`<div class="review-data"><label>Học sinh<select id="reviewStudent"><option value="">-- Chọn học sinh --</option>${db.students.map(s=>`<option value="${esc(s.id)}" ${student?.id===s.id?'selected':''}>${esc(s.sbd)} - ${esc(s.name)}</option>`).join('')}</select></label><label>SBD đọc từ phiếu<input id="reviewSbd" value="${esc(omr.sbd)}" maxlength="6" inputmode="numeric"></label><label>Mã đề<input id="reviewCode" value="${esc(omr.examCode)}" maxlength="4" inputmode="numeric"></label></div><h3>Phần I</h3><div class="answeredit">${Array.from({length:exam.counts.I},(_,i)=>field('I',i+1,omr.I?.[i]||'', 'maxlength="3"')).join('')}</div>${exam.counts.II?'<h3>Phần II (Đ/S, 4 ý)</h3><div class="answeredit">'+Array.from({length:exam.counts.II},(_,i)=>field('II',i+1,omr.II?.[i]||'', 'maxlength="4"')).join('')+'</div>':''}${exam.counts.III?'<h3>Phần III</h3><div class="answeredit">'+Array.from({length:exam.counts.III},(_,i)=>field('III',i+1,omr.III?.[i]||'', '')).join('')+'</div>':''}`;
