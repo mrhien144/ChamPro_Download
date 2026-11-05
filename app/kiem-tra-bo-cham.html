@@ -17,7 +17,7 @@ canvas{display:none}
 <body>
 <main>
 <h1>Kiểm tra bộ nhận diện ChấmPro</h1>
-<p class="hint">Trang kiểm tra độc lập, không thay đổi camera, đáp án, danh sách học sinh hoặc kết quả chấm. Chỉ chạy trên trình duyệt của bạn, không gửi dữ liệu đi.</p>
+<p class="hint">Trang kiểm tra độc lập, không thay đổi camera, đáp án, danh sách học sinh hoặc kết quả chấm. Chỉ chạy trên trình duyệt của bạn, không gửi dữ liệu đi. Bản kiểm tra sử dụng Canvas thuần, không cần OpenCV.</p>
 <button id="run">Bắt đầu kiểm tra</button>
 <button id="copy" class="link" type="button">Sao chép kết quả</button>
 <a class="link" href="./">Trở về ChấmPro</a>
@@ -27,83 +27,61 @@ canvas{display:none}
 <p class="hint">Nếu kết quả báo lỗi, bạn chỉ cần sao chép phần nhật ký và gửi vào cuộc trò chuyện. Không cần gửi dữ liệu của học sinh.</p>
 </main>
 <script type="module">
-import {detectMarkers,readSheet} from './omr.mjs?diag=20261105';
+import {readSheet} from './omr-native.mjs?diag=20261105-native-r1';
 const by=id=>document.getElementById(id);
-const stamp=()=>new Date().toLocaleTimeString('vi-VN');
 const logs=[];
-function line(msg){logs.push(stamp()+'  '+msg);by('log').textContent=logs.join('\n');}
+function line(s){logs.push(new Date().toLocaleTimeString('vi-VN')+'  '+s);by('log').textContent=logs.join('\n');}
 function status(s){by('status').textContent=s;}
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-function timeout(p,ms,label){return Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(Error(label+' quá thời gian ('+ms+' ms)')),ms))]);}
-window.addEventListener('error',e=>{if(e?.message)line('Lỗi JavaScript: '+e.message)});
-window.addEventListener('unhandledrejection',e=>{line('Promise lỗi: '+String(e.reason?.message||e.reason).slice(0,180))});
+window.addEventListener('error',e=>{if(e?.message)line('Lỗi JavaScript: '+e.message);});
 async function run(){
- by('run').disabled=true;logs.length=0;by('log').textContent='';const t0=performance.now();
+ by('run').disabled=true;logs.length=0;by('log').textContent='';
+ const start=performance.now();
  try{
-  status('1/4 — Kiểm tra tệp thư viện OpenCV…');
-  line('Kiểm tra ChấmPro /app/ · '+location.origin);
-  line('Thiết bị: '+(navigator.userAgentData?.platform||navigator.platform||'không rõ'));
-  const u='./vendor/opencv.js';
-  const ctrl=new AbortController(),tid=setTimeout(()=>ctrl.abort(),18000);
-  try{
-   const h=await fetch(u,{method:'HEAD',cache:'no-store',signal:ctrl.signal});
-   if(!h.ok)throw Error('HTTP '+h.status);
-   line('Tệp OpenCV: HTTP '+h.status+'; kích thước báo cáo: '+(h.headers.get('content-length')||'không có')+' byte');
-  }finally{clearTimeout(tid);}
-  status('2/4 — Nạp OpenCV vào trình duyệt…');
-  window.Module=window.Module||{};
-  window.Module.onRuntimeInitialized=()=>line('OpenCV báo đã khởi tạo runtime');
-  if(!window.cv){
-   await timeout(new Promise((resolve,reject)=>{
-    const el=document.createElement('script');
-    el.src='./vendor/opencv.js?diag=20261105';el.async=true;
-    el.onload=resolve;el.onerror=()=>reject(Error('Không nạp được script OpenCV cục bộ'));
-    document.head.appendChild(el);
-   }),30000,'Tải script OpenCV');
-  }
-  line('Script đã tải; kiểu dữ liệu cv: '+typeof window.cv);
-  status('3/4 — Chờ OpenCV khởi tạo Mat…');
-  if(window.cv&&typeof window.cv.then==='function'){
-   window.cv=await timeout(Promise.resolve(window.cv),30000,'Khởi tạo Promise OpenCV');
-  }
-  const start=performance.now();
-  while(!window.cv?.Mat){
-   if(performance.now()-start>30000)throw Error('OpenCV chưa có Mat sau khi script tải xong');
-   await sleep(200);
-  }
-  const cv=window.cv;
-  line('OpenCV READY: Mat='+typeof cv.Mat+', threshold='+typeof cv.threshold+', findContours='+typeof cv.findContours);
-  if(typeof cv.Mat!=='function'||typeof cv.findContours!=='function'||typeof cv.warpPerspective!=='function')throw Error('Thư viện thiếu các hàm nhận diện cần thiết');
-  status('4/4 — Thử nhận diện bốn dấu mốc mẫu…');
-  const canvas=by('test'),g=canvas.getContext('2d');
-  g.fillStyle='#fff';g.fillRect(0,0,canvas.width,canvas.height);
-  g.fillStyle='#000';
-  for(const [x,y] of [[62,65],[778,65],[778,1135],[62,1135]])g.fillRect(x-12,y-12,24,24);
-  let mat,gray;
-  try{
-   mat=cv.imread(canvas);gray=new cv.Mat();
-   cv.cvtColor(mat,gray,cv.COLOR_RGBA2GRAY);
-   const corners=detectMarkers(gray,cv);
-   line('Phát hiện đủ 4 mốc: '+JSON.stringify(corners.map(p=>p.map(n=>Math.round(n)))));
-  }finally{if(mat)mat.delete();if(gray)gray.delete();}
-  const layout={mode:'3Phan',page_size:[595,842],markers:[[24,24],[571,24],[571,818],[24,818]],candidate_no:[],exam_code:[],parts:{I:[],II:[],III:[]}};
-  const result=readSheet(canvas,layout,cv,{I:0,II:0,III:0});
-  if(result.markers.length!==4)throw Error('Không xử lý được phép hiệu chỉnh phối cảnh');
-  line('Hiệu chỉnh phối cảnh: thành công');
-  line('Tổng thời gian: '+((performance.now()-t0)/1000).toFixed(1)+' giây');
-  line('KẾT LUẬN: Bộ xử lý ảnh và thuật toán nhận diện mẫu hoạt động trên trình duyệt này.');
-  status('ĐẠT — Bộ xử lý ảnh đã khởi tạo và nhận diện được phiếu mẫu.');
+  line('Bộ đọc ảnh Canvas Native, không dùng OpenCV hoặc WebAssembly');
+  status('1/4 — Kiểm tra mẫu phiếu…');
+  const res=await fetch('./layouts.json',{cache:'no-store'});
+  if(!res.ok)throw Error('Không tải được mẫu phiếu: HTTP '+res.status);
+  const layouts=await res.json();
+  line('Mẫu phiếu: '+Object.keys(layouts).length+' mẫu');
+  status('2/4 — Chuẩn bị ảnh mô phỏng…');
+  const c=by('test');c.width=600;c.height=850;
+  const g=c.getContext('2d');
+  g.fillStyle='#fff';g.fillRect(0,0,600,850);
+  g.fillStyle='#000';for(const [x,y] of [[24,24],[575,24],[575,825],[24,825]])g.fillRect(x-10,y-10,20,20);
+  const candidate_no=Array.from({length:6},(_,i)=>Array.from({length:10},(_,j)=>[405+17*i,90+18*j]));
+  const exam_code=Array.from({length:3},(_,i)=>Array.from({length:10},(_,j)=>[520+17*i,90+18*j]));
+  const points=Array.from({length:18},(_,i)=>[0,1,2,3].map(j=>[170+20*j,540+12*i]));
+  function dot(x,y,r=4){g.beginPath();g.arc(x,y,r,0,2*Math.PI);g.fill();}
+  for(let i=0;i<6;i++)dot(...candidate_no[i][i]);
+  for(let i=0;i<3;i++)dot(...exam_code[i][i+2]);
+  for(let i=0;i<18;i++)dot(...points[i][i%4]);
+  status('3/4 — Thử nhận diện 4 góc, SBD và đáp án…');
+  await new Promise(resolve=>requestAnimationFrame(resolve));
+  const layout={mode:'three',markers:[[24,24],[575,24],[575,825],[24,825]],candidate_no,exam_code,parts:{I:points,II:[],III:[]}};
+  const result=readSheet(c,layout,null,{I:18,II:0,III:0});
+  line('Mốc: '+JSON.stringify(result.markers));
+  line('SBD: '+result.sbd+' / cần 012345');
+  line('Mã đề: '+result.examCode+' / cần 234');
+  line('Phần I: '+result.I.join('')+' / cần ABCDABCDABCDABCDAB');
+  if(result.sbd!=='012345'||result.examCode!=='234'||result.I.join('')!=='ABCDABCDABCDABCDAB')throw Error('Bộ đọc không khớp đáp án mô phỏng');
+  status('4/4 — Kiểm tra tốc độ…');
+  line('Nhận diện ảnh mô phỏng: CHÍNH XÁC');
+  line('Thời gian: '+Math.round(performance.now()-start)+' ms');
+  line('KẾT LUẬN: bộ đọc ảnh hoạt động; cần kiểm thử trên phiếu giấy thật.');
+  status('ĐẠT — Bộ nhận diện đã vượt qua kiểm tra mô phỏng.');
  }catch(e){
-  line('LỖI: '+(e?.stack||e?.message||String(e)).slice(0,500));
-  line('KẾT LUẬN: Chưa đạt, cần sửa bước hiển thị ngay phía trên.');
+  line('LỖI: '+(e.stack||e.message||String(e)).slice(0,650));
   status('CHƯA ĐẠT — '+(e.message||String(e)));
  }finally{by('run').disabled=false;}
 }
-by('run').addEventListener('click',run);
-by('copy').addEventListener('click',async()=>{
- const s=logs.join('\n')||'Chưa có nhật ký.';
- try{await navigator.clipboard.writeText(s);status('Đã sao chép nhật ký. Bạn hãy dán vào ChatGPT.');}
- catch(e){const t=document.createElement('textarea');t.value=s;document.body.append(t);t.select();document.execCommand('copy');t.remove();status('Đã sao chép.');}
-});
+by('run').onclick=run;
+by('copy').onclick=async()=>{
+ const str=logs.join('\n')||'Chưa có kết quả';
+ try{await navigator.clipboard.writeText(str);status('Đã sao chép nhật ký.');}
+ catch(e){
+  const t=document.createElement('textarea');t.value=str;t.style.position='fixed';t.style.top='0';document.body.append(t);t.select();
+  document.execCommand('copy');t.remove();status('Đã thử sao chép; bạn có thể chụp màn hình nếu không dán được.');
+ }
+};
 </script>
 </body></html>
