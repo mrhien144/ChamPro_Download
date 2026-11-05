@@ -161,6 +161,7 @@ export function readSheet(canvas,layout,_unused=null,counts=null){
   const c=choice(frame,map,g,'.,0123456789');if(c.status==='unclear')uncertain.push('Phần III câu '+(i+1)+', cột '+(j+1));return c.value||' ';
  }).join('').trim());
  const total=layout.candidate_no.length+layout.exam_code.length;
+ const codeConfidence=(examCode.length===layout.exam_code.length&&/^\d+$/.test(examCode)&&!uncertain.some(x=>x.startsWith('Mã đề ')))?1:0;
  const confidence=clamp(idOk/Math.max(1,total)*(uncertain.length?.7:1),0,1);
- return {sbd,examCode,I,II,III,confidence,uncertain,markers:markers.map(([x,y])=>[x*frame.sx,y*frame.sy]),form:layout.mode,photoWidth:canvas.width,photoHeight:canvas.height,engine:'Canvas Native'};
+ return {sbd,examCode,I,II,III,confidence,codeConfidence,uncertain,markers:markers.map(([x,y])=>[x*frame.sx,y*frame.sy]),form:layout.mode,photoWidth:canvas.width,photoHeight:canvas.height,engine:'Canvas Native'};
 }
