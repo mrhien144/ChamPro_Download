@@ -22,11 +22,11 @@ export async function decodeChamProQR(raw){
  if(data?.app!=='ChamPro'||data.v!==1||data.type!==envelope.type)throw Error('Nội dung QR không đúng phiên bản ChấmPro');
  return data;
 }
-export const normalizeSbd=s=>String(s??'').replace(/\.0$/,'').trim().padStart(6,'0');
+export const normalizeSbd=s=>String(s??'').replace(/\.0$/,'').trim();
 export function studentsFromQR(data){
  if(data?.type!=='student_list'||!Array.isArray(data.students)||data.students.length>500)throw Error('QR danh sách học sinh không hợp lệ');
  const seen=new Set();const output=[];
- for(const s of data.students){const sbd=normalizeSbd(s.candidate_no),name=String(s.full_name||'').trim();if(!/^\d{6}$/.test(sbd)||!name||seen.has(sbd))continue;seen.add(sbd);output.push({sbd,name,classroom:String(data.class_name||'').trim(),parentZalo1:String(s.parent_zalo_1||''),parentZalo2:String(s.parent_zalo_2||''),note:String(s.note||'')});}
+ for(const s of data.students){const sbd=normalizeSbd(s.candidate_no),name=String(s.full_name||'').trim();if(!/^\d{1,12}$/.test(sbd)||!name||seen.has(sbd))continue;seen.add(sbd);output.push({sbd,name,classroom:String(data.class_name||'').trim(),parentZalo1:String(s.parent_zalo_1||''),parentZalo2:String(s.parent_zalo_2||''),note:String(s.note||'')});}
  if(!output.length)throw Error('QR không có học sinh hợp lệ');
  return output;
 }
