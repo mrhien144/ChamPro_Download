@@ -237,15 +237,16 @@ async function trySheetOrientations(c,layout,cv,exam,manual=false){
    const result=readSheet(rotatedCanvas(c,deg),layout,cv,exam.counts);
    const knownStudent=Boolean(findStudentForSbd(db.students,result.sbd));
    const knownCode=Boolean(exam.keys?.[result.examCode]);
-   const score=(knownStudent?3:0)+(knownCode?3:0)+(result.confidence||0)*3-
+   // Prefer a valid code from the selected exam; never invent or replace a code.
+   const score=(knownCode&&result.codeConfidence===1?12:0)+(knownStudent?2:0)+(result.confidence||0)*3-
     Math.min(2,(result.uncertain?.length||0)*.025);
    results.push({result,deg,score,knownStudent,knownCode});
-   if(knownCode&&knownStudent&&result.confidence>=.98&&!result.uncertain.length){lastGoodOrientation=deg;break;}
+   if(knownCode&&result.codeConfidence===1&&result.confidence>=.95&&!result.uncertain.some(x=>!x.startsWith('SBD '))){lastGoodOrientation=deg;break;}
   }catch(e){errors.push(deg+'°: '+e.message);}
  }
  if(!results.length){lastGoodOrientation=null;throw Error('Không xác định được mốc phiếu ('+errors.slice(0,2).join(' | ').slice(0,180)+')');}
  results.sort((a,b)=>b.score-a.score);
- if(results[0].knownStudent&&results[0].knownCode)lastGoodOrientation=results[0].deg;
+ if(results[0].knownCode&&results[0].result.codeConfidence===1)lastGoodOrientation=results[0].deg;
  return results[0];
 }
 async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;const exam=selectedExam();if(!exam){$('scanStatus').textContent='Chưa chọn môn/kỳ kiểm tra. Hãy tạo đề, nhập đáp án và chọn kỳ kiểm tra trước khi chấm.';if(manual)toast('Hãy tạo và chọn kỳ kiểm tra trước');return;}
@@ -261,12 +262,22 @@ async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;
     // doing so makes consecutive scans disagree and blocks automatic grading.
     $('scanStatus').textContent='Đã nhận diện hướng ảnh '+match.deg+'°';
    }
-  if(match.knownCode&&match.knownStudent&&result.confidence>=.9){$('captureGuide').classList.add('detected');setTimeout(()=>$('captureGuide').classList.remove('detected'),550);}$('scanInfo').textContent=`Đã đọc SBD ${result.sbd||'?'}, mã đề ${result.examCode||'?'}; độ tin cậy ${(result.confidence*100).toFixed(0)}%; ${result.uncertain.length} ô cần xem. ${(performance.now()-t0).toFixed(0)} ms`;
+  if(match.knownCode&&result.codeConfidence===1){$('captureGuide').classList.add('detected');setTimeout(()=>$('captureGuide').classList.remove('detected'),550);}$('scanInfo').textContent=`Đã đọc SBD ${result.sbd||'?'}, mã đề ${result.examCode||'?'}; độ tin cậy ${(result.confidence*100).toFixed(0)}%; ${result.uncertain.length} ô cần xem. ${(performance.now()-t0).toFixed(0)} ms`;
   $('scanStatus').textContent='Đã nhận diện SBD '+(result.sbd||'?')+' · mã đề '+(result.examCode||'?')+' · '+(performance.now()-t0).toFixed(0)+' ms';
   if(manual){openReview(exam,result);return;}
   const student=findStudentForSbd(db.students,result.sbd),issues=validateForSave(exam,student,result);
   if(result.codeConfidence!==1)issues.push('Mã đề chưa đọc đủ');
-  if(issues.length){lastAuto=null;$('scanStatus').textContent='Chưa thể lưu: '+issues.slice(0,3).join('; ');$('scanInfo').textContent+=' | '+issues.join('; ');return;}
+  if(issues.length){
+   lastAuto=null;
+   const mismatch=issues.includes('Mã đề chưa tồn tại trong bộ đáp án');
+   const stored=Object.keys(exam.keys||{}).sort();
+   const note=mismatch
+    ?'Camera đọc mã '+(result.examCode||'(trống)')+' · Môn/kỳ đang chọn: '+[exam.gradeClass,exam.name,exam.subject].filter(Boolean).join(' · ')+' · Mã đã lưu: '+(stored.join(', ')||'(trống)')+'. '
+    :'';
+   $('scanStatus').textContent='Chưa thể lưu: '+note+issues.slice(0,3).join('; ');
+   $('scanInfo').textContent+=' | '+note+issues.join('; ');
+   return;
+  }
   const fingerprint=JSON.stringify([exam.id,student?.id||'CHUA_GAN',result.examCode,result.I.slice(0,exam.counts.I),result.II.slice(0,exam.counts.II),result.III.slice(0,exam.counts.III)]);
   if(lastAuto?.fingerprint!==fingerprint||Date.now()-lastAuto.time>7000){lastAuto={fingerprint,time:Date.now()};$('scanStatus').textContent='Đã đọc mã đề và đáp án. Giữ yên để xác nhận lần hai…';return;}
   if(lastSaved===fingerprint){$('scanStatus').textContent='Phiếu này vừa chấm, hãy đổi phiếu tiếp theo';return;}
