@@ -43,11 +43,9 @@ export function toCsv(rows) {const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"'
 export function validateForSave(exam,student,omr) {
  const issues=[];
  if(!exam||!exam.keys)issues.push('Chưa chọn kỳ kiểm tra');
- if(!student||!student.id)issues.push('Chưa xác định học sinh');
- if(!omr||!/^\d{6}$/.test(String(omr.sbd||'')))issues.push('SBD chưa đủ 6 chữ số');
  if(!omr||!exam?.keys?.[omr.examCode])issues.push('Mã đề chưa tồn tại trong bộ đáp án');
  const found=Object.values({I:omr?.I||[],II:omr?.II||[],III:omr?.III||[]}).flat().some(s=>String(s||'').replace(/\?/g,'').trim());
  if(!found)issues.push('Phiếu không có đáp án được tô');
- if(omr?.uncertain?.length)issues.push('Có ô chưa rõ, cần giáo viên kiểm tra');
+ if(omr?.uncertain?.some(x=>!/^SBD \d+$/.test(x)))issues.push('Có mã đề hoặc đáp án chưa rõ, cần giáo viên kiểm tra');
  return issues;
 }
