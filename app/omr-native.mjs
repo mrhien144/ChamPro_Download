@@ -70,7 +70,7 @@ function quadFrom(a,w,h){
   [...prominent].sort((x,y)=>y[0]+y[1]-x[0]-x[1]).slice(0,11),
   [...prominent].sort((x,y)=>(x[0]-x[1])-(y[0]-y[1])).slice(0,11)
  ];
- let best=null,bestScore=-Infinity;
+ let best=null,bestScore=-Infinity,bestConsistency=0;
  for(const tl of pool[0])for(const tr of pool[1])for(const br of pool[2])for(const bl of pool[3]){
   if(tl===tr||tr===br||br===bl||tl===bl||tl===br||tr===bl)continue;
   if(tr[0]<=tl[0]||br[1]<=tr[1]||bl[0]>=br[0]||bl[1]<=tl[1])continue;
@@ -86,9 +86,9 @@ function quadFrom(a,w,h){
   if(turn<=0)continue;
   const fit=Math.max(0,1-Math.abs(aspect-.689)/.689);
   const score=area/(w*h)*8+shape*2+consistency*2+fit*2+Math.log1p(Math.min(...sizes))/12;
-  if(score>bestScore){bestScore=score;best=[tl,tr,br,bl].map(p=>[p[0],p[1]]);}
+  if(score>bestScore){bestScore=score;bestConsistency=consistency;best=[tl,tr,br,bl].map(p=>[p[0],p[1]]);}
  }
- return best;
+ return best?{points:best,score:bestScore,consistency:bestConsistency}:null;
 }
 function linearSolve(matrix,vector){
  const n=vector.length,a=matrix.map((row,i)=>[...row,vector[i]]);
@@ -139,9 +139,14 @@ export function readSheet(canvas,layout,_unused=null,counts=null){
  if(!layout?.markers||!layout?.candidate_no||!layout?.exam_code)throw Error('Chưa có tọa độ phiếu hợp lệ');
  const frame=pixelFrame(canvas),{gray,w,h}=frame;
  if(Math.min(w,h)<350)throw Error('Ảnh quá nhỏ hoặc quá xa');
- let candidates=candidateSquares(gray,w,h,false),markers=quadFrom(candidates,w,h);
- if(!markers){candidates=candidateSquares(gray,w,h,true);markers=quadFrom(candidates,w,h);}
- if(!markers)throw Error('Không tìm đủ 4 ô vuông đen ngoài cùng trên phiếu');
+ // Global threshold can mistake a small interior square for a fiducial.
+ // If that geometry looks weak, compare the locally thresholded candidate.
+ const global=quadFrom(candidateSquares(gray,w,h,false),w,h);
+ const tryLocal=!global||global.consistency<.68||global.score<10.4;
+ const local=tryLocal?quadFrom(candidateSquares(gray,w,h,true),w,h):null;
+ const chosen=!global?local:!local?global:(local.score>global.score?local:global);
+ if(!chosen)throw Error('Không tìm đủ 4 ô vuông đen ngoài cùng trên phiếu');
+ const markers=chosen.points,markerMode=(chosen===local?'local':'global');
  const map=projector(layout,markers);
  const uncertain=[];let idOk=0;
  function series(groups,alphabet,region){return groups.map((g,i)=>{
@@ -163,5 +168,5 @@ export function readSheet(canvas,layout,_unused=null,counts=null){
  const total=layout.candidate_no.length+layout.exam_code.length;
  const codeConfidence=(examCode.length===layout.exam_code.length&&/^\d+$/.test(examCode)&&!uncertain.some(x=>x.startsWith('Mã đề ')))?1:0;
  const confidence=clamp(idOk/Math.max(1,total)*(uncertain.length?.7:1),0,1);
- return {sbd,examCode,I,II,III,confidence,codeConfidence,uncertain,markers:markers.map(([x,y])=>[x*frame.sx,y*frame.sy]),form:layout.mode,photoWidth:canvas.width,photoHeight:canvas.height,engine:'Canvas Native'};
+ return {sbd,examCode,I,II,III,confidence,codeConfidence,uncertain,markerMode,markerScore:Number(chosen.score.toFixed(2)),markers:markers.map(([x,y])=>[x*frame.sx,y*frame.sy]),form:layout.mode,photoWidth:canvas.width,photoHeight:canvas.height,engine:'Canvas Native'};
 }
