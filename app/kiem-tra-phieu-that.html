@@ -67,6 +67,12 @@ img{display:block;max-height:350px;max-width:100%;margin:12px auto;object-fit:co
 <div id="calibrationText" class="status"></div>
 <p class="hint">Trên ảnh phía trên, vòng tròn tím thể hiện các vị trí sau khi hiệu chỉnh. Nếu các vòng này nằm đúng tâm ô tô, hãy lưu ảnh đánh dấu và gửi để đối chiếu.</p>
 </section>
+<section id="printedSection" hidden>
+<h3>Kiểm tra tọa độ riêng từng phần</h3>
+<div id="printedResult" class="status"></div>
+<p class="hint">Đổi chế độ hiển thị bên dưới để xem những điểm lấy mẫu mới. ChấmPro chưa sử dụng các điểm này để lưu điểm tự động. Chỉ xác nhận khi các điểm nằm giữa ô in và câu trả lời đọc đúng với phiếu giấy.</p>
+<button id="togglePrinted" class="secondary" type="button">Xem các điểm mới (màu hồng)</button>
+</section>
 <h3>Nhật ký kiểm tra</h3>
 <pre id="log">Chưa kiểm tra.</pre>
 <button class="secondary" id="copy" type="button">Sao chép nhật ký</button>
@@ -76,8 +82,9 @@ img{display:block;max-height:350px;max-width:100%;margin:12px auto;object-fit:co
 <script type="module">
 import {readSheet} from './omr-native.mjs?real-photo-check-3';
 import {calibrateIdentity} from './omr-grid-calibration.mjs?lattice-r1';
+import {printedThreePartLayout} from './omr-printed-layout-diagnostic.mjs?v=measured-r2';
 const $=id=>document.getElementById(id);
-let log=[], lastCanvas=null,lastLayout=null,lastSuccess=[], lastGrid=null;
+let log=[], lastCanvas=null,lastLayout=null,lastSuccess=[], lastGrid=null,lastCorrected=null;
 const line=s=>{log.push(s);$('log').textContent=log.join('\n')};
 const setStatus=s=>$('status').textContent=s;
 function rotate(source,deg){
@@ -141,6 +148,17 @@ function drawOverlay(){
  for(const group of lastLayout.candidate_no)for(const p of group)ring(p,'#1877f2',3.6);
  for(const group of lastLayout.exam_code)for(const p of group)ring(p,'#ff3434',4.1);
  for(const group of lastLayout.parts.I.slice(0,10))for(const p of group)ring(p,'#ffcc00',3.8);
+ if(lastCorrected?.show&&angle===lastCorrected.deg){
+  const drawGroup=(groups,max)=>{for(const q of groups.slice(0,max))for(const row of q){
+   if(Array.isArray(row[0]))for(const point of row)ring(point,'#fa19b8',4);
+   else ring(row,'#fa19b8',4);
+  }};
+  for(const group of lastCorrected.layout.exam_code)for(const p of group)ring(p,'#fa19b8',4);
+  for(const group of lastCorrected.layout.candidate_no)for(const p of group)ring(p,'#fa19b8',4);
+  drawGroup(lastCorrected.layout.parts.I,10);
+  drawGroup(lastCorrected.layout.parts.II,2);
+  drawGroup(lastCorrected.layout.parts.III,2);
+ }
  if(lastGrid?.deg===angle){
   for(const arr of [lastGrid.code?.cells,lastGrid.sbd?.cells])if(arr){
    for(const row of arr)for(const [x,y] of row){
@@ -169,7 +187,7 @@ $('run').onclick=async()=>{
   const layouts=await resp.json(),layout=layouts[$('layout').value];
   if(!layout)throw Error('Không tìm thấy tọa độ loại phiếu đã chọn');
   line('Ảnh xử lý: '+canvas.width+' × '+canvas.height);
-  const success=[],fail=[];lastCanvas=null;lastLayout=null;lastSuccess=[];lastGrid=null;$('overlaySection').hidden=true;$('calibrationSection').hidden=true;
+  const success=[],fail=[];lastCanvas=null;lastLayout=null;lastSuccess=[];lastGrid=null;lastCorrected=null;$('overlaySection').hidden=true;$('calibrationSection').hidden=true;$('printedSection').hidden=true;
   for(const deg of [0,90,270,180]){
    setStatus('Đang nhận diện hướng '+deg+'°…');
    await new Promise(resolve=>requestAnimationFrame(resolve));
@@ -193,6 +211,21 @@ $('run').onclick=async()=>{
   const confirmed=success.find(x=>x.res.codeConfidence===1&&local.some(e=>e.codes.includes(x.res.examCode)));
   const best=confirmed||upright,r=best.res,matched=local.filter(e=>e.codes.includes(r.examCode));
   lastCanvas=canvas;lastLayout=layout;lastSuccess=success;
+  const correctedLayout=printedThreePartLayout(layout);
+  if(correctedLayout&&upright.deg===0){
+   try{
+    const corrected=readSheet(canvas,correctedLayout,null,{I:40,II:8,III:6});
+    lastCorrected={layout:correctedLayout,deg:0,show:true};
+    const printedSummary='Mã '+(corrected.examCode||'?')+'; SBD '+(corrected.sbd||'?')+
+      '; Phần I 10 câu đầu: '+corrected.I.slice(0,10).join(' ')+'; II 2 câu đầu: '+corrected.II.slice(0,2).join(' | ')+
+      '; III 2 câu đầu: '+corrected.III.slice(0,2).join(' | ')+
+      '; Ô chưa rõ: '+corrected.uncertain.length;
+    $('printedSection').hidden=false;
+    $('printedResult').textContent=printedSummary;
+    line('TOẠ ĐỘ MỚI THEO TỪNG VÙNG (CHƯA XÁC NHẬN): '+printedSummary);
+   }catch(error){line('Lỗi thử tọa độ mới: '+error.message);}
+  }
+
   // Diagnostic only: calibrate the printed grids at the upright orientation,
   // not the score-selected orientation when every code read is incomplete.
   try{
@@ -223,6 +256,7 @@ $('run').onclick=async()=>{
  finally{$('run').disabled=false}
 };
 $('previewAngle').onchange=drawOverlay;
+$('togglePrinted').onclick=()=>{if(!lastCorrected)return;lastCorrected.show=!lastCorrected.show;$('togglePrinted').textContent=lastCorrected.show?'Ẩn các điểm mới (màu hồng)':'Xem các điểm mới (màu hồng)';drawOverlay();};
 $('saveOverlay').onclick=()=>{const c=$('overlayCanvas');if(!c.width)return;const a=document.createElement('a');a.href=c.toDataURL('image/png');a.download='ChamPro_Kiem_Tra_Toa_Do.png';document.body.appendChild(a);a.click();a.remove();};
 $('copy').onclick=async()=>{
  const payload=log.filter(s=>!s.startsWith('Ảnh:')).join('\n');
