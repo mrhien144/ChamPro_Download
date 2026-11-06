@@ -63,7 +63,7 @@ img{display:block;max-height:350px;max-width:100%;margin:12px auto;object-fit:co
 </section>
 <section id="calibrationSection" hidden>
 <h3>Kiểm tra độ lệch lưới ô tô (thử nghiệm)</h3>
-<p class="hint">Đây là bước kiểm tra độc lập để tìm tâm ô SBD và mã đề trên ảnh thật. Mã đề dự đoán có thể trùng ngẫu nhiên với mã đã lưu. <strong>Không dùng để chấm tự động</strong> trước khi kiểm tra vị trí vòng tím và đáp án trên giấy.</p>
+<p class="hint">Đây là bước kiểm tra độc lập để tìm tâm ô SBD và mã đề trên ảnh thật. Kết quả đọc mực ở tâm ô chỉ phục vụ kiểm thử. <strong>Không dùng để chấm tự động</strong> trước khi kiểm tra các phần và đáp án trên giấy.</p>
 <div id="calibrationText" class="status"></div>
 <p class="hint">Trên ảnh phía trên, vòng tròn tím thể hiện các vị trí sau khi hiệu chỉnh. Nếu các vòng này nằm đúng tâm ô tô, hãy lưu ảnh đánh dấu và gửi để đối chiếu.</p>
 </section>
@@ -83,6 +83,7 @@ img{display:block;max-height:350px;max-width:100%;margin:12px auto;object-fit:co
 import {readSheet} from './omr-native.mjs?real-photo-check-3';
 import {calibrateIdentity} from './omr-grid-calibration.mjs?lattice-r1';
 import {printedThreePartLayout} from './omr-printed-layout-diagnostic.mjs?v=measured-r2';
+import {inspectPrintedInk} from './omr-center-diagnostic.mjs?v=center-r1';
 const $=id=>document.getElementById(id);
 let log=[], lastCanvas=null,lastLayout=null,lastSuccess=[], lastGrid=null,lastCorrected=null;
 const line=s=>{log.push(s);$('log').textContent=log.join('\n')};
@@ -215,6 +216,7 @@ $('run').onclick=async()=>{
   if(correctedLayout&&upright.deg===0){
    try{
     const corrected=readSheet(canvas,correctedLayout,null,{I:40,II:8,III:6});
+    const inkCheck=inspectPrintedInk(canvas,correctedLayout,corrected.markers,{I:40,II:8,III:6});
     lastCorrected={layout:correctedLayout,deg:0,show:true};
     const printedSummary='Mã '+(corrected.examCode||'?')+'; SBD '+(corrected.sbd||'?')+
       '; Phần I 10 câu đầu: '+corrected.I.slice(0,10).join(' ')+'; II 2 câu đầu: '+corrected.II.slice(0,2).join(' | ')+
@@ -223,6 +225,8 @@ $('run').onclick=async()=>{
     $('printedSection').hidden=false;
     $('printedResult').textContent=printedSummary;
     line('TOẠ ĐỘ MỚI THEO TỪNG VÙNG (CHƯA XÁC NHẬN): '+printedSummary);
+    line('MỰC TÂM Ô (THỬ NGHIỆM): mã '+inkCheck.code+', SBD '+inkCheck.sbd+', phần I '+inkCheck.I+', II '+inkCheck.II.slice(0,4).join(' | ')+', III '+inkCheck.III.slice(0,6).join(' | ')+', cần xem lại '+JSON.stringify(inkCheck.unread));
+    line('ĐỘ TƯƠNG PHẢN MÃ ĐỀ: '+JSON.stringify(inkCheck.confidence.code));
    }catch(error){line('Lỗi thử tọa độ mới: '+error.message);}
   }
 
