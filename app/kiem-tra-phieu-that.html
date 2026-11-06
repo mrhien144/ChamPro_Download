@@ -60,7 +60,7 @@ img{display:block;max-height:350px;max-width:100%;margin:12px auto;object-fit:co
 <p class="hint">Khi gửi nhật ký, bạn có thể che phần SBD nếu muốn. Không cần gửi ảnh chứa tên học sinh nếu chỉ kiểm tra lỗi mã đề.</p>
 </main>
 <script type="module">
-import {readSheet} from './omr-native.mjs?real-photo-check-1';
+import {readSheet} from './omr-native.mjs?real-photo-check-2';
 const $=id=>document.getElementById(id);
 let log=[];
 const line=s=>{log.push(s);$('log').textContent=log.join('\n')};
@@ -113,7 +113,7 @@ $('run').onclick=async()=>{
     const validCode=Number(res.codeConfidence)===1;
     const score=(validCode?10:0)+res.confidence*3-Math.min(res.uncertain.length,40)*.06;
     success.push({deg,res,score});
-    line('Hướng '+deg+'°: mã '+(res.examCode||'?')+'; SBD '+(res.sbd||'?')+'; mã rõ '+(validCode?'có':'không')+'; ô chưa rõ '+res.uncertain.length);
+    line('Hướng '+deg+'°: mã '+(res.examCode||'?')+'; SBD '+(res.sbd||'?')+'; mã rõ '+(validCode?'có':'không')+'; ô chưa rõ '+res.uncertain.length+'; 4 mốc '+res.markerMode+' (điểm '+res.markerScore+')');
    }catch(err){fail.push({deg,message:err.message});line('Hướng '+deg+'°: '+err.message);}
   }
   if(!success.length)throw Error('Không đọc được cả 4 hướng. '+fail.slice(0,2).map(x=>x.message).join(' | '));
@@ -129,7 +129,7 @@ $('run').onclick=async()=>{
   $('issues').textContent='Ô chưa rõ: '+r.uncertain.length+' ('+r.uncertain.slice(0,12).join('; ')+(r.uncertain.length>12?'…':'')+')';
   $('codes').textContent='Mã đề lưu trên trình duyệt: '+(local.length?local.map(x=>x.name+': '+x.codes.join(', ')).join(' | '):'Chưa tìm thấy dữ liệu.');
   $('answers').textContent='Phần I: '+r.I.join(' ')+'\nPhần II: '+r.II.join(' | ')+'\nPhần III: '+r.III.join(' | ');
-  line('Kết quả ưu tiên: hướng '+best.deg+'°, mã '+(r.examCode||'?')+', khớp bộ đáp án: '+(matched.length?matched.map(x=>x.name).join(' | '):'KHÔNG'));
+  line('Kết quả ưu tiên: hướng '+best.deg+'°, mã '+(r.examCode||'?')+', khớp bộ đáp án: '+(matched.length?matched.map(x=>x.name).join(' | '):'KHÔNG')+'; mốc '+r.markerMode);
   line('Thời gian '+Math.round(performance.now()-started)+' ms');
   $('report').hidden=false;setStatus('Đã phân tích. Hãy đối chiếu mã đề hiển thị với mã được tô trên phiếu.');
  }catch(e){line('LỖI: '+(e?.message||String(e)));setStatus('Chưa phân tích được: '+(e?.message||e));}
