@@ -53,6 +53,14 @@ img{display:block;max-height:350px;max-width:100%;margin:12px auto;object-fit:co
 <p id="issues" class="hint"></p>
 <details><summary>Chi tiết các câu đã đọc (để đối chiếu với phiếu)</summary><pre id="answers"></pre></details>
 </div>
+<section id="overlaySection" hidden>
+<h3>Ảnh đánh dấu vị trí ChấmPro đang đọc</h3>
+<p class="hint">Các vòng tròn phải nằm đúng giữa các ô tô. <strong>Đỏ:</strong> mã đề; <strong>xanh dương:</strong> SBD; <strong>vàng:</strong> Phần I (10 câu đầu); <strong>xanh lá:</strong> bốn mốc ngoài cùng. Đây chỉ là ảnh chẩn đoán, không sửa ảnh gốc.</p>
+<label for="previewAngle">Xem ảnh ở hướng</label>
+<select id="previewAngle"></select>
+<canvas id="overlayCanvas" style="display:block;width:100%;height:auto;max-height:960px;object-fit:contain;border:1px solid #ced9e6;border-radius:10px;margin:12px auto"></canvas>
+<button class="secondary" id="saveOverlay" type="button">Lưu ảnh đánh dấu về điện thoại</button>
+</section>
 <h3>Nhật ký kiểm tra</h3>
 <pre id="log">Chưa kiểm tra.</pre>
 <button class="secondary" id="copy" type="button">Sao chép nhật ký</button>
@@ -62,7 +70,7 @@ img{display:block;max-height:350px;max-width:100%;margin:12px auto;object-fit:co
 <script type="module">
 import {readSheet} from './omr-native.mjs?real-photo-check-2';
 const $=id=>document.getElementById(id);
-let log=[];
+let log=[], lastCanvas=null,lastLayout=null,lastSuccess=[];
 const line=s=>{log.push(s);$('log').textContent=log.join('\n')};
 const setStatus=s=>$('status').textContent=s;
 function rotate(source,deg){
@@ -86,6 +94,48 @@ async function readImage(file){
   return c;
  }finally{URL.revokeObjectURL(url)}
 }
+function solve8(rows,values){
+ const n=8,a=rows.map((r,i)=>[...r,values[i]]);
+ for(let k=0;k<n;k++){
+  let pivot=k;for(let j=k+1;j<n;j++)if(Math.abs(a[j][k])>Math.abs(a[pivot][k]))pivot=j;
+  if(Math.abs(a[pivot][k])<1e-9)throw Error('Không xác định được phép chiếu');
+  [a[k],a[pivot]]=[a[pivot],a[k]];
+  const divisor=a[k][k];for(let j=k;j<=n;j++)a[k][j]/=divisor;
+  for(let i=0;i<n;i++){if(i===k)continue;const ratio=a[i][k];for(let j=k;j<=n;j++)a[i][j]-=ratio*a[k][j];}
+ }
+ return a.map(row=>row[n]);
+}
+function projectLayout(layout,marks){
+ const rows=[],v=[];
+ layout.markers.forEach(([x,y],i)=>{
+  const [u,w]=marks[i];rows.push([x,y,1,0,0,0,-x*u,-y*u]);v.push(u);
+  rows.push([0,0,0,x,y,1,-x*w,-y*w]);v.push(w);
+ });
+ const m=solve8(rows,v);
+ return ([x,y])=>{const z=m[6]*x+m[7]*y+1;return [(m[0]*x+m[1]*y+m[2])/z,(m[3]*x+m[4]*y+m[5])/z];};
+}
+function drawOverlay(){
+ const angle=Number($('previewAngle').value),entry=lastSuccess.find(x=>x.deg===angle);
+ if(!entry||!lastCanvas||!lastLayout)return;
+ const canvas=rotate(lastCanvas,angle),out=$('overlayCanvas'),ctx=out.getContext('2d');
+ const scale=Math.min(1,1050/Math.max(canvas.width,canvas.height));
+ out.width=Math.round(canvas.width*scale);out.height=Math.round(canvas.height*scale);
+ ctx.drawImage(canvas,0,0,out.width,out.height);
+ const fit=projectLayout(lastLayout,entry.res.markers);
+ function ring(pt,color,r=5){
+  const [x,y]=fit(pt);ctx.beginPath();ctx.arc(x*scale,y*scale,r,0,Math.PI*2);
+  ctx.lineWidth=2.1;ctx.strokeStyle=color;ctx.stroke();
+ }
+ function marker(pt){
+  const [x,y]=pt;ctx.beginPath();ctx.arc(x*scale,y*scale,11,0,Math.PI*2);
+  ctx.lineWidth=3;ctx.strokeStyle='#00ee66';ctx.stroke();
+ }
+ for(const p of entry.res.markers)marker(p);
+ for(const group of lastLayout.candidate_no)for(const p of group)ring(p,'#1877f2',3.6);
+ for(const group of lastLayout.exam_code)for(const p of group)ring(p,'#ff3434',4.1);
+ for(const group of lastLayout.parts.I.slice(0,10))for(const p of group)ring(p,'#ffcc00',3.8);
+ line('Hướng hiển thị '+angle+'°: 4 mốc ảnh '+JSON.stringify(entry.res.markers.map(p=>p.map(v=>Math.round(v)))));
+}
 function savedCodes(){
  try{
   const raw=localStorage.getItem('champro-web-beta-v1');
@@ -104,7 +154,7 @@ $('run').onclick=async()=>{
   const layouts=await resp.json(),layout=layouts[$('layout').value];
   if(!layout)throw Error('Không tìm thấy tọa độ loại phiếu đã chọn');
   line('Ảnh xử lý: '+canvas.width+' × '+canvas.height);
-  const success=[],fail=[];
+  const success=[],fail=[];lastCanvas=null;lastLayout=null;lastSuccess=[];$('overlaySection').hidden=true;
   for(const deg of [0,90,270,180]){
    setStatus('Đang nhận diện hướng '+deg+'°…');
    await new Promise(resolve=>requestAnimationFrame(resolve));
@@ -123,6 +173,10 @@ $('run').onclick=async()=>{
    return rank(b)-rank(a);
   });
   const best=success[0],r=best.res,matched=local.filter(e=>e.codes.includes(r.examCode));
+  lastCanvas=canvas;lastLayout=layout;lastSuccess=success;
+  $('previewAngle').innerHTML=success.map(x=>'<option value="'+x.deg+'">Hướng '+x.deg+'° — mã '+(x.res.examCode||'?')+'</option>').join('');
+  $('previewAngle').value=String(best.deg);
+  $('overlaySection').hidden=false;drawOverlay();
   $('code').textContent=r.examCode||'Không rõ';$('sbd').textContent=r.sbd||'Không rõ';
   $('confidence').textContent=r.codeConfidence===1?'Đủ số, cần đối chiếu':'Chưa đủ rõ';
   $('rotation').textContent=best.deg+'°';
@@ -135,6 +189,8 @@ $('run').onclick=async()=>{
  }catch(e){line('LỖI: '+(e?.message||String(e)));setStatus('Chưa phân tích được: '+(e?.message||e));}
  finally{$('run').disabled=false}
 };
+$('previewAngle').onchange=drawOverlay;
+$('saveOverlay').onclick=()=>{const c=$('overlayCanvas');if(!c.width)return;const a=document.createElement('a');a.href=c.toDataURL('image/png');a.download='ChamPro_Kiem_Tra_Toa_Do.png';document.body.appendChild(a);a.click();a.remove();};
 $('copy').onclick=async()=>{
  const payload=log.filter(s=>!s.startsWith('Ảnh:')).join('\n');
  try{await navigator.clipboard.writeText(payload);setStatus('Đã sao chép nhật ký.')}
