@@ -78,7 +78,9 @@ function quadFrom(a,w,h){
   const area=Math.abs(cross([tr[0]-tl[0],tr[1]-tl[1]],[bl[0]-tl[0],bl[1]-tl[1]]));
   if(area<w*h*.10||Math.min(...widths)<w*.30||Math.min(...heights)<h*.37)continue;
   const aspect=(widths[0]+widths[1])/(heights[0]+heights[1]);
-  if(aspect<.43||aspect>1.02)continue;
+  // The four outer marks form an A4 portrait fiducial rectangle (~0.689).
+  // Near-square or landscape quads are usually interior blocks, not the sheet.
+  if(aspect<.50||aspect>.86)continue;
   const shape=(Math.min(...widths)/Math.max(...widths))*(Math.min(...heights)/Math.max(...heights));
   const sizes=[tl[2],tr[2],br[2],bl[2]],consistency=Math.min(...sizes)/Math.max(...sizes);
   if(shape<.45||consistency<.20)continue;
