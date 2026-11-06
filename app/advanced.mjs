@@ -1,5 +1,5 @@
 /** ChấmPro: QR Web import, multi-subject gradebook, and Excel matrix import/export. */
-import {getDb,save,toast,spreadsheetRows,loadScript,sendFile} from './app.mjs?v=20261105-code-debug-r3';
+import {getDb,save,toast,spreadsheetRows,loadScript,sendFile} from './app.mjs?v=20261106-marker-r4';
 import {listGroups,makeReport,sheetMatrix} from './multisubject.mjs';
 import {decodeChamProQR,studentsFromQR,keysFromQR,parseAnswerMatrix} from './qr-compatible.mjs';
 import {toCsv} from './grader.mjs';
