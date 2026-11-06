@@ -10,7 +10,7 @@ export function printedThreePartLayout(original){
  // Measurements in the original PDF coordinate system (points). The real
  // printed grid has different origin/spacing than layouts.json.
  const settings={
-  sbd:{dx:30.65,dy:5.03,sx:.83,sy:.95},
+  sbd:{dx:17.52,dy:5.03,sx:.83,sy:.95},
   code:{dx:18.55,dy:6.23,sx:.66,sy:.94},
   I:{dx:15.16,dy:15.04,sx:.93,sy:.82},
   II:{dx:16.39,dy:-9.41,sx:.98,sy:.84},
