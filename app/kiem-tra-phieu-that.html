@@ -61,6 +61,12 @@ img{display:block;max-height:350px;max-width:100%;margin:12px auto;object-fit:co
 <canvas id="overlayCanvas" style="display:block;width:100%;height:auto;max-height:960px;object-fit:contain;border:1px solid #ced9e6;border-radius:10px;margin:12px auto"></canvas>
 <button class="secondary" id="saveOverlay" type="button">Lưu ảnh đánh dấu về điện thoại</button>
 </section>
+<section id="calibrationSection" hidden>
+<h3>Kiểm tra độ lệch lưới ô tô (thử nghiệm)</h3>
+<p class="hint">Đây là bước kiểm tra độc lập để tìm tâm ô SBD và mã đề trên ảnh thật. Mã được đề xuất <strong>không được sử dụng tự động để chấm</strong> cho đến khi kiểm tra thủ công trên giấy.</p>
+<div id="calibrationText" class="status"></div>
+<p class="hint">Trên ảnh phía trên, vòng tròn tím thể hiện các vị trí sau khi hiệu chỉnh. Nếu các vòng này nằm đúng tâm ô tô, hãy lưu ảnh đánh dấu và gửi để đối chiếu.</p>
+</section>
 <h3>Nhật ký kiểm tra</h3>
 <pre id="log">Chưa kiểm tra.</pre>
 <button class="secondary" id="copy" type="button">Sao chép nhật ký</button>
@@ -69,8 +75,9 @@ img{display:block;max-height:350px;max-width:100%;margin:12px auto;object-fit:co
 </main>
 <script type="module">
 import {readSheet} from './omr-native.mjs?real-photo-check-3';
+import {calibrateIdentity} from './omr-grid-calibration.mjs?lattice-r1';
 const $=id=>document.getElementById(id);
-let log=[], lastCanvas=null,lastLayout=null,lastSuccess=[];
+let log=[], lastCanvas=null,lastLayout=null,lastSuccess=[], lastGrid=null;
 const line=s=>{log.push(s);$('log').textContent=log.join('\n')};
 const setStatus=s=>$('status').textContent=s;
 function rotate(source,deg){
@@ -134,6 +141,14 @@ function drawOverlay(){
  for(const group of lastLayout.candidate_no)for(const p of group)ring(p,'#1877f2',3.6);
  for(const group of lastLayout.exam_code)for(const p of group)ring(p,'#ff3434',4.1);
  for(const group of lastLayout.parts.I.slice(0,10))for(const p of group)ring(p,'#ffcc00',3.8);
+ if(lastGrid?.deg===angle){
+  for(const arr of [lastGrid.code?.cells,lastGrid.sbd?.cells])if(arr){
+   for(const row of arr)for(const [x,y] of row){
+    ctx.beginPath();ctx.arc(x*scale,y*scale,4.4,0,2*Math.PI);
+    ctx.lineWidth=2;ctx.strokeStyle='#b000ef';ctx.stroke();
+   }
+  }
+ }
  line('Hướng hiển thị '+angle+'°: 4 mốc ảnh '+JSON.stringify(entry.res.markers.map(p=>p.map(v=>Math.round(v)))));
 }
 function savedCodes(){
@@ -154,7 +169,7 @@ $('run').onclick=async()=>{
   const layouts=await resp.json(),layout=layouts[$('layout').value];
   if(!layout)throw Error('Không tìm thấy tọa độ loại phiếu đã chọn');
   line('Ảnh xử lý: '+canvas.width+' × '+canvas.height);
-  const success=[],fail=[];lastCanvas=null;lastLayout=null;lastSuccess=[];$('overlaySection').hidden=true;
+  const success=[],fail=[];lastCanvas=null;lastLayout=null;lastSuccess=[];lastGrid=null;$('overlaySection').hidden=true;$('calibrationSection').hidden=true;
   for(const deg of [0,90,270,180]){
    setStatus('Đang nhận diện hướng '+deg+'°…');
    await new Promise(resolve=>requestAnimationFrame(resolve));
@@ -174,8 +189,22 @@ $('run').onclick=async()=>{
   });
   const best=success[0],r=best.res,matched=local.filter(e=>e.codes.includes(r.examCode));
   lastCanvas=canvas;lastLayout=layout;lastSuccess=success;
+  // Diagnostic only: calibrate the printed grids at the upright orientation,
+  // not the score-selected orientation when every code read is incomplete.
+  const upright=success.find(x=>x.deg===0)||best;
+  try{
+   setStatus('Đang đối chiếu tâm các ô tô thực tế…');
+   await new Promise(resolve=>requestAnimationFrame(resolve));
+   const calibrated=calibrateIdentity(rotate(canvas,upright.deg),layout,upright.res.markers);
+   lastGrid={deg:upright.deg,...calibrated};
+   const fmt=x=>x?('mã '+x.value+', khớp vòng '+x.fitScore+' (ban đầu '+x.rawScore+'), hiệu chỉnh '+JSON.stringify(x.parameters)):'không rõ';
+   $('calibrationText').textContent='Hướng '+upright.deg+'° · Mã đề: '+fmt(calibrated.code)+' · SBD: '+fmt(calibrated.sbd);
+   $('calibrationSection').hidden=false;
+   line('LƯỚI THỰC TẾ (CHẨN ĐOÁN) hướng '+upright.deg+'°: mã '+fmt(calibrated.code)+'; SBD '+fmt(calibrated.sbd));
+  }catch(error){line('Lỗi hiệu chỉnh lưới: '+error.message);}
+
   $('previewAngle').innerHTML=success.map(x=>'<option value="'+x.deg+'">Hướng '+x.deg+'° — mã '+(x.res.examCode||'?')+'</option>').join('');
-  $('previewAngle').value=String(best.deg);
+  $('previewAngle').value=String(lastGrid?.deg??best.deg);
   $('overlaySection').hidden=false;drawOverlay();
   $('code').textContent=r.examCode||'Không rõ';$('sbd').textContent=r.sbd||'Không rõ';
   $('confidence').textContent=r.codeConfidence===1?'Đủ số, cần đối chiếu':'Chưa đủ rõ';
