@@ -29,7 +29,8 @@ img{display:block;max-height:350px;max-width:100%;margin:12px auto;object-fit:co
 </head>
 <body><main>
 <h1>Đối chiếu R9 và R11 — R12</h1>
-<p class="hint"><strong>Phiên bản: 20261107-compare-r12</strong>. Nếu không thấy dòng “MỰC TÂM Ô” trong nhật ký thì bản kiểm tra chưa tải đúng.</p>
+<p class="hint"><strong>Kiểm tra nguồn ảnh:</strong> hãy chọn ảnh phiếu gốc, chưa có vòng màu hồng, xanh hoặc cam. Mã ảnh giúp xác nhận các lượt thử sử dụng cùng một ảnh.</p>
+<p class="hint"><strong>Phiên bản: 20261107-compare-r12b</strong>. Nếu không thấy dòng “MỰC TÂM Ô” trong nhật ký thì bản kiểm tra chưa tải đúng.</p>
 <p>Trang này kiểm tra riêng việc đọc ảnh, <strong>không chấm điểm, không lưu bài</strong> và không thay đổi học sinh/đáp án hiện có. Ảnh được xử lý ngay trên điện thoại.</p>
 <label for="photo">1. Chụp hoặc chọn ảnh phiếu trắc nghiệm</label>
 <input id="photo" type="file" accept="image/*" capture="environment">
@@ -202,6 +203,27 @@ function targetCounts(){
    :{I:18,II:4,III:6};
  }catch{return {I:18,II:4,III:6};}
 }
+async function checkInputPhoto(file,canvas){
+ try{
+  const bytes=await file.arrayBuffer();
+  const hash=await crypto.subtle.digest('SHA-256',bytes);
+  const id=Array.from(new Uint8Array(hash).slice(0,8),v=>v.toString(16).padStart(2,'0')).join('');
+  line('MÃ ẢNH GỐC (16 ký tự): '+id);
+ }catch(e){line('Không tính được mã ảnh: '+e.message);}
+ const min=Math.min(1,900/Math.max(canvas.width,canvas.height)),w=Math.round(canvas.width*min),h=Math.round(canvas.height*min);
+ const tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;
+ const ctx=tmp.getContext('2d',{willReadFrequently:true});ctx.drawImage(canvas,0,0,w,h);
+ const data=ctx.getImageData(0,0,w,h).data;
+ let pink=0,samples=0;
+ for(let y=Math.round(h*.08);y<Math.round(h*.92);y+=4)
+ for(let x=Math.round(w*.08);x<Math.round(w*.92);x+=4){
+  const k=(y*w+x)*4,r=data[k],g=data[k+1],b=data[k+2];
+  if(r>120&&b>90&&g<r*.78&&g<b*.83)pink++;
+  samples++;
+ }
+ line('KIỂM TRA MÀU ĐÁNH DẤU: '+pink+' điểm hồng/tím trên '+samples+' điểm ảnh mẫu.');
+ if(pink>150)line('CẢNH BÁO ẢNH ĐÃ ĐÁNH DẤU: Có nhiều nét hồng/tím giống vòng chẩn đoán. Phải dùng ẢNH GỐC chưa vẽ vòng; kết quả đọc trên ảnh đã đánh dấu không đáng tin cậy.');
+}
 function savedCodes(){
  try{
   const raw=localStorage.getItem('champro-web-beta-v1');
@@ -221,6 +243,7 @@ $('run').onclick=async()=>{
   const layouts=await resp.json(),layout=layouts[$('layout').value];
   if(!layout)throw Error('Không tìm thấy tọa độ loại phiếu đã chọn');
   line('Ảnh xử lý: '+canvas.width+' × '+canvas.height);
+  await checkInputPhoto(file,canvas);
   const success=[],fail=[];lastCanvas=null;lastLayout=null;lastSuccess=[];lastGrid=null;lastCorrected=null;lastSubgrids=null;$('overlaySection').hidden=true;$('calibrationSection').hidden=true;$('printedSection').hidden=true;
   for(const deg of [0,90,270,180]){
    setStatus('Đang nhận diện hướng '+deg+'°…');
