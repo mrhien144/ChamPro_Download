@@ -54,12 +54,52 @@ function choice(frame,map,coords,alphabet){
 function marks(frame,map,coords){
  return coords.map(([x,y])=>{const [u,v]=map(x,y);return meanCenter(frame,u,v);});
 }
+
+// Camera corner-square positions can be off by several pixels. Fit each
+// printed bubble region to the OUTLINE rings before examining dark centers.
+// Do not optimize directly for "darkness": that can mistake ring edges for fills.
+const ANGLES=Array.from({length:12},(_,i)=>[Math.cos(i*Math.PI/6),Math.sin(i*Math.PI/6)]);
+function localRingShift(frame,projection,groups,radiusRef){
+ const all=groups.flat();
+ if(!all.length)return [0,0];
+ const center=all[Math.floor(all.length/2)];
+ const c0=projection(center[0],center[1]);
+ const c1=projection(center[0]+radiusRef,center[1]);
+ const r=Math.hypot(c1[0]-c0[0],c1[1]-c0[1])*frame.down;
+ if(r<2.5)return [0,0];
+ const rOuter=r+Math.max(2.7,r*.55);
+ const steps=Math.max(3,Math.min(6,Math.round(r*.68)));
+ const spots=all.map(([x,y])=>{const [u,v]=projection(x,y);return [u*frame.down,v*frame.down];});
+ const {gray,w,h}=frame;
+ const shade=(x,y)=>{const ix=Math.round(x),iy=Math.round(y);return ix>0&&iy>0&&ix<w&&iy<h?gray[iy*w+ix]:255;};
+ const evaluate=(dx,dy)=>{
+  let total=0;
+  for(const [x,y] of spots){
+   const xx=x+dx,yy=y+dy;
+   for(const [cx,cy] of ANGLES)
+    total+=shade(xx+cx*rOuter,yy+cy*rOuter)-shade(xx+cx*r,yy+cy*r);
+  }
+  return total/(spots.length*ANGLES.length)-.16*Math.hypot(dx,dy);
+ };
+ const baseline=evaluate(0,0);
+ let bestScore=baseline,bestDx=0,bestDy=0;
+ for(let dy=-steps;dy<=steps;dy++)for(let dx=-steps;dx<=steps;dx++){
+  if(dx===0&&dy===0)continue;
+  const score=evaluate(dx,dy);
+  if(score>bestScore){bestScore=score;bestDx=dx;bestDy=dy;}
+ }
+ return bestScore>=baseline+2.1?[bestDx/frame.down,bestDy/frame.down]:[0,0];
+}
+function shifted(projection,shift){return (x,y)=>{const p=projection(x,y);return [p[0]+shift[0],p[1]+shift[1]];};}
+
 function rowCoords(xs,y){return xs.map(x=>[x,y]);}
 function digitGrid(xs){return xs.map(x=>Array.from({length:10},(_,r)=>[x,199+27.75*r]));}
 export function readVerifiedWithMarkers(canvas,markers,counts={I:18,II:4,III:6}){
  if(!Array.isArray(markers)||markers.length!==4)throw Error('Cần 4 mốc góc ngoài');
  const map=homography(MARKERS_REF,markers),f=grayFrame(canvas),uncertain=[];
- const digitColumns=digitGrid(SBD_X).map(q=>choice(f,map,q,'0123456789'));
+ const sbdGrid=digitGrid(SBD_X),sbdShift=localRingShift(f,map,sbdGrid,8.2);
+ const sbdMap=shifted(map,sbdShift);
+ const digitColumns=sbdGrid.map(q=>choice(f,sbdMap,q,'0123456789'));
  const codeColumns=digitGrid(CODE_X).map(q=>choice(f,map,q,'0123456789'));
  const code=codeColumns.map(q=>q.value).join(''),codeConfidence=codeColumns.every(q=>q.status==='filled')?1:0;
  if(!codeConfidence)uncertain.push('Mã đề chưa rõ');
@@ -88,10 +128,12 @@ export function readVerifiedWithMarkers(canvas,markers,counts={I:18,II:4,III:6})
   II.push(word);
  }
  for(let i=0;i<readCount('III',6);i++){
+  const pts=PART_III_X[i].map(x=>Array.from({length:10},(_,d)=>[x,PART_III_Y[i]+22*d]));
+  const shift=localRingShift(f,map,pts,7.4),partMap=shifted(map,shift);
   const digits=[];
   for(let j=0;j<4;j++){
    const coords=Array.from({length:10},(_,d)=>[PART_III_X[i][j],PART_III_Y[i]+22*d]);
-   const value=choice(f,map,coords,'0123456789');
+   const value=choice(f,partMap,coords,'0123456789');
    if(value.status==='unclear')uncertain.push('Phần III câu '+(i+1)+', cột '+(j+1));
    digits.push(value.value);
   }
@@ -99,7 +141,7 @@ export function readVerifiedWithMarkers(canvas,markers,counts={I:18,II:4,III:6})
   // Signs (- / decimal comma) are kept for review if potentially marked.
   // Do not create a negative or decimal number without a verified sign.
   const signX=PART_III_X[i][0],signY=PART_III_Y[i];
-  const sign=marks(f,map,[[signX,signY-44],[PART_III_X[i][1],signY-22],[PART_III_X[i][2],signY-22]]);
+  const sign=marks(f,partMap,[[signX,signY-44],[PART_III_X[i][1],signY-22],[PART_III_X[i][2],signY-22]]);
   if(sign.some(x=>x===null))uncertain.push('Phần III câu '+(i+1)+', dấu');
   else if(sign.some(x=>x<110))uncertain.push('Phần III câu '+(i+1)+', kiểm tra dấu âm/phẩy');
   III.push(value);
