@@ -1,5 +1,6 @@
 import {grade,parseRows,toCsv,validateForSave} from './grader.mjs';
 import {readSheet} from './omr-native.mjs';
+import {readVerifiedWithMarkers} from './omr-verified-paper.mjs';
 import {preserveSbd,canonicalSbd,validSbd,findStudentForSbd} from './student-identity.mjs';
 const $=id=>document.getElementById(id);
 // Canvas-only OMR: no heavy OpenCV startup on Samsung browsers.
@@ -234,7 +235,13 @@ async function trySheetOrientations(c,layout,cv,exam,manual=false){
   // Yield before entering synchronous OpenCV: update the progress message on Samsung.
   await new Promise(resolve=>requestAnimationFrame(resolve));
   try{
-   const result=readSheet(rotatedCanvas(c,deg),layout,cv,exam.counts);
+   const rotated=rotatedCanvas(c,deg);
+   // The existing reader locates the four outside fiducials. For the original
+   // three-part 3-digit printed sheet, read actual bubble centers afterward.
+   // All other paper formats continue to use their unchanged legacy reader.
+   const locator=readSheet(rotated,layout,cv,exam.counts);
+   const verified=exam.form!=='120'&&Number(exam.digits)===3&&layout.exam_code?.length===3;
+   const result=verified?readVerifiedWithMarkers(rotated,locator.markers,exam.counts):locator;
    const knownStudent=Boolean(findStudentForSbd(db.students,result.sbd));
    const knownCode=Boolean(exam.keys?.[result.examCode]);
    // Prefer a valid code from the selected exam; never invent or replace a code.
@@ -257,7 +264,7 @@ async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;
   const key='ChamPro_Phieu_'+(exam.form==='120'?'120Cau':'3Phan')+'_MaDe'+exam.digits;
   if(!geometry[key])throw Error('Không có tọa độ mẫu phiếu '+key);
   const match=await trySheetOrientations(c,geometry[key],cv,exam,manual),result=match.result;
-  if(match.deg&&origin==='camera'&&stream&&match.knownCode&&match.knownStudent&&result.confidence>=.9){
+  if(match.deg&&origin==='camera'&&stream&&match.knownCode&&result.confidence>=.9){
     // OCR already rotated the captured frame. Do not rotate the live preview:
     // doing so makes consecutive scans disagree and blocks automatic grading.
     $('scanStatus').textContent='Đã nhận diện hướng ảnh '+match.deg+'°';
@@ -266,6 +273,11 @@ async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;
   $('scanStatus').textContent='Đã nhận diện SBD '+(result.sbd||'?')+' · mã đề '+(result.examCode||'?')+' · '+(performance.now()-t0).toFixed(0)+' ms';
   if(manual){openReview(exam,result);return;}
   const student=findStudentForSbd(db.students,result.sbd),issues=validateForSave(exam,student,result);
+   // Blank response cells in the short-answer section are valid; partially
+   // detected digits or signs must be reviewed rather than auto-saved.
+   if(result.engine==='ChấmPro calibrated printed-sheet v1'&&
+      [result.I,result.II,result.III].flat().some(v=>String(v).includes('?')))
+     issues.push('Còn ký tự chưa rõ trên phiếu');
   if(result.codeConfidence!==1)issues.push('Mã đề chưa đọc đủ');
   if(issues.length){
    lastAuto=null;
@@ -291,7 +303,7 @@ $('openPhoto').onclick=async()=>{const file=$('photoFile').files[0];if(!file)ret
 $('testEngine').onclick=async()=>{try{const geometry=await ensureLayouts();if(Object.keys(geometry).length<4)throw Error('Thiếu mẫu phiếu');toast('Bộ đọc ảnh nhẹ và 4 mẫu phiếu đã sẵn sàng');}catch(e){toast(e.message);}};
 function openReview(exam,omr){review={exam,omr};const student=findStudentForSbd(db.students,omr.sbd);const info=omr.uncertain?.length?`<p class="warning">Có ${omr.uncertain.length} ô chưa rõ. Hãy kiểm tra với ảnh phiếu trước khi lưu.</p>`:'<p class="success">Đã nhận dạng. Kiểm tra SBD, mã đề và đáp án trước khi lưu.</p>';
  const field=(p,num,val,opts)=>`<label>${p} ${num}<input data-p="${p}" data-q="${num-1}" ${opts||''} value="${esc(val)}"></label>`;
- $('reviewBody').innerHTML=info+(lastReviewImage?`<details><summary>Ảnh phiếu đang kiểm tra (không lưu vào kết quả)</summary><img src="${lastReviewImage}" alt="Ảnh phiếu để đối chiếu" style="display:block;width:100%;max-height:460px;object-fit:contain;background:#0b1724;margin:8px 0 15px"></details>`:'')+`<div class="review-data"><label>Học sinh<select id="reviewStudent"><option value="">-- Chọn học sinh --</option>${db.students.map(s=>`<option value="${esc(s.id)}" ${student?.id===s.id?'selected':''}>${esc(s.sbd)} - ${esc(s.name)}</option>`).join('')}</select></label><label>SBD đọc từ phiếu<input id="reviewSbd" value="${esc(omr.sbd)}" maxlength="6" inputmode="numeric"></label><label>Mã đề<input id="reviewCode" value="${esc(omr.examCode)}" maxlength="4" inputmode="numeric"></label></div><h3>Phần I</h3><div class="answeredit">${Array.from({length:exam.counts.I},(_,i)=>field('I',i+1,omr.I?.[i]||'', 'maxlength="3"')).join('')}</div>${exam.counts.II?'<h3>Phần II (Đ/S, 4 ý)</h3><div class="answeredit">'+Array.from({length:exam.counts.II},(_,i)=>field('II',i+1,omr.II?.[i]||'', 'maxlength="4"')).join('')+'</div>':''}${exam.counts.III?'<h3>Phần III</h3><div class="answeredit">'+Array.from({length:exam.counts.III},(_,i)=>field('III',i+1,omr.III?.[i]||'', '')).join('')+'</div>':''}`;
+ $('reviewBody').innerHTML=info+(lastReviewImage?`<details><summary>Ảnh phiếu đang kiểm tra (không lưu vào kết quả)</summary><img src="${lastReviewImage}" alt="Ảnh phiếu để đối chiếu" style="display:block;width:100%;max-height:460px;object-fit:contain;background:#0b1724;margin:8px 0 15px"></details>`:'')+`<div class="review-data"><label>Học sinh<select id="reviewStudent"><option value="">-- Chọn học sinh --</option>${db.students.map(s=>`<option value="${esc(s.id)}" ${student?.id===s.id?'selected':''}>${esc(s.sbd)} - ${esc(s.name)}</option>`).join('')}</select></label><label>SBD đọc từ phiếu<input id="reviewSbd" value="${esc(omr.sbd)}" maxlength="12" inputmode="numeric"></label><label>Mã đề<input id="reviewCode" value="${esc(omr.examCode)}" maxlength="4" inputmode="numeric"></label></div><h3>Phần I</h3><div class="answeredit">${Array.from({length:exam.counts.I},(_,i)=>field('I',i+1,omr.I?.[i]||'', 'maxlength="3"')).join('')}</div>${exam.counts.II?'<h3>Phần II (Đ/S, 4 ý)</h3><div class="answeredit">'+Array.from({length:exam.counts.II},(_,i)=>field('II',i+1,omr.II?.[i]||'', 'maxlength="4"')).join('')+'</div>':''}${exam.counts.III?'<h3>Phần III</h3><div class="answeredit">'+Array.from({length:exam.counts.III},(_,i)=>field('III',i+1,omr.III?.[i]||'', '')).join('')+'</div>':''}`;
  $('saveReview').hidden=false;$('reviewDialog').showModal();}
 function saveResult(exam,student,ans,fromAuto=false){
  const value=grade(exam,{examCode:ans.examCode,I:ans.I,II:ans.II,III:ans.III});
