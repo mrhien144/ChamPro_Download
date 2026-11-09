@@ -22,7 +22,13 @@ export function grade(exam,answers) {
   }
   for(let i=0;i<(counts.II||0);i++){
     const correct=String(key.II?.[i]??'').toUpperCase().replaceAll('D','Đ');const value=String(answers.II?.[i]??'').toUpperCase().replaceAll('D','Đ');
-    let n=0;for(let j=0;j<4;j++)if(correct[j]&&correct[j]===value[j]&&'ĐS'.includes(correct[j]))n++;
+    // '*' is an accepted-answer override for ONE subpart: either Đ or S
+    // scores as correct, but an unanswered/ambiguous mark NEVER scores.
+    let n=0;
+    for(let j=0;j<4;j++){
+      const response=value[j],accepted=correct[j];
+      if('ĐS'.includes(response)&&(accepted===response||accepted==='*'))n++;
+    }
     const got=correct==='ALL'?Number(sII[4]):Number(sII[n]??0);const mx=Number(sII[4]??1);
     points.II+=got;max+=mx;detail.push({part:'II',q:i+1,response:value,key:correct,got,max:mx});
   }
