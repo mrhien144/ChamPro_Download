@@ -2,6 +2,7 @@ import {grade,parseRows,toCsv,validateForSave} from './grader.mjs';
 import {initFlexibleKeyEditor,setFlexibleCounts,refreshFlexibleKeyEditor} from './answer-flex-editor.mjs';
 import {readSheet} from './omr-native.mjs';
 import {readVerifiedWithMarkers} from './omr-verified-paper.mjs';
+import {readPrinted120WithMarkers} from './omr-printed-120.mjs';
 import {preserveSbd,canonicalSbd,validSbd,findStudentForSbd} from './student-identity.mjs';
 const $=id=>document.getElementById(id);
 // Canvas-only OMR: no heavy OpenCV startup on Samsung browsers.
@@ -294,7 +295,9 @@ async function trySheetOrientations(c,layout,cv,exam,manual=false){
    // All other paper formats continue to use their unchanged legacy reader.
    const locator=readSheet(rotated,layout,cv,exam.counts);
    const verified=exam.form!=='120'&&Number(exam.digits)===3&&layout.exam_code?.length===3;
-   const result=verified?readVerifiedWithMarkers(rotated,locator.markers,exam.counts):locator;
+   const result=exam.form==='120'?
+     readPrinted120WithMarkers(rotated,locator.markers,exam.counts,exam.digits):
+     (verified?readVerifiedWithMarkers(rotated,locator.markers,exam.counts):locator);
    const knownStudent=Boolean(findStudentForSbd(db.students,result.sbd));
    const knownCode=Boolean(exam.keys?.[result.examCode]);
    // Prefer a valid code from the selected exam; never invent or replace a code.
