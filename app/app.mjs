@@ -34,12 +34,35 @@ function validateExamInput(f){const form=f.get('form'),digits=Number(f.get('digi
 $('examForm').addEventListener('submit',ev=>{ev.preventDefault();try{const f=new FormData(ev.target);const v=validateExamInput(f);const gradeClass=String(f.get('gradeClass')||'').trim(),subject=String(f.get('subject')||'').trim(),period=String(f.get('name')||'').trim();
 if(!gradeClass||!subject)throw Error('Cần nhập Khối/Lớp và Môn học');
 if(db.exams.some(e=>String(e.gradeClass||'').toLowerCase()===gradeClass.toLowerCase()&&e.name.toLowerCase()===period.toLowerCase()&&String(e.subject||'').toLowerCase()===subject.toLowerCase()))throw Error('Môn này đã có trong kỳ kiểm tra. Hãy mở để nhập mã đề khác.');
-db.exams.push({id:id(),name:period,gradeClass,subject,...v,keys:{},rules:{I:v.form==='120'?10/120:.25,II:[0,.1,.25,.5,1],III:.25}});save();ev.target.reset();toast('Đã thêm môn vào kỳ kiểm tra. Tiếp tục nhập bộ đáp án.');}catch(e){toast(e.message);}});
+db.exams.push({id:id(),name:period,gradeClass,subject,...v,keys:{},rules:{I:v.form==='120'?10:.25,II:[0,.1,.25,.5,1],III:.25}});save();ev.target.reset();toast('Đã thêm môn vào kỳ kiểm tra. Tiếp tục nhập bộ đáp án.');}catch(e){toast(e.message);}});
 document.querySelector('[name=form]').addEventListener('change',ev=>{const f=$('examForm');if(ev.target.value==='120'){f.elements.cI.value=120;f.elements.cII.value=0;f.elements.cIII.value=0;}else{f.elements.cI.value=18;f.elements.cII.value=4;f.elements.cIII.value=6;}});
+function update120PointsPreview(){
+ const e=selectedExam('keyExam'),panel=$('rule120Panel');
+ const is120=e?.form==='120';
+ if(panel)panel.hidden=!is120;
+ for(const name of ['ruleIII','ruleII']){
+  const field=$(name)?.closest('label');
+  if(field)field.hidden=Boolean(is120);
+ }
+ const label=$('ruleI')?.closest('label');
+ if(label)label.firstChild.textContent=is120?'Điểm mỗi câu trắc nghiệm (120 câu) ':'Điểm mỗi câu I ';
+ if(!is120)return;
+ const points=Number($('ruleI').value),count=Number(e.counts.I)||0;
+ $('rule120Preview').textContent=Number.isFinite(points)&&points>=0?
+   'Tổng điểm tối đa: '+(Math.round(count*points*1000)/1000).toLocaleString('vi-VN')+
+   ' điểm ('+count+' câu × '+points.toLocaleString('vi-VN')+' điểm/câu)':
+   'Hãy nhập điểm mỗi câu hợp lệ.';
+}
+$('ruleI').addEventListener('input',update120PointsPreview);
+$('reset120Points').onclick=()=>{
+ const e=selectedExam('keyExam');if(e?.form!=='120')return;
+ $('ruleI').value='10';update120PointsPreview();
+ toast('Đã đặt 10 điểm/câu. Bấm Lưu đáp án & quy tắc để áp dụng cho kỳ kiểm tra này.');
+};
 function codeEditor(){const e=selectedExam('keyExam');const code=$('keyCode').value.trim();const k=e?.keys?.[code];if(!e)return; if(!/^\d{3,4}$/.test(code)){toast('Nhập mã đề 3 hoặc 4 số.');return;}
- $('ruleI').value=e.rules?.I??.25;$('ruleIII').value=e.rules?.III??.25;$('ruleII').value=(e.rules?.II||[0,.1,.25,.5,1]).slice(1).join(',');
+ $('ruleI').value=e.rules?.I??(e.form==='120'?10:.25);$('ruleIII').value=e.rules?.III??.25;$('ruleII').value=(e.rules?.II||[0,.1,.25,.5,1]).slice(1).join(',');
  for(const p of ['I','II','III'])$('key'+p).value=(k?.[p]||[]).join('\n');
-  setFlexibleCounts(e.counts);
+  setFlexibleCounts(e.counts);update120PointsPreview();
  toast(k?'Đã mở bộ đáp án':'Mã đề mới. Hãy nhập đáp án rồi lưu.');}
 $('loadKey').onclick=codeEditor;
 $('keyExam').addEventListener('change',()=>{const e=selectedExam('keyExam');if(e){$('keyCode').value=Object.keys(e.keys||{})[0]||''.padStart(e.digits,'0');codeEditor();}});
