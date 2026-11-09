@@ -40,14 +40,36 @@ function meanCenter(frame,x,y){
  for(let iy=-2;iy<=2;iy++)for(let ix=-2;ix<=2;ix++)sum+=gray[(py+iy)*w+px+ix];
  return sum/25;
 }
-function choice(frame,map,coords,alphabet){
+function median(values){
+ const sorted=[...values].sort((a,b)=>a-b),n=sorted.length;
+ return n%2?sorted[(n-1)/2]:(sorted[n/2-1]+sorted[n/2])/2;
+}
+function choice(frame,map,coords,alphabet,numeric=false){
  const values=coords.map(([x,y])=>{const [u,v]=map(x,y);return meanCenter(frame,u,v);});
  if(values.some(x=>x===null))return {value:'?',status:'unclear',strength:0,margin:0};
+ if(numeric&&values.length===10){
+  // The camera frame may be shaded from top to bottom. A dark unfilled
+  // circle at the bottom must not beat a pencilled digit near the top.
+  // Estimate a robust background brightness slope, with one filled outlier.
+  const slopes=[];
+  for(let i=0;i<values.length;i++)
+   for(let j=i+3;j<values.length;j++)
+    slopes.push((values[j]-values[i])/(j-i));
+  const slope=median(slopes);
+  const intercept=median(values.map((v,i)=>v-slope*i));
+  const rank=values.map((v,i)=>({i,score:intercept+slope*i-v}))
+   .sort((a,b)=>b.score-a.score);
+  const top=rank[0],second=rank[1],strength=top.score,margin=top.score-second.score;
+  const filled=strength>=18&&margin>=13;
+  const blank=strength<12&&margin<9;
+  return {value:filled?alphabet[top.i]:blank?'':'?',status:filled?'filled':blank?'blank':'unclear',
+   strength,margin};
+ }
  const rank=values.map((v,i)=>({v,i})).sort((a,b)=>a.v-b.v);
- const median=[...values].sort((a,b)=>a-b)[Math.floor(values.length/2)];
+ const background=median(values);
  const dark=rank[0],next=rank[1];
- const strength=median-dark.v,margin=next.v-dark.v;
- const filled=strength>=23&&margin>=12&&dark.v<median*.93;
+ const strength=background-dark.v,margin=next.v-dark.v;
+ const filled=strength>=23&&margin>=12&&dark.v<background*.93;
  const blank=strength<14&&margin<11;
  return {value:filled?alphabet[dark.i]:blank?'':'?',status:filled?'filled':blank?'blank':'unclear',strength,margin};
 }
@@ -99,8 +121,8 @@ export function readVerifiedWithMarkers(canvas,markers,counts={I:18,II:4,III:6})
  const map=homography(MARKERS_REF,markers),f=grayFrame(canvas),uncertain=[];
  const sbdGrid=digitGrid(SBD_X),sbdShift=localRingShift(f,map,sbdGrid,8.2);
  const sbdMap=shifted(map,sbdShift);
- const digitColumns=sbdGrid.map(q=>choice(f,sbdMap,q,'0123456789'));
- const codeColumns=digitGrid(CODE_X).map(q=>choice(f,map,q,'0123456789'));
+ const digitColumns=sbdGrid.map(q=>choice(f,sbdMap,q,'0123456789',true));
+ const codeColumns=digitGrid(CODE_X).map(q=>choice(f,map,q,'0123456789',true));
  const code=codeColumns.map(q=>q.value).join(''),codeConfidence=codeColumns.every(q=>q.status==='filled')?1:0;
  if(!codeConfidence)uncertain.push('Mã đề chưa rõ');
  // Leftmost SBD columns may legitimately be blank; do not prepend zeros.
@@ -133,7 +155,7 @@ export function readVerifiedWithMarkers(canvas,markers,counts={I:18,II:4,III:6})
   const digits=[];
   for(let j=0;j<4;j++){
    const coords=Array.from({length:10},(_,d)=>[PART_III_X[i][j],PART_III_Y[i]+22*d]);
-   const value=choice(f,partMap,coords,'0123456789');
+   const value=choice(f,partMap,coords,'0123456789',true);
    if(value.status==='unclear')uncertain.push('Phần III câu '+(i+1)+', cột '+(j+1));
    digits.push(value.value);
   }
