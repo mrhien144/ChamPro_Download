@@ -68,6 +68,17 @@ function choice(frame,map,coords,alphabet,numeric=false){
  const rank=values.map((v,i)=>({v,i})).sort((a,b)=>a.v-b.v);
  const background=median(values);
  const dark=rank[0],next=rank[1];
+ // Two distinctly filled circles in a four-choice row are an INVALID
+ // student response, not an uncertain photograph. Return both letters so
+ // the grade engine awards zero but may continue with other clear answers.
+ // Requiring the third-darkest bubble to be substantially brighter prevents
+ // ordinary single marks from being misclassified as multiple selections.
+ if(alphabet==='ABCD'&&rank.length===4&&
+    rank[2].v-rank[1].v>=27&&rank[2].v-rank[0].v>=38&&
+    rank[1].v<rank[2].v*.87){
+   const letters=[rank[0].i,rank[1].i].sort((a,b)=>a-b).map(i=>alphabet[i]);
+   return {value:letters.join('+'),status:'multiple',strength:rank[2].v-rank[0].v,margin:rank[2].v-rank[1].v};
+ }
  const strength=background-dark.v,margin=next.v-dark.v;
  const filled=strength>=23&&margin>=12&&dark.v<background*.93;
  const blank=strength<14&&margin<11;
