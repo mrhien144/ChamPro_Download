@@ -240,3 +240,15 @@
 .flex-shortline button{padding:10px 12px}
 .flex-short-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 @media(max-width:800px){.flex-items{grid-template-columns:1fr}.flex-question{padding:10px}.flex-sub{width:100%}}
+
+
+/* Sharing score reports: isolated styles, camera and existing gradebook unchanged. */
+.share-dialog{width:min(94vw,620px);max-height:85vh;overflow:auto}
+.share-dialog h2{margin:0 0 12px}
+.share-dialog .actions{justify-content:flex-start}
+.share-dialog .actions button{white-space:normal}
+.share-preview{font:14px/1.7 system-ui,-apple-system,"Segoe UI",sans-serif;white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f8ff;border:1px solid #d5e1f4;border-radius:12px;padding:14px;margin:12px 0;max-height:48vh;overflow:auto;color:#18314f}
+.share-rank-option{display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer}
+.share-rank-option input{width:18px;height:18px;margin:0;accent-color:#245ee3}
+.share-one{padding:7px 10px;font-size:12px;white-space:nowrap}
+@media(max-width:760px){.share-dialog{padding:18px}.share-dialog .actions button{flex:1 1 180px}}
