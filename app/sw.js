@@ -1,4 +1,4 @@
-const CACHE='champro-web-v2-20261109-share-excel-r1';
+const CACHE='champro-web-v2-20261109-share-students-r2';
 const CORE=['./','./index.html','./styles.css','./app.mjs','./advanced.mjs','./qr-compatible.mjs','./multisubject.mjs','./grader.mjs','./omr-native.mjs','./omr-verified-paper.mjs','./answer-flex-editor.mjs','./student-identity.mjs','./layouts.json','./manifest.webmanifest','./icon.svg'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(names=>Promise.all(names.filter(n=>n.startsWith('champro-web-')&&n!==CACHE).map(n=>caches.delete(n)))).then(()=>self.clients.claim())));
