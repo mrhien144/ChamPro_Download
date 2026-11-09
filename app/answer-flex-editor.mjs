@@ -43,7 +43,10 @@ export function refreshFlexibleKeyEditor(){
  if(!byId('keyExam').value){root.hidden=true;return;}
  for(const p of ['I','II','III']){
   const n=Number(root.dataset['count'+p]||0);
-  byId('flex'+p).innerHTML=Array.from({length:n},(_,i)=>p==='III'?shortRow(i):multiRow(p,i)).join('');
+  const area=byId('flex'+p);
+  const section=area?.closest('details');
+  if(section)section.hidden=n===0;
+  if(area)area.innerHTML=Array.from({length:n},(_,i)=>p==='III'?shortRow(i):multiRow(p,i)).join('');
  }
  root.hidden=false;
 }
