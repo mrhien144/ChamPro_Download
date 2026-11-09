@@ -13,7 +13,7 @@ function chip(p,q,id,label,on){
  return '<label class="flex-chip'+(on?' active':'')+'"><input type="checkbox" data-fp="'+p+'" data-fq="'+q+'" data-fv="'+esc(id)+'"'+(on?' checked':'')+'><span>'+esc(label)+'</span></label>';
 }
 function multiRow(p,q){
- const val=getRow(p,q).toUpperCase().replaceAll('D','Đ'),all=val==='ALL';
+ const raw=getRow(p,q).toUpperCase(),val=p==='II'?raw.replaceAll('D','Đ'):raw,all=val==='ALL';
  if(p==='I'){
   const values=new Set(val.split(/[|;,/ ]+/));
   return '<div class="flex-question"><strong>Câu '+(q+1)+'</strong><div class="flex-chips">'+
