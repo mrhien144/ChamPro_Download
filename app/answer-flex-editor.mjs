@@ -69,7 +69,7 @@ export function initFlexibleKeyEditor(){
    const p=el.dataset.fp,q=Number(el.dataset.fq),v=el.dataset.fv;
    if(p==='I'){
     const a=checked(p,q);
-    setRow(p,q,a.includes('ALL')?(v==='ALL'&&el.checked?'ALL':''):a.filter(x=>x!=='ALL').join('|'));
+    setRow(p,q,v==='ALL'&&el.checked?'ALL':a.filter(x=>x!=='ALL').join('|'));
    }else if(p==='II'){
     const a=checked(p,q);
     if(v==='ALL'&&el.checked)setRow(p,q,'ALL');
