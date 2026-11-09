@@ -62,7 +62,17 @@ $('reset120Points').onclick=()=>{
 };
 function codeEditor(){const e=selectedExam('keyExam');const code=$('keyCode').value.trim();const k=e?.keys?.[code];if(!e)return; if(!/^\d{3,4}$/.test(code)){toast('Nhập mã đề 3 hoặc 4 số.');return;}
  $('ruleI').value=e.rules?.I??(e.form==='120'?10:.25);$('ruleIII').value=e.rules?.III??.25;$('ruleII').value=(e.rules?.II||[0,.1,.25,.5,1]).slice(1).join(',');
- for(const p of ['I','II','III'])$('key'+p).value=(k?.[p]||[]).join('\n');
+ for(const p of ['I','II','III']){
+   const field=$('key'+p);
+   field.value=(k?.[p]||[]).join('\n');
+   const wrapper=field.closest('label');
+   if(wrapper)wrapper.hidden=e.form==='120'&&p!=='I';
+  }
+  const mcqLabel=$('keyI').closest('label');
+  if(mcqLabel&&mcqLabel.firstChild?.nodeType===3)
+    mcqLabel.firstChild.textContent=e.form==='120'
+      ?'Đáp án 120 câu trắc nghiệm A/B/C/D – mỗi đáp án một dòng; A|D nếu cả hai đều đúng '
+      :'Phần I – mỗi đáp án một dòng; có thể nhập A|C cho nhiều phương án đúng ';
   setFlexibleCounts(e.counts);update120PointsPreview();
  toast(k?'Đã mở bộ đáp án':'Mã đề mới. Hãy nhập đáp án rồi lưu.');}
 $('loadKey').onclick=codeEditor;
