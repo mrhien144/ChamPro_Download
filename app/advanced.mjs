@@ -28,7 +28,76 @@ $('summaryTotalLabel').onchange=setSettings;
 function selectedReport(){const base=makeReport(db(),$('summaryGroup').value);if(!base)throw Error('Chưa chọn kỳ kiểm tra');const opts=config(base);if(!opts.subjects.length)throw Error('Cần chọn môn cộng điểm');return {r:makeReport(db(),$('summaryGroup').value,opts.subjects),label:opts.label};}
 $('exportSummaryCSV').onclick=()=>{try{const {r,label}=selectedReport();sendFile('ChamPro_BangDiem_'+Date.now()+'.csv',toCsv(sheetMatrix(r,label)),'text/csv;charset=utf-8');}catch(e){toast(e.message);}};
 async function xlsx(){if(!window.XLSX)await loadScript('https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js','XLSX');return window.XLSX;}
-$('exportSummaryExcel').onclick=async()=>{try{const {r,label}=selectedReport(),X=await xlsx(),arr=sheetMatrix(r,label),ws=X.utils.aoa_to_sheet(arr),book=X.utils.book_new();ws['!cols']=[{wch:13},{wch:28},{wch:15},...r.subjectNames.map(()=>({wch:13})),{wch:20},{wch:9}];const last=r.subjectNames.length+4;ws['!merges']=[1,2,3].map(row=>({s:{r:row,c:0},e:{r:row,c:last}}));X.utils.book_append_sheet(book,ws,'BangDiem');X.writeFile(book,'ChamPro_BangDiem_'+Date.now()+'.xlsx');}catch(e){toast('Xuất Excel: '+e.message);}};
+function createSummaryWorkbook(X,report){
+ const {r,label}=report,arr=sheetMatrix(r,label),ws=X.utils.aoa_to_sheet(arr),book=X.utils.book_new();
+ ws['!cols']=[{wch:13},{wch:28},{wch:15},...r.subjectNames.map(()=>({wch:13})),{wch:20},{wch:9}];
+ const last=r.subjectNames.length+4;
+ ws['!merges']=[1,2,3].map(row=>({s:{r:row,c:0},e:{r:row,c:last}}));
+ X.utils.book_append_sheet(book,ws,'BangDiem');
+ return book;
+}
+function exportFile(file){
+ const url=URL.createObjectURL(file),link=document.createElement('a');
+ link.href=url;link.download=file.name;document.body.append(link);link.click();link.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+$('exportSummaryExcel').onclick=async()=>{
+ try{
+  const report=selectedReport(),X=await xlsx(),book=createSummaryWorkbook(X,report);
+  X.writeFile(book,'ChamPro_BangDiem_'+Date.now()+'.xlsx');
+ }catch(e){toast('Xuất Excel: '+e.message);}
+};
+// Share never uploads to ChấmPro. The system share sheet transfers the locally
+// generated .xlsx only to the app explicitly selected by the user.
+let sharePrepared=null,shareBusy=false;
+async function prepareShareExcel(){
+ const report=selectedReport(),X=await xlsx();
+ const workbook=createSummaryWorkbook(X,report);
+ const bytes=X.write(workbook,{bookType:'xlsx',type:'array'});
+ const name='ChamPro_BangDiem_'+Date.now()+'.xlsx';
+ return new File([bytes],name,{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+$('summaryGroup').addEventListener('change',()=>{sharePrepared=null;});
+$('summarySubjects').addEventListener('change',()=>{sharePrepared=null;});
+$('summaryTotalLabel').addEventListener('change',()=>{sharePrepared=null;});
+window.addEventListener('champro-db-updated',()=>{sharePrepared=null;});
+$('shareSummaryExcel').onclick=async()=>{
+ if(shareBusy)return;
+ if(!confirm('Bảng điểm có thể chứa tên, SBD và điểm học sinh. Chỉ chia sẻ với người được phép nhận. Bạn muốn tiếp tục?'))return;
+ shareBusy=true;
+ try{
+  // Files are prepared in memory. If SheetJS must be loaded on first use,
+  // ask for another tap so the native share call retains user activation.
+  if(!sharePrepared){
+   const cached=Boolean(window.XLSX);
+   sharePrepared=await prepareShareExcel();
+   if(!cached&&navigator.canShare?.({files:[sharePrepared]})){
+    toast('Đã chuẩn bị tệp Excel. Bấm “Chia sẻ Excel” lần nữa để chọn Zalo hoặc ứng dụng nhận tệp.');
+    return;
+   }
+  }
+  const file=sharePrepared;
+  if(typeof navigator.share==='function'&&
+     typeof navigator.canShare==='function'&&navigator.canShare({files:[file]})){
+   try{
+    await navigator.share({files:[file],title:'Bảng điểm ChấmPro'});
+    // Actual delivery is managed by Android / the target application.
+    toast('Đã chuyển tệp sang bảng chia sẻ của thiết bị.');
+   }catch(err){
+    if(err?.name==='AbortError')return; // user cancelled; no automatic download
+    if(err?.name==='NotAllowedError'){
+     toast('Trình duyệt yêu cầu thao tác trực tiếp. Bấm “Chia sẻ Excel” lần nữa.');
+     return;
+    }
+    throw err;
+   }
+  }else{
+   exportFile(file);
+   toast('Trình duyệt không hỗ trợ chia sẻ tệp trực tiếp. Excel đã được tải về; vào Zalo/Messenger và đính kèm tệp từ Tải xuống.');
+  }
+ }catch(e){toast('Không chia sẻ được Excel: '+(e.message||e));}
+ finally{shareBusy=false;}
+};
 $('answerMatrixTemplate').onclick=async()=>{try{const exam=db().exams.find(e=>e.id===$('keyExam').value);if(!exam)throw Error('Chọn kỳ và môn trước');const X=await xlsx();const codes=Object.keys(exam.keys||{});if(!codes.length)codes.push('1'.padStart(exam.digits,'0'));const n=exam.counts.I+exam.counts.II+exam.counts.III;const rows=[['Câu\\Mã đề',...codes],...Array.from({length:n},(_,i)=>[i+1,...codes.map(()=> '')])];const book=X.utils.book_new(),ws=X.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:20},...codes.map(()=>({wch:15}))];X.utils.book_append_sheet(book,ws,'DapAn');X.writeFile(book,'ChamPro_Mau_DapAn.xlsx');}catch(e){toast(e.message);}};
 $('keysFile').addEventListener('change',async ev=>{
  ev.stopImmediatePropagation();const file=ev.target.files?.[0];if(!file)return;
