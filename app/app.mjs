@@ -1,4 +1,5 @@
 import {grade,parseRows,toCsv,validateForSave} from './grader.mjs';
+import {initFlexibleKeyEditor,setFlexibleCounts,refreshFlexibleKeyEditor} from './answer-flex-editor.mjs';
 import {readSheet} from './omr-native.mjs';
 import {readVerifiedWithMarkers} from './omr-verified-paper.mjs';
 import {preserveSbd,canonicalSbd,validSbd,findStudentForSbd} from './student-identity.mjs';
@@ -38,6 +39,7 @@ document.querySelector('[name=form]').addEventListener('change',ev=>{const f=$('
 function codeEditor(){const e=selectedExam('keyExam');const code=$('keyCode').value.trim();const k=e?.keys?.[code];if(!e)return; if(!/^\d{3,4}$/.test(code)){toast('Nhập mã đề 3 hoặc 4 số.');return;}
  $('ruleI').value=e.rules?.I??.25;$('ruleIII').value=e.rules?.III??.25;$('ruleII').value=(e.rules?.II||[0,.1,.25,.5,1]).slice(1).join(',');
  for(const p of ['I','II','III'])$('key'+p).value=(k?.[p]||[]).join('\n');
+  setFlexibleCounts(e.counts);
  toast(k?'Đã mở bộ đáp án':'Mã đề mới. Hãy nhập đáp án rồi lưu.');}
 $('loadKey').onclick=codeEditor;
 $('keyExam').addEventListener('change',()=>{const e=selectedExam('keyExam');if(e){$('keyCode').value=Object.keys(e.keys||{})[0]||''.padStart(e.digits,'0');codeEditor();}});
@@ -45,13 +47,37 @@ $('saveKey').onclick=()=>{try{const e=selectedExam('keyExam'),code=$('keyCode').
  const I=parseLines($('keyI').value),II=parseLines($('keyII').value),III=parseLines($('keyIII').value);
  for(const p of ['I','II','III'])if(({I,II,III})[p].filter(Boolean).length!==e.counts[p])throw Error(`Phần ${p} phải có đủ ${e.counts[p]} dòng đáp án`);
  if(I.some(x=>x&&!/^(ALL|[ABCD](\|[ABCD])*)$/i.test(x)))throw Error('Phần I: nhập A–D, A|C hoặc ALL');
- if(II.some(x=>x&&!/^(ALL|[ĐSDđsd]{4})$/.test(x)))throw Error('Phần II: mỗi dòng gồm Đ/S bốn ý hoặc ALL');
- const partII=[0,...$('ruleII').value.split(',').map(x=>Number(x.trim()))];if(partII.length!==5||partII.some(x=>!Number.isFinite(x)||x<0))throw Error('Điểm phần II phải gồm bốn số không âm');
+ if(II.some(x=>x&&!/^(ALL|[ĐSDđsd*]{4})$/.test(x)))throw Error('Phần II: mỗi ý chọn Đ, S hoặc cả hai (*)');
+ if(III.some(x=>x!=='ALL'&&x.split('|').some(v=>!v.trim())))throw Error('Phần III: mỗi đáp án bổ sung phải có giá trị');
+  const partII=[0,...$('ruleII').value.split(',').map(x=>Number(x.trim()))];if(partII.length!==5||partII.some(x=>!Number.isFinite(x)||x<0))throw Error('Điểm phần II phải gồm bốn số không âm');
  e.rules={I:Number($('ruleI').value),II:partII,III:Number($('ruleIII').value)};
  if(!Number.isFinite(e.rules.I)||!Number.isFinite(e.rules.III)||e.rules.I<0||e.rules.III<0)throw Error('Điểm số không hợp lệ');
- e.keys[code]={I,II:II.map(s=>s.toUpperCase().replaceAll('D','Đ')),III};save();toast(`Đã lưu mã đề ${code}.`);
+ e.keys[code]={I,II:II.map(s=>s.toUpperCase().replaceAll('D','Đ')),III};save();refreshFlexibleKeyEditor();toast(`Đã lưu mã đề ${code}.`);
  }catch(e){toast('Chưa lưu: '+e.message);}};
 $('examList').addEventListener('click',ev=>{const edit=ev.target.closest('[data-editexam]'),del=ev.target.closest('[data-delexam]');if(edit){$('keyExam').value=edit.dataset.editexam;const e=selectedExam('keyExam');$('keyCode').value=Object.keys(e?.keys||{})[0]||''.padStart(e?.digits||3,'0');codeEditor();$('keyEditor').scrollIntoView({behavior:'smooth'});}if(del){const e=db.exams.find(x=>x.id===del.dataset.delexam);if(!confirm(`Xóa kỳ ${e?.name}? Kết quả đã lưu vẫn được giữ.`))return;db.exams=db.exams.filter(x=>x.id!==del.dataset.delexam);save();}});
+$('regradeSaved').onclick=()=>{
+ try{
+  const exam=selectedExam('keyExam'),code=$('keyCode').value.trim();
+  if(!exam||!exam.keys?.[code])throw Error('Hãy lưu đáp án đã sửa cho mã đề này trước');
+  const records=db.results.filter(r=>r.examId===exam.id&&r.examCode===code&&r.answers);
+  if(!records.length)return toast('Chưa có bài đã lưu của mã đề này để chấm lại');
+  const plan=records.map(r=>({r,newGrade:grade(exam,{...r.answers,examCode:code})}));
+  const changed=plan.filter(x=>x.r.score!==x.newGrade.total||x.r.max!==x.newGrade.max||
+   ['I','II','III'].some(p=>x.r.parts?.[p]!==x.newGrade.points[p]));
+  if(!changed.length)return toast('Tất cả '+records.length+' bài đã có điểm đúng theo đáp án hiện tại');
+  if(!confirm('Chấm lại '+changed.length+'/'+records.length+' bài đã lưu của mã '+code+'? '+
+   'Điểm cũ được ghi vào lịch sử điều chỉnh, đáp án học sinh và thông tin cá nhân giữ nguyên. '+
+   'Hãy sao lưu JSON trước nếu cần đối chiếu.'))return;
+  const now=new Date().toISOString();
+  for(const {r,newGrade} of changed){
+   if(!Array.isArray(r.scoreHistory))r.scoreHistory=[];
+   r.scoreHistory.push({at:now,oldScore:r.score,oldMax:r.max,oldParts:{...r.parts},
+     newScore:newGrade.total,newMax:newGrade.max,reason:'Chấm lại sau khi sửa bộ đáp án mã '+code});
+   r.score=newGrade.total;r.max=newGrade.max;r.parts=newGrade.points;
+  }
+  save();toast('Đã chấm lại '+changed.length+' bài theo bộ đáp án mã '+code+'. Điểm cũ có trong lịch sử.');
+ }catch(e){toast('Không chấm lại được: '+e.message);}
+};
 $('exportKeys').onclick=()=>sendFile('ChamPro_Mau_Nhap_Dap_An.csv',toCsv([['ma_de','phan','cau','dap_an'],['101','I','1','A'],['101','II','1','ĐSĐS'],['101','III','1','1.5']]),'text/csv;charset=utf-8');
 $('studentForm').onsubmit=ev=>{ev.preventDefault();try{const f=new FormData(ev.target),sbd=preserveSbd(f.get('sbd'));if(!validSbd(sbd))throw Error('SBD phải gồm 1–12 chữ số');if(db.students.some(s=>s.sbd===sbd))throw Error('SBD đã có trong danh sách');db.students.push({id:id(),sbd,name:String(f.get('name')||'').trim(),classroom:String(f.get('classroom')||'').trim()});save();ev.target.reset();toast('Đã thêm học sinh');}catch(e){toast(e.message);}};
 $('studentsTable').addEventListener('click',ev=>{const btn=ev.target.closest('[data-delstudent]');if(!btn)return;const s=db.students.find(x=>x.id===btn.dataset.delstudent);if(confirm('Xóa học sinh '+(s?.name||'')+'?')){db.students=db.students.filter(x=>x.id!==btn.dataset.delstudent);save();}});
@@ -74,6 +100,10 @@ $('resultsTable').addEventListener('click',ev=>{
   '<p class="success">Điểm: '+esc(r.score)+' / '+esc(r.max)+'</p>'+
   '<p>Phần I: '+esc(r.answers.I?.join(', '))+'</p><p>Phần II: '+esc(r.answers.II?.join(' | '))+'</p><p>Phần III: '+esc(r.answers.III?.join(' | '))+'</p>'+
   '<p class="hint">'+(ex?'Chỉnh SBD không thay đổi điểm số.':'Kỳ kiểm tra gốc đã bị xóa.')+'</p>'+
+   (r.scoreHistory?.length?'<details><summary>Lịch sử điều chỉnh điểm ('+r.scoreHistory.length+')</summary>'+
+    r.scoreHistory.map(h=>'<p>'+esc(new Date(h.at).toLocaleString('vi-VN'))+
+    ': '+esc(h.oldScore)+' / '+esc(h.oldMax)+' → '+esc(h.newScore)+' / '+esc(h.newMax)+
+    ' ('+esc(h.reason||'Chỉnh đáp án')+')</p>').join('')+'</details>':'')+
   '<div class="review-data"><label>SBD đọc từ phiếu <input value="'+esc(r.rawSbd||r.sbd||'')+'" readonly></label>'+
   '<label>SBD cần gán <input id="assignSbd" value="'+esc(r.sbd||'')+'" inputmode="numeric" placeholder="Nhập SBD đúng"></label>'+
   '<label>Chọn học sinh <select id="assignStudent">'+choices+'</select></label></div>'+
@@ -333,6 +363,7 @@ $('installBtn').onclick=async()=>{if(installPrompt){await installPrompt.prompt()
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 document.querySelectorAll('[data-goto]').forEach(el=>el.onclick=()=>navigate(el.dataset.goto));
 $('nav').addEventListener('click',e=>{const b=e.target.closest('[data-page]');if(b)navigate(b.dataset.page)});
+initFlexibleKeyEditor();
 render();
 export {getDb,save,toast,spreadsheetRows,loadScript,sendFile};
 function getDb(){return db;}
