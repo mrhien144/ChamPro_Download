@@ -49,55 +49,121 @@ $('exportSummaryExcel').onclick=async()=>{
 };
 // Share never uploads to ChấmPro. The system share sheet transfers the locally
 // generated .xlsx only to the app explicitly selected by the user.
-let sharePrepared=null,shareBusy=false;
+let sharePrepared=null,shareBusy=false,studentPending=null;
+const shareStatus=message=>{$('shareExcelStatus').textContent=message;};
 async function prepareShareExcel(){
- const report=selectedReport(),X=await xlsx();
- const workbook=createSummaryWorkbook(X,report);
+ const report=selectedReport(),X=await xlsx(),workbook=createSummaryWorkbook(X,report);
  const bytes=X.write(workbook,{bookType:'xlsx',type:'array'});
- const name='ChamPro_BangDiem_'+Date.now()+'.xlsx';
- return new File([bytes],name,{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+ return new File([bytes],'ChamPro_BangDiem_'+Date.now()+'.xlsx',
+  {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
 }
-$('summaryGroup').addEventListener('change',()=>{sharePrepared=null;});
-$('summarySubjects').addEventListener('change',()=>{sharePrepared=null;});
-$('summaryTotalLabel').addEventListener('change',()=>{sharePrepared=null;});
-window.addEventListener('champro-db-updated',()=>{sharePrepared=null;});
-$('shareSummaryExcel').onclick=async()=>{
+const invalidateSharedFile=()=>{sharePrepared=null;};
+$('summaryGroup').addEventListener('change',invalidateSharedFile);
+$('summarySubjects').addEventListener('change',invalidateSharedFile);
+$('summaryTotalLabel').addEventListener('change',invalidateSharedFile);
+window.addEventListener('champro-db-updated',invalidateSharedFile);
+// Prepare the .xlsx first. Native share MUST be invoked directly from the
+// explicit second tap, not after confirm() or a file-generation await.
+$('shareSummaryExcel').onclick=()=>{
  if(shareBusy)return;
- if(!confirm('Bảng điểm có thể chứa tên, SBD và điểm học sinh. Chỉ chia sẻ với người được phép nhận. Bạn muốn tiếp tục?'))return;
- shareBusy=true;
- try{
-  // Files are prepared in memory. If SheetJS must be loaded on first use,
-  // ask for another tap so the native share call retains user activation.
-  if(!sharePrepared){
-   const cached=Boolean(window.XLSX);
-   sharePrepared=await prepareShareExcel();
-   if(!cached&&navigator.canShare?.({files:[sharePrepared]})){
-    toast('Đã chuẩn bị tệp Excel. Bấm “Chia sẻ Excel” lần nữa để chọn Zalo hoặc ứng dụng nhận tệp.');
-    return;
-   }
-  }
-  const file=sharePrepared;
-  if(typeof navigator.share==='function'&&
-     typeof navigator.canShare==='function'&&navigator.canShare({files:[file]})){
-   try{
-    await navigator.share({files:[file],title:'Bảng điểm ChấmPro'});
-    // Actual delivery is managed by Android / the target application.
-    toast('Đã chuyển tệp sang bảng chia sẻ của thiết bị.');
-   }catch(err){
-    if(err?.name==='AbortError')return; // user cancelled; no automatic download
-    if(err?.name==='NotAllowedError'){
-     toast('Trình duyệt yêu cầu thao tác trực tiếp. Bấm “Chia sẻ Excel” lần nữa.');
-     return;
-    }
-    throw err;
-   }
-  }else{
-   exportFile(file);
-   toast('Trình duyệt không hỗ trợ chia sẻ tệp trực tiếp. Excel đã được tải về; vào Zalo/Messenger và đính kèm tệp từ Tải xuống.');
-  }
- }catch(e){toast('Không chia sẻ được Excel: '+(e.message||e));}
- finally{shareBusy=false;}
+ const dialog=$('shareExcelDialog');
+ shareStatus('Đang chuẩn bị bảng điểm Excel…');
+ $('confirmShareExcel').disabled=true;$('downloadShareExcel').disabled=true;
+ dialog.showModal();shareBusy=true;
+ prepareShareExcel().then(file=>{
+  if(!dialog.open)return;
+  sharePrepared=file;$('downloadShareExcel').disabled=false;
+  const supported=typeof navigator.share==='function'&&
+   typeof navigator.canShare==='function'&&navigator.canShare({files:[file]});
+  $('confirmShareExcel').disabled=!supported;
+  shareStatus(supported
+   ?'Excel đã sẵn sàng. Bấm “Mở chia sẻ” và chọn Zalo từ danh sách ứng dụng.'
+   :'Trình duyệt không hỗ trợ chia sẻ trực tiếp tệp Excel. Bấm “Tải Excel”, rồi vào Zalo → trò chuyện → Đính kèm → Tệp.');
+ }).catch(e=>shareStatus('Không tạo được Excel: '+e.message))
+ .finally(()=>{shareBusy=false;});
 };
+$('confirmShareExcel').onclick=()=>{
+ const file=sharePrepared;
+ if(!file||!navigator.canShare?.({files:[file]})||typeof navigator.share!=='function')
+  return shareStatus('Tệp chưa sẵn sàng. Hãy tải Excel để gửi thủ công.');
+ let outcome;
+ try{outcome=navigator.share({files:[file],title:'Bảng điểm ChấmPro'});}
+ catch(e){return shareStatus('Không mở được bảng chia sẻ: '+e.message+'. Có thể tải Excel để gửi qua Zalo.');}
+ Promise.resolve(outcome).then(()=>{
+  if($('shareExcelDialog').open)$('shareExcelDialog').close();
+  toast('Đã chuyển tệp sang tính năng chia sẻ của điện thoại.');
+ }).catch(e=>{
+  if(e?.name!=='AbortError')shareStatus('Không mở được chia sẻ ('+(e?.name||e.message)+'). Hãy tải Excel rồi gửi qua Zalo.');
+ });
+};
+$('downloadShareExcel').onclick=()=>{
+ if(!sharePrepared)return;
+ exportFile(sharePrepared);
+ shareStatus('Đã tải tệp Excel. Mở Zalo → cuộc trò chuyện → Đính kèm → Tệp.');
+};
+$('closeShareExcel').onclick=()=>$('shareExcelDialog').close();
+function textStudentResult(report,label,student,includeRank){
+ const name=[student.family,student.given].filter(Boolean).join(' ').trim();
+ const lines=['CHẤMPRO – PHIẾU ĐIỂM CÁ NHÂN',
+  'Kỳ kiểm tra: '+report.group.name,
+  'Lớp: '+(student.classroom||report.group.gradeClass||'—'),
+  'Học sinh: '+name,'Số báo danh: '+student.sbd,'','KẾT QUẢ'];
+ for(const subject of report.subjectNames)
+  lines.push(subject+': '+(student.scores[subject]===null?'Chưa có điểm':number(student.scores[subject])));
+ if(report.chosen.length)
+  lines.push(label+': '+(student.total===null?'Chưa đủ điểm':number(student.total)));
+ if(includeRank&&student.rank!==null)
+  lines.push('Xếp hạng: '+student.rank+' (theo '+report.chosen.join(', ')+')');
+ lines.push('Thông tin riêng của học sinh do giáo viên chia sẻ từ ChấmPro.');
+ return lines.join('\n');
+}
+$('summaryBody').addEventListener('click',ev=>{
+ const btn=ev.target.closest('[data-share-student]');if(!btn)return;
+ try{
+  const {r,label}=selectedReport(),student=r.rows.find(x=>x.id===btn.dataset.shareStudent);
+  if(!student)throw Error('Không tìm thấy học sinh');
+  studentPending={report:r,label,student};
+  $('shareIncludeRank').checked=false;
+  $('shareStudentPreview').textContent=textStudentResult(r,label,student,false);
+  $('shareStudentStatus').textContent='Chỉ điểm của một học sinh được đưa vào nội dung gửi. Hãy kiểm tra đúng người nhận.';
+  $('shareStudentDialog').showModal();
+ }catch(e){toast('Không tạo được phiếu điểm: '+e.message);}
+});
+$('shareIncludeRank').onchange=()=>{
+ if(!studentPending)return;
+ const {report,label,student}=studentPending;
+ $('shareStudentPreview').textContent=textStudentResult(report,label,student,$('shareIncludeRank').checked);
+};
+$('confirmShareStudent').onclick=()=>{
+ if(!studentPending)return;
+ const {report,label,student}=studentPending;
+ const message=textStudentResult(report,label,student,$('shareIncludeRank').checked);
+ const data={title:'Phiếu điểm ChấmPro – '+student.family+' '+student.given,text:message};
+ if(typeof navigator.share!=='function'){
+  $('shareStudentStatus').textContent='Trình duyệt không hỗ trợ chia sẻ trực tiếp. Bấm “Sao chép điểm” và dán vào Zalo.';
+  return;
+ }
+ let outcome;
+ try{outcome=navigator.share(data);}
+ catch(e){$('shareStudentStatus').textContent='Không mở được chia sẻ: '+e.message+'. Hãy sao chép điểm để gửi Zalo.';return;}
+ Promise.resolve(outcome).then(()=>{
+  if($('shareStudentDialog').open)$('shareStudentDialog').close();
+  toast('Đã mở tính năng chia sẻ phiếu điểm cá nhân.');
+ }).catch(e=>{
+  if(e?.name!=='AbortError')$('shareStudentStatus').textContent='Không mở được chia sẻ ('+(e?.name||e.message)+'). Hãy sao chép điểm để gửi.';
+ });
+};
+$('copyShareStudent').onclick=()=>{
+ if(!studentPending)return;
+ const {report,label,student}=studentPending;
+ const message=textStudentResult(report,label,student,$('shareIncludeRank').checked);
+ if(navigator.clipboard?.writeText)navigator.clipboard.writeText(message)
+  .then(()=>$('shareStudentStatus').textContent='Đã sao chép. Mở Zalo và dán vào cuộc trò chuyện.')
+  .catch(()=>$('shareStudentStatus').textContent='Không sao chép tự động được. Hãy sao chép văn bản xem trước.');
+ else $('shareStudentStatus').textContent='Hãy chọn và sao chép nội dung xem trước để gửi.';
+};
+$('closeShareStudent').onclick=()=>$('shareStudentDialog').close();
+$('shareStudentDialog').addEventListener('close',()=>{studentPending=null;});
 $('answerMatrixTemplate').onclick=async()=>{try{const exam=db().exams.find(e=>e.id===$('keyExam').value);if(!exam)throw Error('Chọn kỳ và môn trước');const X=await xlsx();const codes=Object.keys(exam.keys||{});if(!codes.length)codes.push('1'.padStart(exam.digits,'0'));const n=exam.counts.I+exam.counts.II+exam.counts.III;const rows=[['Câu\\Mã đề',...codes],...Array.from({length:n},(_,i)=>[i+1,...codes.map(()=> '')])];const book=X.utils.book_new(),ws=X.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:20},...codes.map(()=>({wch:15}))];X.utils.book_append_sheet(book,ws,'DapAn');X.writeFile(book,'ChamPro_Mau_DapAn.xlsx');}catch(e){toast(e.message);}};
 $('keysFile').addEventListener('change',async ev=>{
  ev.stopImmediatePropagation();const file=ev.target.files?.[0];if(!file)return;
