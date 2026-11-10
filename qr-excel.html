@@ -33,7 +33,13 @@ header.hs-sitebar .hs-brand-copy small{display:block;font-size:11px;line-height:
 <header class="hs-sitebar"><nav class="hs-navwrap" aria-label="Điều hướng chính"><a class="hs-brand" href="https://mrhien.com/" aria-label="HienSoft - về mrhien.com"><img class="hs-brand-icon" src="/app/icon.svg" alt="Logo HienSoft" width="75" height="60" decoding="async"><span class="hs-brand-copy"><strong>Tạo mã QR</strong><small>https://mrhien.com/</small></span></a><div class="hs-links"><a href="https://mrhien.com/">Trang chủ</a><a href="/app/">Chấm Pro</a><a href="/tron-de/">Trộn đề</a><a href="/qr-excel.html" aria-current="page">Tạo QR</a><a href="/ho-tro.html">Hỗ trợ</a></div></nav></header>
 <section class="hero"><div class="wrap"><span class="kicker">Công cụ dành cho giáo viên</span><h1>Tạo mã QR từ Excel</h1><p>Chọn đúng file mẫu ChấmPro, kiểm tra dữ liệu và tạo một hoặc nhiều mã QR để nhập vào ứng dụng bằng camera.</p></div></section>
 <main class="wrap main">
-<section class="panel" aria-label="Tạo mã QR">
+<section class="panel" style="border:2px solid #efc87b;background:#fffaf2" aria-label="Cấp phép Tạo QR thử nghiệm">
+<h2>Quyền sử dụng Tạo QR</h2>
+<p>Dùng tài khoản mrhien.com để tạo mã QR. Gói miễn phí có 5 lượt ban đầu và được cộng thêm lượt do quản trị viên cấp. Gói năm hoặc trọn đời sử dụng không giới hạn. Nội dung Excel vẫn xử lý ngay trên thiết bị; chỉ thông tin xác nhận sử dụng lượt được gửi tới Cloudflare.</p>
+<div class="actions"><button id="licenseLogin" class="primary" type="button">Đăng nhập qua mrhien.com</button><button id="licenseRefresh" class="secondary" type="button" disabled>Xem lượt còn lại</button><button id="licenseLogout" class="secondary" type="button" disabled>Đăng xuất</button></div>
+<p id="licenseStatus" role="status" aria-live="polite">Chưa đăng nhập. Chưa trừ lượt.</p>
+<p><a href="/platform/account/" style="color:#174cae;text-decoration:underline">Xem tài khoản và hạn mức</a></p>
+</section><section class="panel" aria-label="Tạo mã QR">
 <h2>1. Chọn loại dữ liệu và file Excel</h2><p class="hint">Hỗ trợ file .xlsx theo mẫu tải từ ChấmPro. Nội dung được xử lý tại trình duyệt, không gửi file lên Backend.</p>
 <div class="tabs"><button type="button" class="tab active" id="studentTab">👥 Danh sách học sinh</button><button type="button" class="tab" id="answerTab">☑ Đáp án bài kiểm tra</button></div>
 <label class="upload" for="excelFile"><strong>↑ Bấm để chọn file Excel (.xlsx)</strong><small id="uploadHint">Mẫu có Số báo danh, Họ và tên, Lớp và SĐT/Zalo PH 1/2</small><input id="excelFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
@@ -64,10 +70,11 @@ header.hs-sitebar .hs-brand-copy small{display:block;font-size:11px;line-height:
 <div class="notice warn">Hãy chọn chức năng <strong>QR Web</strong> trong ChấmPro, không dùng màn hình quét QR đáp án kiểu cũ.</div>
 </section>
 </aside>
-</main><footer class="footer">© Bản quyền thuộc về Mr Hiển · ChấmPro · Công cụ QR cho ứng dụng 1.4.17<div style="display:flex;gap:10px 18px;flex-wrap:wrap;justify-content:center;margin-top:9px"><a href="huong-dan.html" style="color:#3455a3">Hướng dẫn</a><a href="ho-tro.html" style="color:#3455a3">Hỗ trợ</a><a href="bao-mat.html" style="color:#3455a3">Bảo mật</a><a href="dieu-khoan.html" style="color:#3455a3">Điều khoản</a></div></footer>
+</main><footer class="footer">© Bản quyền thuộc về Mr Hiển · ChấmPro · Công cụ QR cho ứng dụng 1.4.17<div style="display:flex;gap:10px 18px;flex-wrap:wrap;justify-content:center;margin-top:9px"><a href="/huong-dan.html" style="color:#3455a3">Hướng dẫn</a><a href="/ho-tro.html" style="color:#3455a3">Hỗ trợ</a><a href="/bao-mat.html" style="color:#3455a3">Bảo mật</a><a href="/dieu-khoan.html" style="color:#3455a3">Điều khoản</a></div></footer>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="/platform/licensing/qr-license.js"></script>
 <script>
 (function(){
 "use strict";
@@ -211,20 +218,30 @@ $("downloadQR").addEventListener("click",function(){
 });
 $("createQR").addEventListener("click",async function(){
  var file=fileInput.files[0];resetResult();
+ if(!window.champroQRLicense||!champroQRLicense.loggedIn()){fail("Hãy đăng nhập tại khung KIỂM THỬ CẤP PHÉP ở phía trên trước khi tạo QR.");return}
  if(!file){fail("Hãy chọn file Excel trước.");return}
  if(!/\.xlsx$/i.test(file.name)){fail("Vui lòng chọn file .xlsx theo mẫu ChấmPro.");return}
  if(file.size>MAX_FILE){fail("File vượt 5 MB.");return}
  if(!window.XLSX||!window.pako||!window.QRCode||!window.crypto||!crypto.subtle){fail("Không tải được thư viện Excel/QR hoặc trình duyệt không hỗ trợ HTTPS. Hãy mở lại bằng Chrome có Internet.");return}
  var button=$("createQR");button.disabled=true;status.className="loader";status.textContent="Đang đọc Excel, nén và tạo QR...";
  try{
-  var wb=XLSX.read(new Uint8Array(await file.arrayBuffer()),{type:"array",cellDates:false,cellNF:false});
+  var fileBytes=new Uint8Array(await file.arrayBuffer());
+  var workbookHash=await crypto.subtle.digest("SHA-256",fileBytes);
+  var signature=hex(workbookHash)+":"+mode+":"+[$("partI").value,$("partII").value,$("partIII").value].join(":");
+  var wb=XLSX.read(fileBytes,{type:"array",cellDates:false,cellNF:false});
   var result=mode==="students"?parseStudents(sheetRows(wb,"DanhSachHocSinh")):parseAnswers(sheetRows(wb,"DapAn"));
   qrParts=await makeQR(result.payload);qrIndex=0;lastType=mode;
   $("recordCount").textContent=result.number;$("qrCount").textContent=qrParts.length;
+  // Render while hidden. Failed Excel conversion, oversized payload, or render errors cost no credits.
+  showQR();
+  if(!$("qrImage").querySelector("canvas,img"))throw Error("Không thể dựng ảnh QR hợp lệ, chưa trừ lượt.");
+  status.textContent="Đã kiểm tra QR. Đang xác nhận 1 lượt sử dụng với Cloudflare...";
+  await champroQRLicense.charge(signature);
   qrEmpty.classList.add("hide");qrResults.classList.remove("hide");
-  $("qrReady").textContent="Đã tạo 1 mã QR cho "+result.number+(mode==="students"?" học sinh.":" mã đề.")+" Mở ChấmPro, chọn QR Web và quét một lần để xác nhận nhập.";
-  showQR();renderPreview(result.preview);success("Đã tạo mã QR thành công."+ (result.warnings.length?"\n"+result.warnings.join("\n"):""));
- }catch(e){fail("Không tạo được QR: "+(e&&e.message?e.message:String(e)))}
+  $("qrReady").textContent="Đã tạo 1 mã QR cho "+result.number+(mode==="students"?" học sinh.":" mã đề.")+" Mở ChấmPro và quét một lần.";
+  renderPreview(result.preview);
+  success("Đã tạo QR thành công và trừ 1 lượt trên Cloudflare."+(result.warnings.length?"\n"+result.warnings.join("\n"):""));
+ }catch(e){qrResults.classList.add("hide");qrEmpty.classList.remove("hide");$("qrImage").replaceChildren();fail("Chưa thể xuất QR: "+(e&&e.message?e.message:String(e))+"\nNếu lỗi mạng, hãy đăng nhập lại nếu cần và chọn đúng tệp Excel cũ rồi bấm Tạo QR để xác nhận lại lượt, không đổi tệp.");}
  finally{button.disabled=false}
 });
 })();
