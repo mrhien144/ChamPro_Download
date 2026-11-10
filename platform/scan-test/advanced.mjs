@@ -191,8 +191,64 @@ async function readQR(source){
 function stopQR(){cancelAnimationFrame(qrRAF);qrRAF=0;if(qrStream){qrStream.getTracks().forEach(x=>x.stop());qrStream=null;}$('qrVideo').srcObject=null;qrBusy=false;}
 function closeQR(){stopQR();$('qrDialog').close();}
 $('qrClose').onclick=closeQR;$('qrDialog').addEventListener('close',stopQR);
-function openQR(type){qrMode=type;$('qrDialogTitle').textContent=type==='answer_key'?'Quét QR đáp án ChấmPro':'Quét QR học sinh';$('qrStatus').textContent='Đặt mã QR tạo tại menu Tạo QR vào camera';$('qrDialog').showModal();}
-$('qrAnswerOpen').onclick=()=>{if(!db().exams.some(e=>e.id===$('keyExam').value))return toast('Hãy chọn môn/kỳ kiểm tra');openQR('answer_key');};
+let qrStarting=false;
+function qrCameraError(err){
+ const kind=err?.name||'';
+ if(kind==='NotAllowedError'||kind==='PermissionDeniedError'||kind==='SecurityError')
+  return 'Trình duyệt đang chặn quyền camera. Bấm biểu tượng ổ khóa bên cạnh địa chỉ website → Camera → Cho phép, rồi bấm Thử mở lại.';
+ if(kind==='NotFoundError'||kind==='DevicesNotFoundError')
+  return 'Thiết bị không tìm thấy camera. Có thể chọn ảnh QR có sẵn thay thế.';
+ if(kind==='NotReadableError'||kind==='TrackStartError')
+  return 'Camera đang bị ứng dụng hoặc tab khác sử dụng. Hãy đóng ứng dụng đang dùng camera rồi thử lại.';
+ if(kind==='OverconstrainedError')return 'Không chọn được camera sau của thiết bị. Hãy thử mở lại camera.';
+ return 'Không mở được camera: '+(err?.message||String(err))+'; có thể dùng Chọn ảnh QR để nhập.';
+}
+async function startQRCamera(){
+ if(qrStarting)return;
+ qrStarting=true;
+ $('qrStart').disabled=true;
+ let media=null;
+ try{
+  if(!globalThis.isSecureContext||!navigator.mediaDevices?.getUserMedia)
+   throw new Error('Trình duyệt không hỗ trợ camera trên trang này. Hãy dùng HTTPS hoặc chọn ảnh QR.');
+  stopQR();
+  $('qrStatus').textContent='Đang yêu cầu quyền truy cập camera QR…';
+  try{
+   media=await navigator.mediaDevices.getUserMedia({
+    video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:960}},audio:false
+   });
+  }catch(err){
+   if(!['OverconstrainedError','NotFoundError'].includes(err?.name))throw err;
+   media=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+  }
+  if(!$('qrDialog').open){media.getTracks().forEach(t=>t.stop());return;}
+  qrStream=media;
+  const video=$('qrVideo');video.srcObject=media;video.muted=true;video.playsInline=true;
+  await video.play();
+  if(!$('qrDialog').open){stopQR();return;}
+  $('qrStatus').textContent='Camera QR đã mở. Đưa mã QR vào giữa khung hình để nhận diện.';
+  qrRAF=requestAnimationFrame(scanLoop);
+ }catch(err){
+  if(media&&!qrStream)media.getTracks().forEach(t=>t.stop());
+  stopQR();
+  $('qrStatus').textContent=qrCameraError(err);
+ }finally{
+  qrStarting=false;
+  $('qrStart').disabled=false;
+ }
+}
+function openQR(type){
+ qrMode=type;
+ $('qrDialogTitle').textContent=type==='answer_key'?'Quét QR đáp án ChấmPro':'Quét QR học sinh';
+ const hasExam=db().exams.some(e=>e.id===$('keyExam').value);
+ $('qrStatus').textContent=type==='answer_key'&&!hasExam
+  ?'Chưa chọn kỳ kiểm tra. Bạn vẫn có thể mở camera, nhưng cần tạo và chọn kỳ kiểm tra trước khi lưu đáp án QR.'
+  :'Đang mở camera QR…';
+ $('qrDialog').showModal();
+ // Called inside the original user click, retaining the browser camera permission gesture.
+ void startQRCamera();
+}
+$('qrAnswerOpen').onclick=()=>openQR('answer_key');
 $('qrStudentOpen').onclick=()=>openQR('student_list');
 async function applyQR(raw){
  let payload;
@@ -204,14 +260,16 @@ async function applyQR(raw){
   if(!confirm('Mã QR có '+students.length+' học sinh, '+added.length+' mới. Nhập danh sách?'))return;
   for(const s of added)db().students.push({id:crypto.randomUUID?.()||String(Date.now())+'-'+s.sbd,...s});save();toast('Đã nhập '+added.length+' học sinh bằng QR.');
  }else{
-  const exam=db().exams.find(e=>e.id===$('keyExam').value);const keys=keysFromQR(payload,exam);
+  const exam=db().exams.find(e=>e.id===$('keyExam').value);
+   if(!exam)throw Error('Đã đọc mã QR đáp án nhưng chưa có kỳ kiểm tra được chọn. Đóng cửa sổ, vào Đề & đáp án để tạo/chọn kỳ kiểm tra đúng số câu rồi quét lại.');
+   const keys=keysFromQR(payload,exam);
   if(!confirm('Nhập '+Object.keys(keys).length+' mã đề của môn '+(exam.subject||'')+'?'))return;
   Object.assign(exam.keys,keys);save();toast('Đã nhập '+Object.keys(keys).length+' mã đề từ QR.');
  }
  closeQR();
 }
 async function scanLoop(){if(!qrStream||!$('qrDialog').open)return;const now=performance.now();if(!qrBusy&&now-lastScanAt>260){qrBusy=true;lastScanAt=now;try{const raw=await readQR($('qrVideo'));if(raw){stopQR();$('qrStatus').textContent='Đã tìm thấy QR, đang kiểm tra...';await applyQR(raw);return;}}catch(e){$('qrStatus').textContent=e.message;}finally{qrBusy=false;}}qrRAF=requestAnimationFrame(scanLoop);}
-$('qrStart').onclick=async()=>{try{stopQR();qrStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:960}},audio:false});$('qrVideo').srcObject=qrStream;await $('qrVideo').play();$('qrStatus').textContent='Đang tìm mã QR...';qrRAF=requestAnimationFrame(scanLoop);}catch(e){$('qrStatus').textContent='Không mở được QR: '+e.message;}};
+$('qrStart').onclick=()=>{void startQRCamera();};
 $('qrFile').onchange=async ev=>{try{const f=ev.target.files[0];if(!f)return;const url=URL.createObjectURL(f),img=new Image();await new Promise((ok,fail)=>{img.onload=ok;img.onerror=()=>fail(Error('Ảnh không đọc được'));img.src=url;});const raw=await readQR(img);URL.revokeObjectURL(url);if(!raw)throw Error('Không thấy QR trong ảnh');await applyQR(raw);}catch(e){$('qrStatus').textContent=e.message;}finally{ev.target.value='';}};
 $('qrPaste').onclick=async()=>{const v=prompt('Dán nội dung QR Web ChấmPro:');if(v)try{await applyQR(v.trim());}catch(e){$('qrStatus').textContent=e.message;}};
 window.addEventListener('champro-db-updated',showGroups);
