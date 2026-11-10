@@ -1,5 +1,5 @@
 /* ChấmPro staging admin. No token or student data stored in browser storage. */
-const API_BASE='REPLACE_WITH_STAGING_WORKER_URL';
+const API_BASE='https://champro-platform-staging.luckylove1404.workers.dev';
 const byId=id=>document.getElementById(id);
 const state={token:null,popup:null,admin:false};
 const status=message=>{byId('status').textContent=message;};
