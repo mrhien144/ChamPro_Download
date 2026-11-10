@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tài khoản của tôi | ChấmPro</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="color-scheme" content="light">
+<style>
+:root{--ink:#1a3357;--muted:#61728c;--blue:#2456c7;--line:#dbe5f3;--bg:#f4f7fc}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1050px;padding:24px;margin:auto}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:23px}
+header a{color:var(--blue);font-weight:650;text-decoration:none}
+h1{margin:0;font-size:clamp(24px,4vw,31px);line-height:1.25}
+h2{font-size:19px;margin:0 0 12px}
+p{margin:6px 0 14px}
+small,.muted{color:var(--muted)}
+button{border:0;background:var(--blue);color:white;padding:12px 18px;border-radius:10px;font:inherit;font-weight:750;cursor:pointer}
+button.secondary{background:#e7eefb;color:#204b92}
+button:disabled{opacity:.45;cursor:not-allowed}
+.card{border:1px solid var(--line);background:#fff;border-radius:16px;padding:22px;margin:15px 0}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+.stat{background:#f5f8ff;border:1px solid #e5eefd;border-radius:12px;padding:15px}
+.stat h3{margin:0 0 9px;font-size:16px}
+.stat strong{display:block;font-size:30px;line-height:1.2;color:#123e88}
+.stat dl{display:grid;grid-template-columns:1fr auto;gap:5px 10px;margin:13px 0 0;font-size:13px}
+dt{color:#65768f}dd{margin:0;font-variant-numeric:tabular-nums;font-weight:700}
+.note{background:#fff9eb;border:1px solid #efdfb9;border-radius:12px;padding:12px 15px}
+.pill{display:inline-block;border-radius:99px;background:#e7f2ff;color:#1d4e8c;font-size:13px;font-weight:750;padding:3px 10px}
+#notice{white-space:pre-line}
+[hidden]{display:none!important}
+@media(max-width:740px){main{padding:14px}.grid{grid-template-columns:1fr}.card{padding:17px}}
+</style>
+</head>
+<body><main>
+<header><div><h1>Tài khoản ChấmPro</h1><small>Chấm bài · Trộn đề · Tạo QR</small></div><a href="/">Về trang chủ ChấmPro</a></header>
+<section class="card" aria-label="Đăng nhập">
+<h2>Đăng nhập bằng tài khoản mrhien.com</h2>
+<p>Bạn dùng tài khoản WordPress đã đăng ký. Không cần tạo mật khẩu ChấmPro riêng.</p>
+<div class="actions">
+<button id="login" type="button">Đăng nhập / Kết nối tài khoản</button>
+<button id="refresh" type="button" class="secondary" disabled>Làm mới số lượt</button>
+<button id="logout" type="button" class="secondary" disabled>Đăng xuất</button>
+</div>
+<p id="notice" role="status" aria-live="polite" class="muted">Chưa đăng nhập.</p>
+</section>
+<div id="private" hidden>
+<section class="card">
+<h2>Thông tin gói sử dụng</h2>
+<p><strong id="name"></strong> <span id="plan" class="pill"></span></p>
+<p id="email" class="muted"></p>
+<p id="expiration"></p>
+</section>
+<section class="card">
+<h2>Hạn mức của ba chức năng</h2>
+<div class="grid" id="features">
+<div class="stat"><h3>Chấm bài</h3><strong>—</strong></div>
+<div class="stat"><h3>Trộn đề</h3><strong>—</strong></div>
+<div class="stat"><h3>Tạo QR</h3><strong>—</strong></div>
+</div>
+<p class="muted" style="font-size:13px">Gói miễn phí có 100 lượt chấm, 5 lượt trộn đề, 5 lượt tạo QR. Lượt tặng thêm được tính riêng và cộng vào hạn mức. Số lượt đã dùng chỉ tăng khi công cụ được kết nối với hệ thống cấp phép.</p>
+</section>
+<section class="card">
+<h2>Nâng cấp gói</h2>
+<p>Gói 1 năm: <strong>99.000đ</strong> · Gói trọn đời: <strong>299.000đ</strong></p>
+<div class="note">Hệ thống thanh toán và khóa lượt của các công cụ đang được hoàn thiện. Chức năng mua gói chưa được mở, chưa phát sinh thanh toán trên trang này.</div>
+</section>
+</div>
+<div class="card">
+<p class="muted" style="font-size:13px">Đây là trang thử nghiệm tài khoản. Chưa đồng bộ lớp, học sinh, đáp án hoặc điểm. Việc xem quyền tại đây không trừ lượt và không thay đổi dữ liệu trên máy của bạn.</p>
+</div>
+</main><script type="module" src="./account.js"></script>
+</body></html>
