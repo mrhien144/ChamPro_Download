@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quản trị ChấmPro · Staging</title>
+<meta name="robots" content="noindex,nofollow">
+<style>
+:root{color-scheme:light;--bg:#f5f8fc;--ink:#183456;--blue:#2456cc;--line:#d9e5f0}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font:15px/1.6 system-ui,"Segoe UI",sans-serif;color:var(--ink)}
+main{max-width:1150px;margin:auto;padding:24px}.top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:18px}
+h1{font-size:25px;margin:0}h2{font-size:18px;margin:0 0 14px}p{margin:8px 0 14px}
+.card{background:#fff;border:1px solid var(--line);padding:20px;border-radius:14px;margin-bottom:18px}
+.notice{background:#fff7e9;border:1px solid #eed5a1;padding:10px 14px;border-radius:10px}
+button,input,select,textarea{font:inherit}button{cursor:pointer;border:none;border-radius:9px;padding:9px 15px;background:var(--blue);color:#fff;font-weight:700}button:disabled{opacity:.45;cursor:not-allowed}
+button.alt{background:#e9effa;color:#194d9d;border:1px solid #cdddf5}
+input,select,textarea{min-width:0;border:1px solid #bfcee0;padding:9px;border-radius:9px;width:100%}
+label{display:block;font-size:13px;font-weight:650;margin:0 0 9px}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:end}.toolbar>*{flex:1 1 175px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.stat{border-radius:10px;background:#f3f7fe;padding:15px}.stat strong{font-size:24px;display:block}
+.tablewrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:700px}th,td{padding:11px 9px;text-align:left;border-bottom:1px solid #edf1f6}th{background:#f4f7fc}
+small,.muted{color:#667991}#status{white-space:pre-line}details{padding:6px 0}pre{white-space:pre-wrap}
+@media(max-width:760px){main{padding:12px}.cards{grid-template-columns:1fr}.card{padding:14px}}
+</style>
+</head>
+<body><main>
+<div class="top"><div><h1>ChấmPro · Trung tâm quản trị</h1><small>Staging — chưa kết nối dữ liệu thật</small></div><a href="/" style="color:#2456cc">Về ChấmPro</a></div>
+<div class="card notice">
+<strong>Đang ở giai đoạn xây dựng.</strong>
+<p>Trang quản trị chỉ hoạt động sau khi bạn cấu hình Cloudflare D1, Worker và đăng nhập an toàn từ WordPress. Không có dữ liệu demo giả. Chấm Pro, Trộn đề và Tạo QR đang chạy không bị ảnh hưởng.</p>
+</div>
+<div class="card">
+<h2>Kết nối quản trị</h2>
+<div class="toolbar"><button id="login">Đăng nhập qua mrhien.com</button><button class="alt" id="refresh" disabled>Làm mới dữ liệu</button><button class="alt" id="logout" disabled>Đăng xuất</button></div>
+<p id="status" role="status" class="muted">Chưa xác thực.</p>
+</div>
+<div id="adminPanel" hidden>
+ <div class="card"><h2>Tổng quan</h2><div class="cards">
+  <div class="stat">Tài khoản <strong id="accountsTotal">—</strong><small>Tổng tài khoản đã đăng ký</small></div>
+  <div class="stat">Lượt đã sử dụng <strong id="usageTotal">—</strong><small>Chấm / Trộn / QR</small></div>
+  <div class="stat">Doanh thu ghi nhận <strong id="revenueTotal">—</strong><small>VNĐ</small></div>
+ </div><p id="breakdown" class="muted"></p></div>
+ <div class="card"><h2>Quản lý khách hàng</h2>
+  <div class="toolbar"><label>Tìm theo tên hoặc email<input id="search" placeholder="Nhập tên hoặc email"></label><button id="find">Tìm khách hàng</button></div>
+  <div class="tablewrap"><table><thead><tr><th>Tài khoản</th><th>Email</th><th>Gói</th><th>Trạng thái</th><th>Hết hạn</th><th>Thao tác</th></tr></thead><tbody id="users"><tr><td colspan="6">Chưa tải dữ liệu</td></tr></tbody></table></div>
+ </div>
+ <div class="card">
+  <h2>Cấp quyền / đổi gói thủ công</h2>
+  <p class="muted">Chỉ quản trị viên được máy chủ xác minh mới thực hiện được. Mỗi thay đổi được lưu nhật ký.</p>
+  <div class="toolbar">
+   <label>Mã tài khoản<input id="accountId" readonly placeholder="Chọn một khách hàng ở bảng trên"></label>
+   <label>Hành động<select id="action"><option value="set-plan">Cấp / đổi gói</option><option value="suspend">Tạm khóa</option><option value="activate">Mở lại</option></select></label>
+   <label>Gói<select id="plan"><option value="free">Miễn phí 100/5/5</option><option value="annual">99.000đ/năm</option><option value="lifetime">299.000đ trọn đời</option></select></label>
+  </div>
+  <label>Lý do chỉnh sửa<input id="reason" placeholder="Ví dụ: Hỗ trợ khách hàng sau thanh toán"></label>
+  <button id="grant">Xác nhận thay đổi</button>
+ </div>
+</div>
+</main><script type="module" src="./admin.js"></script></body></html>
