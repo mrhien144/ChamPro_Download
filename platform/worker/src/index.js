@@ -106,7 +106,29 @@ async function admin(env,who,path,req){
  if(path==='/api/admin/accounts'){
   const q='%'+String(new URL(req.url).searchParams.get('q')||'').slice(0,80)+'%';
   const list=await env.DB.prepare('SELECT id,email,display_name,plan,status,expires_at,created_at FROM accounts WHERE email LIKE ? OR display_name LIKE ? ORDER BY created_at DESC LIMIT 100').bind(q,q).all();
-  return send({ok:true,accounts:list.results});
+  const accounts=list.results||[];
+  if(!accounts.length)return send({ok:true,accounts:[]});
+  // The quotas shown in Super Admin are calculated from actual D1 records.
+  // They do not grant access and never reset the previously recorded usage.
+  const ids=accounts.map(a=>a.id),slots=ids.map(()=>'?').join(',');
+  const [usageData,bonusData]=await Promise.all([
+   env.DB.prepare('SELECT account_id,feature,COUNT(*) AS n FROM usage_events WHERE account_id IN ('+slots+') GROUP BY account_id,feature').bind(...ids).all(),
+   env.DB.prepare('SELECT account_id,feature,COALESCE(SUM(amount),0) AS n FROM bonus_credits WHERE account_id IN ('+slots+') GROUP BY account_id,feature').bind(...ids).all()
+  ]);
+  const counts=new Map(),bonuses=new Map();
+  for(const row of usageData.results||[])counts.set(row.account_id+':'+row.feature,Number(row.n)||0);
+  for(const row of bonusData.results||[])bonuses.set(row.account_id+':'+row.feature,Number(row.n)||0);
+  const enriched=accounts.map(a=>{
+   const effectivePlan=planOf(a),quota={};
+   for(const feature of Object.keys(LIMITS)){
+    const included=LIMITS[feature],bonus=bonuses.get(a.id+':'+feature)||0,
+     used=counts.get(a.id+':'+feature)||0,total=included+bonus;
+    quota[feature]={included,bonus,used,total:effectivePlan==='free'?total:null,
+     remaining:effectivePlan==='suspended'?0:effectivePlan==='free'?Math.max(0,total-used):null};
+   }
+   return {...a,effectivePlan,quota};
+  });
+  return send({ok:true,accounts:enriched});
  }
  if(path==='/api/admin/bonus'&&req.method==='POST'){
   const b=await body(req),ids=b.accountIds,feature=String(b.feature||''),
