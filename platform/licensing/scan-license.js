@@ -48,11 +48,11 @@ el("scanLicenseLogout").onclick=()=>{
 };
 window.champroScanLicense={
  loggedIn:()=>Boolean(state.token),
- async charge(resultId){
+ async charge(fingerprint){
   if(!state.token)throw Error("Cần đăng nhập trước khi chấm và lưu.");
-  if(state.pending&&state.pending.resultId!==resultId)
+  if(state.pending&&state.pending.fingerprint!==fingerprint)
     throw Error("Một bài chấm trước chưa xác minh lượt do lỗi mạng. Hãy thử lại với bài cũ trước khi đổi phiếu.");
-  if(!state.pending)state.pending={resultId,requestId:"scan:"+resultId};
+  if(!state.pending)state.pending={fingerprint,requestId:"scan:"+crypto.randomUUID()};
   const r=await query("/api/usage/scan",{requestId:state.pending.requestId});
   state.pending=null;
   try{await refresh();}catch(e){msg("Đã ghi nhận lượt chấm; không tải được số dư mới.");}
