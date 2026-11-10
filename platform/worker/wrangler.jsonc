@@ -8,7 +8,7 @@
     {
       "binding": "DB",
       "database_name": "champro-platform-staging",
-      "database_id": "REPLACE_WITH_STAGING_D1_DATABASE_ID",
+      "database_id": "e4dc2b7c-8737-4dc2-8c6c-b34ffdd6de6c",
       "migrations_dir": "../migrations"
     }
   ],
