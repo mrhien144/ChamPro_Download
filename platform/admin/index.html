@@ -17,7 +17,7 @@ input,select,textarea{min-width:0;border:1px solid #bfcee0;padding:9px;border-ra
 label{display:block;font-size:13px;font-weight:650;margin:0 0 9px}
 .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:end}.toolbar>*{flex:1 1 175px}
 .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.stat{border-radius:10px;background:#f3f7fe;padding:15px}.stat strong{font-size:24px;display:block}
-.tablewrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:700px}th,td{padding:11px 9px;text-align:left;border-bottom:1px solid #edf1f6}th{background:#f4f7fc}
+.quota-table{font-size:13px;min-width:100%;margin:8px 0 0;border:1px solid #e4ebf4;border-radius:8px}.quota-table th,.quota-table td{padding:5px 7px;border-bottom:1px solid #edf2f9;text-align:right}.quota-table th:first-child,.quota-table td:first-child{text-align:left}.quota-table thead th{background:#edf4ff}.quota-cell{min-width:330px}.quota-muted{font-size:12px;color:#657992}.tablewrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:700px}th,td{padding:11px 9px;text-align:left;border-bottom:1px solid #edf1f6}th{background:#f4f7fc}
 small,.muted{color:#667991}#status{white-space:pre-line}details{padding:6px 0}pre{white-space:pre-wrap}
 @media(max-width:760px){main{padding:12px}.cards{grid-template-columns:1fr}.card{padding:14px}}
 </style>
@@ -41,7 +41,7 @@ small,.muted{color:#667991}#status{white-space:pre-line}details{padding:6px 0}pr
  </div><p id="breakdown" class="muted"></p></div>
  <div class="card"><h2>Quản lý khách hàng</h2>
   <div class="toolbar"><label>Tìm theo tên hoặc email<input id="search" placeholder="Nhập tên hoặc email"></label><button id="find">Tìm khách hàng</button></div>
-  <label class="selectall"><input type="checkbox" id="selectAllUsers"> Chọn tất cả tài khoản đang hiển thị</label><div class="tablewrap"><table><thead><tr><th>Chọn</th><th>Tài khoản</th><th>Email</th><th>Gói</th><th>Trạng thái</th><th>Hết hạn</th><th>Thao tác</th></tr></thead><tbody id="users"><tr><td colspan="7">Chưa tải dữ liệu</td></tr></tbody></table></div>
+  <label class="selectall"><input type="checkbox" id="selectAllUsers"> Chọn tất cả tài khoản đang hiển thị</label><div class="tablewrap"><table><thead><tr><th>Chọn</th><th>Tài khoản</th><th>Email</th><th>Gói</th><th>Trạng thái</th><th>Hết hạn</th><th>Lượt sử dụng theo chức năng</th><th>Thao tác</th></tr></thead><tbody id="users"><tr><td colspan="8">Chưa tải dữ liệu</td></tr></tbody></table></div>
  </div>
  <div class="card">
   <h2>Cấp quyền / đổi gói thủ công</h2>
