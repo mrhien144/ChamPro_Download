@@ -4,6 +4,7 @@ import {readSheet} from './omr-native.mjs';
 import {readVerifiedWithMarkers} from './omr-verified-paper.mjs';
 import {readPrinted120WithMarkers} from './omr-printed-120.mjs';
 import {preserveSbd,canonicalSbd,validSbd,findStudentForSbd} from './student-identity.mjs';
+import {enqueueSheetPhoto,showSheetPhoto,pruneSheetPhotos} from './sheet-photo-store.mjs';
 const $=id=>document.getElementById(id);
 // Canvas-only OMR: no heavy OpenCV startup on Samsung browsers.
 
@@ -142,7 +143,9 @@ $('resultsTable').addEventListener('click',ev=>{
   '<label>SBD cần gán <input id="assignSbd" value="'+esc(r.sbd||'')+'" inputmode="numeric" placeholder="Nhập SBD đúng"></label>'+
   '<label>Chọn học sinh <select id="assignStudent">'+choices+'</select></label></div>'+
   '<button type="button" class="primary" data-assign-result="'+esc(r.id)+'">Lưu SBD / học sinh (giữ nguyên điểm)</button>';
- $('saveReview').hidden=true;dlg.showModal();
+ const photo=document.createElement('section');photo.className='champro-photo-review';photo.setAttribute('aria-label','Ảnh phiếu đã chấm');
+  $('reviewBody').prepend(photo);void showSheetPhoto(photo,r,ex);
+  $('saveReview').hidden=true;dlg.showModal();
 });
 $('reviewBody').addEventListener('click',ev=>{
  const btn=ev.target.closest('[data-assign-result]');if(!btn)return;
@@ -287,7 +290,7 @@ function rotatedCanvas(original,degrees){
  g.drawImage(original,0,0);
  return c;
 }
-let lastGoodOrientation=null,scanDirectionAttempt=0;
+let lastGoodOrientation=null,scanDirectionAttempt=0,lastReviewCanvas=null;
 async function trySheetOrientations(c,layout,cv,exam,manual=false){
  const results=[],errors=[];
  const normal=[lastGoodOrientation,0,90,270,180].filter((v,i,all)=>v!==null&&all.indexOf(v)===i);
@@ -337,7 +340,10 @@ async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;
    }
   if(match.knownCode&&result.codeConfidence===1){$('captureGuide').classList.add('detected');setTimeout(()=>$('captureGuide').classList.remove('detected'),550);}$('scanInfo').textContent=`Đã đọc SBD ${result.sbd||'?'}, mã đề ${result.examCode||'?'}; độ tin cậy ${(result.confidence*100).toFixed(0)}%; ${result.uncertain.length} ô cần xem. ${(performance.now()-t0).toFixed(0)} ms`;
   $('scanStatus').textContent='Đã nhận diện SBD '+(result.sbd||'?')+' · mã đề '+(result.examCode||'?')+' · '+(performance.now()-t0).toFixed(0)+' ms';
-  if(manual){openReview(exam,result);return;}
+  if(manual){
+    lastReviewCanvas=document.createElement('canvas');lastReviewCanvas.width=c.width;lastReviewCanvas.height=c.height;
+    lastReviewCanvas.getContext('2d').drawImage(c,0,0);
+    openReview(exam,result,match.deg);return;}
   const student=findStudentForSbd(db.students,result.sbd),issues=validateForSave(exam,student,result);
    // Blank response cells in the short-answer section are valid; partially
    // detected digits or signs must be reviewed rather than auto-saved.
@@ -359,7 +365,10 @@ async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;
   const fingerprint=JSON.stringify([exam.id,student?.id||'CHUA_GAN',result.examCode,result.I.slice(0,exam.counts.I),result.II.slice(0,exam.counts.II),result.III.slice(0,exam.counts.III)]);
   if(lastAuto?.fingerprint!==fingerprint||Date.now()-lastAuto.time>7000){lastAuto={fingerprint,time:Date.now()};$('scanStatus').textContent='Đã đọc mã đề và đáp án. Giữ yên để xác nhận lần hai…';return;}
   if(lastSaved===fingerprint){$('scanStatus').textContent='Phiếu này vừa chấm, hãy đổi phiếu tiếp theo';return;}
-  const done=saveResult(exam,student,result,true);lastSaved=fingerprint;lastAuto=null;lastGoodOrientation=match.deg;
+  const done=saveResult(exam,student,result,true);
+   // Photo archiving is optional and never awaited by grading or camera.
+   if(done)enqueueSheetPhoto({id:done.id,canvas:c,markers:result.markers,angle:match.deg,form:exam.form,digits:exam.digits,examId:exam.id,examCode:result.examCode});
+   lastSaved=fingerprint;lastAuto=null;lastGoodOrientation=match.deg;
   $('scanStatus').textContent='Đã chấm: '+done.score+'/'+done.max+' điểm'+(student?'':' · Chưa xác định học sinh; gán SBD trong Kết quả');
  }catch(e){if(manual)toast('Không nhận diện được: '+e.message+'; có thể nhập thủ công.');$('scanStatus').textContent='Không nhận diện: '+e.message;$('scanInfo').textContent='Lỗi nhận diện: '+e.message;lastAuto=null;if(manual){openReview(exam,{sbd:'',examCode:'',I:[],II:[],III:[],confidence:0,uncertain:['Chưa đọc được ảnh – nhập tay']});}}
  finally{captureBusy=false;}}
@@ -367,7 +376,7 @@ async function autoScanOnce(){if(!stream||captureBusy||$('reviewDialog').open||!
 $('snap').onclick=async()=>{try{await readCanvas(captureVideo(),true);}catch(e){toast(e.message)}};
 $('openPhoto').onclick=async()=>{const file=$('photoFile').files[0];if(!file)return toast('Hãy chọn ảnh phiếu trước');const url=URL.createObjectURL(file),img=new Image();img.onload=async()=>{try{await readCanvas(imageCanvas(img),true,'photo');}catch(e){toast(e.message);}finally{URL.revokeObjectURL(url);}};img.onerror=()=>{URL.revokeObjectURL(url);toast('Không mở được ảnh')};img.src=url;};
 $('testEngine').onclick=async()=>{try{const geometry=await ensureLayouts();if(Object.keys(geometry).length<4)throw Error('Thiếu mẫu phiếu');toast('Bộ đọc ảnh nhẹ và 4 mẫu phiếu đã sẵn sàng');}catch(e){toast(e.message);}};
-function openReview(exam,omr){review={exam,omr};const student=findStudentForSbd(db.students,omr.sbd);const info=omr.uncertain?.length?`<p class="warning">Có ${omr.uncertain.length} ô chưa rõ. Hãy kiểm tra với ảnh phiếu trước khi lưu.</p>`:'<p class="success">Đã nhận dạng. Kiểm tra SBD, mã đề và đáp án trước khi lưu.</p>';
+function openReview(exam,omr,angle=0){review={exam,omr,angle};const student=findStudentForSbd(db.students,omr.sbd);const info=omr.uncertain?.length?`<p class="warning">Có ${omr.uncertain.length} ô chưa rõ. Hãy kiểm tra với ảnh phiếu trước khi lưu.</p>`:'<p class="success">Đã nhận dạng. Kiểm tra SBD, mã đề và đáp án trước khi lưu.</p>';
  const field=(p,num,val,opts)=>`<label>${p} ${num}<input data-p="${p}" data-q="${num-1}" ${opts||''} value="${esc(val)}"></label>`;
  $('reviewBody').innerHTML=info+(lastReviewImage?`<details><summary>Ảnh phiếu đang kiểm tra (không lưu vào kết quả)</summary><img src="${lastReviewImage}" alt="Ảnh phiếu để đối chiếu" style="display:block;width:100%;max-height:460px;object-fit:contain;background:#0b1724;margin:8px 0 15px"></details>`:'')+`<div class="review-data"><label>Học sinh<select id="reviewStudent"><option value="">-- Chọn học sinh --</option>${db.students.map(s=>`<option value="${esc(s.id)}" ${student?.id===s.id?'selected':''}>${esc(s.sbd)} - ${esc(s.name)}</option>`).join('')}</select></label><label>SBD đọc từ phiếu<input id="reviewSbd" value="${esc(omr.sbd)}" maxlength="12" inputmode="numeric"></label><label>Mã đề<input id="reviewCode" value="${esc(omr.examCode)}" maxlength="4" inputmode="numeric"></label></div><h3>Phần I</h3><div class="answeredit">${Array.from({length:exam.counts.I},(_,i)=>field('I',i+1,omr.I?.[i]||'', 'maxlength="3"')).join('')}</div>${exam.counts.II?'<h3>Phần II (Đ/S, 4 ý)</h3><div class="answeredit">'+Array.from({length:exam.counts.II},(_,i)=>field('II',i+1,omr.II?.[i]||'', 'maxlength="4"')).join('')+'</div>':''}${exam.counts.III?'<h3>Phần III</h3><div class="answeredit">'+Array.from({length:exam.counts.III},(_,i)=>field('III',i+1,omr.III?.[i]||'', '')).join('')+'</div>':''}`;
  $('saveReview').hidden=false;$('reviewDialog').showModal();}
@@ -390,9 +399,13 @@ $('saveReview').onclick=()=>{try{if(!review)return;const student=db.students.fin
  if(!Object.values({I:answers.I,II:answers.II,III:answers.III}).flat().some(Boolean))throw Error('Chưa có câu trả lời nào');
  if(answers.I.some(x=>x&&!/^[ABCD]$/.test(x)))throw Error('Phần I chỉ chọn A/B/C/D');
  if(answers.II.some(x=>x&&!/^[ĐSD? ]{0,4}$/.test(x)))throw Error('Phần II chỉ nhập 4 ký tự Đ/S');
- const done=saveResult(exam,student,answers,false);if(!done)return;$('reviewDialog').close();toast('Đã chấm và lưu: '+done.score+'/'+done.max+' điểm');
+ const done=saveResult(exam,student,answers,false);if(!done)return;
+  if(lastReviewCanvas)enqueueSheetPhoto({id:done.id,canvas:lastReviewCanvas,markers:review.omr.markers,angle:review.angle||0,form:exam.form,digits:exam.digits,examId:exam.id,examCode});
+  lastReviewCanvas=null;$('reviewDialog').close();toast('Đã chấm và lưu: '+done.score+'/'+done.max+' điểm');
  }catch(e){toast('Không lưu được: '+e.message);}};
-$('closeReview').onclick=()=>$('reviewDialog').close();
+$('closeReview').onclick=()=>{$('reviewDialog').close();lastReviewCanvas=null;};
+ $('reviewDialog').addEventListener('close',()=>{lastReviewCanvas=null;});
+ window.addEventListener('load',()=>{setTimeout(()=>pruneSheetPhotos(365).catch(e=>console.debug('Dọn ảnh:',e)),3000);},{once:true});
 // Offline PWA install prompt
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;$('installBtn').hidden=false;});
 $('installBtn').onclick=async()=>{if(installPrompt){await installPrompt.prompt();installPrompt=null;$('installBtn').hidden=true;}};
