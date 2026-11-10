@@ -15,7 +15,7 @@
 @media(max-width:1100px){.sitehead .hs-english-nav{flex-wrap:wrap;justify-content:center;gap:3px 12px;padding-top:7px;padding-bottom:7px}.hs-english-nav .brand{width:100%;justify-content:center}.hs-navlinks{width:100%;justify-content:center}}
 @media(max-width:600px){.sitehead .hs-english-nav{width:calc(100% - 16px)}.hs-english-nav .brand{gap:8px}.hs-english-nav .hs-brand-logo{width:58px;height:48px;flex-basis:58px}.hs-english-nav .hs-brand-title strong{font-size:15px}.hs-english-nav .hs-brand-title small{font-size:10px}.hs-navlinks{justify-content:flex-start;gap:4px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:2px 2px 5px}.hs-navlinks::-webkit-scrollbar{display:none}.hs-navlinks a{font-size:12px;padding:8px 10px;min-height:36px}}
 #downloadBundle{min-height:56px;padding:14px 25px;font-size:16px;font-weight:850;max-width:100%}.export-hint{font-size:13px;line-height:1.65;color:var(--muted);margin:13px 0 18px}.export-hint strong{color:var(--ink)}
-</style><script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script><script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script><script type="module">const EngEngine=(()=>{
+</style><script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script><script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script><script defer src="/platform/licensing/mix-license.js"></script><script type="module">const EngEngine=(()=>{
 /** English Exam Mixer: pure linked-group shuffle and validation. No DOM required. */
 const LETTERS=['A','B','C','D'];
 const KINDS={cloze:'Điền từ/đục lỗ',reading:'Đọc hiểu',arrangement:'Sắp xếp câu/hội thoại',independent:'Câu độc lập'};
@@ -682,6 +682,10 @@ function blobDownload(blob,name){const url=URL.createObjectURL(blob),a=document.
 const documentHeader=()=>Object.fromEntries(['school','school2','leftTitle','examTitle','schoolYear','subject','minutes'].map(k=>[k,$('hdr'+k[0].toUpperCase()+k.slice(1)).value]));
 async function doExport(type,btn){
  if(type!=='bundle')return;
+ if(!window.champroMixLicense?.loggedIn()){
+  status('exportStatus','Vui lòng đăng nhập tại khung Quyền sử dụng Trộn đề Tiếng Anh trước khi tải bộ đề.','error');
+  return;
+ }
  if(!state.exam||!state.plans.length){
   status('exportStatus','Hãy tạo và kiểm tra mã đề trước khi tải.','error');return;
  }
@@ -702,10 +706,23 @@ async function doExport(type,btn){
    }
   });
   const filename='English_Exam_Mixer_Bo_De_Va_Dap_An.zip';
+  // The archive exists and passed validation. Now account for one mix.
+  // Fingerprint is tied to the actual loaded exam, answer edits, and generated plans.
+  const detail=JSON.stringify({
+   exam:state.exam.groups.map(g=>({id:g.id,kind:g.kind,enabled:g.enabled,
+    questions:g.questions.map(q=>({id:q.id,answer:q.answer,
+     stem:q.stemParts?.map(x=>x.text).join(''),options:q.options?.map(o=>o.text)}))})),
+   plans:state.plans.map(p=>({code:p.code,answer:p.answer,order:p.order,seed:p.seed})),
+   header:documentHeader()
+  });
+  const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(detail));
+  const fingerprint=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
+  status('exportStatus','Bộ ZIP đã tạo thành công. Đang ghi nhận 1 lượt trộn đề trên Cloudflare...');
+  await window.champroMixLicense.charge(fingerprint);
   blobDownload(archive,filename);
   status('exportStatus','Đã tạo '+filename+' với '+state.plans.length+' file đề Word và 1 file đáp án Excel ('+Math.round(archive.size/1024)+' KB).','success');
  }catch(e){
-  status('exportStatus','Không thể tạo bộ đề: '+(e.message||e),'error');
+  status('exportStatus','Không thể xuất bộ đề: '+(e.message||e)+'. Nếu lỗi mạng, giữ nguyên đề và cấu hình trước khi thử lại.','error');
  }finally{btn.disabled=false;btn.textContent=originalLabel;}
 }
 $('examFile').addEventListener('change',e=>handleFile(e.target.files?.[0]));$('parsePaste').addEventListener('click',()=>{try{state.exam=importPasted($('pasteText').value);state.history=[];state.plans=[];renderAll();status('sourceStatus',`Đã nhận diện ${state.exam.total} câu từ văn bản dán. Tất cả đáp án cần được kiểm tra.`, 'success')}catch(e){status('sourceStatus',e.message,'error')}});
@@ -723,9 +740,19 @@ $('generate').addEventListener('click',doGenerate);$('remix').addEventListener('
 $('saveConfig').addEventListener('click',()=>{try{localStorage.setItem('hienSoftEnglishMixerSettings',JSON.stringify({...config(),quantityValue:$('quantity').value,header:documentHeader()}));toast('Đã lưu cấu hình trộn trên trình duyệt này.')}catch{toast('Trình duyệt không cho phép lưu cấu hình.')}});
 try{const c=JSON.parse(localStorage.getItem('hienSoftEnglishMixerSettings')||'null');if(c){$('quantity').value=c.quantityValue||String(c.quantity);$('customQuantity').classList.toggle('hidden',$('quantity').value!=='custom');$('customQuantity').value=c.quantity;$('startCode').value=c.startCode;$('codeDigits').value=String(c.codeDigits===4?4:3);$('startCode').min=c.codeDigits===4?1000:100;$('startCode').max=c.codeDigits===4?9999:999;$('seed').value=c.seed;for(const k of ['shuffleQuestions','shuffleOptions','shuffleGroups'])$(k).checked=!!c[k];if(c.header)for(const [k,v] of Object.entries(c.header)){const el=$('hdr'+k[0].toUpperCase()+k.slice(1));if(el)el.value=v;}}}catch{}
 </script><link rel="canonical" href="https://champro.mrhien.com/tron-de/tieng-anh/"><meta property="og:type" content="website"><meta property="og:locale" content="vi_VN"><meta property="og:site_name" content="HienSoft"><meta property="og:title" content="Trộn đề tiếng Anh online từ Word, PDF | HienSoft"><meta property="og:description" content="Trộn đề tiếng Anh từ Word hoặc PDF, giữ nhóm bài đọc hiểu, điền từ; đảo câu hỏi và phương án, tạo nhiều mã đề, xuất Word và Excel đáp án."><meta property="og:url" content="https://champro.mrhien.com/tron-de/tieng-anh/"><meta name="twitter:card" content="summary"><script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"HienSoft – Trộn đề tiếng Anh online","url":"https://champro.mrhien.com/tron-de/tieng-anh/","description":"Trộn đề tiếng Anh từ Word hoặc PDF, giữ nhóm bài đọc hiểu, điền từ; đảo câu hỏi và phương án, tạo nhiều mã đề, xuất Word và Excel đáp án.","inLanguage":"vi-VN","applicationCategory":"EducationalApplication","operatingSystem":"Any","browserRequirements":"Yêu cầu trình duyệt hỗ trợ JavaScript","publisher":{"@type":"Organization","name":"HienSoft","url":"https://mrhien.com/"},"featureList":["Nhập đề tiếng Anh từ DOCX, PDF hoặc văn bản","Nhận diện nhóm bài đọc, điền từ","Trộn câu hỏi và đáp án A–D","Tạo nhiều mã đề tiếng Anh","Xuất file Word và bảng đáp án Excel"]}</script><style id="hs-seo-guide-styles">.hs-seo-guide{max-width:1210px;margin:32px auto 44px;padding:30px 32px;background:#fff;border:1px solid #dce6ed;border-radius:16px;color:#233e56;line-height:1.75}.hs-seo-guide h2{font-size:clamp(22px,2.3vw,30px);line-height:1.3;margin:0 0 14px;color:#123b65}.hs-seo-guide h3{font-size:19px;line-height:1.45;margin:24px 0 9px;color:#174b7c}.hs-seo-guide p{margin:0 0 12px}.hs-seo-guide ol{padding-left:25px;margin:9px 0}.hs-seo-guide li{margin:5px 0}.hs-seo-guide details{padding:13px 0;border-top:1px solid #e3ebf1}.hs-seo-guide summary{font-weight:700;cursor:pointer}.hs-seo-guide details p{margin:10px 0 2px}.hs-seo-guide a{color:#006aab;text-decoration:underline}@media(max-width:650px){.hs-seo-guide{padding:20px 18px;margin:24px 0}}</style></head>
-<body><header class="sitehead"><nav class="wrap nav hs-english-nav" aria-label="Điều hướng chính"><a href="./" class="brand" aria-label="English Exam Mixer – HienSoft"><img class="hs-brand-logo" src="/app/icon.svg" alt="Logo HienSoft" width="75" height="60" decoding="async"><span class="hs-brand-title"><strong>ENGLISH EXAM MIXER</strong><small>HienSoft · Công cụ Tiếng Anh THPT</small></span></a><div class="hs-navlinks" aria-label="Menu chính"><a href="https://mrhien.com/">Trang chủ</a><a href="/app/">Chấm Pro</a><a href="../" aria-current="page">Trộn đề</a><a href="/qr-excel.html">Tạo QR</a><a href="/ho-tro.html">Hỗ trợ</a></div></nav></header>
-<main><section class="hero"><div class="wrap hero-grid"><div><div class="eyebrow">✦ HienSoft dành cho giáo viên THPT</div><h1>Trộn đề Tiếng Anh<br><span>đúng cấu trúc, đúng đáp án.</span></h1><p>Công cụ trộn mã đề thi Tiếng Anh THPT thông minh dành cho giáo viên. Giữ nguyên mối liên kết giữa bài đọc, câu điền từ và các phương án; xử lý trực tiếp trên thiết bị.</p><div class="chips"><span>✓ Xử lý trên trình duyệt</span><span>✓ Không đăng nhập</span><span>✓ Word & Excel thật</span></div></div><div class="hero-info"><div class="hero-icon">40<span>Q</span></div><div><b>Quy trình 4 bước</b><p>Nhập đề → Kiểm tra đáp án → Thiết lập trộn → Xuất kết quả</p></div></div></div></section>
-<div class="wrap content"><div class="step-head"><span class="stepno">01</span><div><h2>Nhập đề gốc</h2><p>Ưu tiên Word .docx để giữ hình ảnh và định dạng; PDF và văn bản dán cần rà soát kỹ hơn.</p></div></div>
+<body><header class="sitehead"><nav class="wrap nav hs-english-nav" aria-label="Điều hướng chính"><a href="/tron-de/tieng-anh/" class="brand" aria-label="English Exam Mixer – HienSoft"><img class="hs-brand-logo" src="/app/icon.svg" alt="Logo HienSoft" width="75" height="60" decoding="async"><span class="hs-brand-title"><strong>ENGLISH EXAM MIXER</strong><small>HienSoft · Công cụ Tiếng Anh THPT</small></span></a><div class="hs-navlinks" aria-label="Menu chính"><a href="https://mrhien.com/">Trang chủ</a><a href="/app/">Chấm Pro</a><a href="../" aria-current="page">Trộn đề</a><a href="/qr-excel.html">Tạo QR</a><a href="/ho-tro.html">Hỗ trợ</a></div></nav></header>
+<main><section class="hero"><div class="wrap hero-grid"><div><div class="eyebrow">✦ HienSoft dành cho giáo viên THPT</div><h1>Trộn đề Tiếng Anh<br><span>đúng cấu trúc, đúng đáp án.</span></h1><p>Công cụ trộn mã đề thi Tiếng Anh THPT thông minh dành cho giáo viên. Giữ nguyên mối liên kết giữa bài đọc, câu điền từ và các phương án; xử lý trực tiếp trên thiết bị.</p><div class="chips"><span>✓ Xử lý trên trình duyệt</span><span>✓ Đăng nhập qua mrhien.com</span><span>✓ Word & Excel thật</span></div></div><div class="hero-info"><div class="hero-icon">40<span>Q</span></div><div><b>Quy trình 4 bước</b><p>Nhập đề → Kiểm tra đáp án → Thiết lập trộn → Xuất kết quả</p></div></div></div></section>
+<div class="wrap content">
+<section class="panel" style="margin:18px 0 26px;border:2px solid #e1c78a;background:#fff9ef">
+<h2>Quyền sử dụng Trộn đề Tiếng Anh</h2>
+<p>Đăng nhập bằng tài khoản mrhien.com. Gói miễn phí có 5 lượt trộn đề ban đầu, cộng lượt được tặng; gói 1 năm và trọn đời không giới hạn. Trộn đề thường và Tiếng Anh dùng chung hạn mức. Một lần xuất ZIP thành công được tính 1 lượt; chỉnh sửa và xem trước không trừ lượt.</p>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+<button type="button" class="button primary" id="mixLicenseLogin">Đăng nhập mrhien.com</button>
+<button type="button" class="button secondary" id="mixLicenseRefresh" disabled>Xem lượt còn lại</button>
+<button type="button" class="button secondary" id="mixLicenseLogout" disabled>Đăng xuất</button>
+</div><p id="mixLicenseStatus" role="status" aria-live="polite">Chưa đăng nhập.</p>
+</section>
+<div class="step-head"><span class="stepno">01</span><div><h2>Nhập đề gốc</h2><p>Ưu tiên Word .docx để giữ hình ảnh và định dạng; PDF và văn bản dán cần rà soát kỹ hơn.</p></div></div>
 <section class="panel input-panel"><div class="input-grid"><label id="dropzone" class="dropzone" for="examFile" tabindex="0"><span class="upload-symbol">⇧</span><strong>Chọn hoặc thả file đề tại đây</strong><span>Word .docx hoặc PDF · Tệp được xử lý trên thiết bị của bạn</span><span class="file-button">Chọn tệp đề</span><input id="examFile" type="file" accept=".docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden></label><div class="paste-area"><label for="pasteText">Hoặc dán nội dung đề</label><textarea id="pasteText" rows="6" placeholder="Read the following passage...&#10;Question 1: ...&#10;A. ... B. ... C. ... D. ..."></textarea><button id="parsePaste" type="button" class="button secondary">Phân tích văn bản đã dán</button></div></div><div class="answer-upload"><label>File đáp án riêng (không bắt buộc)</label><input type="file" id="answerFile" accept=".xlsx,.docx,.txt,.csv,.tsv"><span>Hỗ trợ dạng 1 A, 2 B hoặc 1:A; không tự đoán đáp án thiếu.</span></div><div id="sourceStatus" class="status" role="status">Chưa tải đề gốc.</div></section>
 <section id="workspace" class="hidden" aria-label="Không gian trộn đề"><div class="step-head"><span class="stepno">02</span><div><h2>Rà soát đề và đáp án</h2><p>Kiểm tra từng nhóm liên kết trước khi tạo mã đề. Mọi đáp án chưa chắc chắn phải xác nhận thủ công.</p></div></div>
 <div class="metric-row"><div class="metric"><b id="statQuestions">0</b><span>Câu hỏi</span></div><div class="metric"><b id="statGroups">0</b><span>Nhóm nội dung</span></div><div class="metric"><b id="statAnswers">0</b><span>Đáp án xác nhận</span></div><div class="metric"><b id="statWarnings">0</b><span>Cần rà soát</span></div></div>
