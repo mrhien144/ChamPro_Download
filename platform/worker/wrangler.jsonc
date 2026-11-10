@@ -1,0 +1,21 @@
+{
+  // STAGING ONLY. Do not reuse the production website domain for this Worker.
+  "name": "champro-platform-staging",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "champro-platform-staging",
+      "database_id": "REPLACE_WITH_STAGING_D1_DATABASE_ID",
+      "migrations_dir": "../migrations"
+    }
+  ],
+  "vars": {
+    "ALLOWED_ORIGINS": "https://champro.mrhien.com,https://mrhien.com",
+    "ADMIN_WP_USER_IDS": "REPLACE_WITH_WORDPRESS_ADMIN_USER_ID",
+    "PRODUCT_ANNUAL_ID": "REPLACE_WITH_WOOCOMMERCE_PRODUCT_ID",
+    "PRODUCT_LIFETIME_ID": "REPLACE_WITH_WOOCOMMERCE_PRODUCT_ID"
+  }
+}
