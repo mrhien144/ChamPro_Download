@@ -47,13 +47,13 @@ e("mixLicenseRefresh").onclick=async function(){
 e("mixLicenseLogout").onclick=function(){
  state.token=null;
  e("mixLicenseRefresh").disabled=true;e("mixLicenseLogout").disabled=true;
- message("Đã đăng xuất. Cần đăng nhập để trộn đề. Nếu vừa mất kết nối khi trừ lượt, đăng nhập lại cùng tài khoản để xác nhận lại.");
+ message("Đã đăng xuất. Cần đăng nhập lại trước khi trộn đề.");
 };
 window.champroMixLicense={
  loggedIn:()=>!!state.token,
  async charge(fingerprint){
   if(state.pending&&state.pending.fingerprint!==fingerprint)
-   throw Error("Lần trộn đề trước chưa xác nhận do lỗi mạng. Vui lòng tạo lại QR bằng CÙNG tệp và cấu hình trước khi đổi tệp.");
+   throw Error("Lần trộn đề trước chưa xác nhận do lỗi mạng. Hãy sử dụng cùng tệp đề và cùng cấu hình trước khi đổi tệp.");
   if(!state.pending)state.pending={fingerprint,requestId:crypto.randomUUID()};
   const id=state.pending.requestId;
   const result=await call("/api/usage/mix",{requestId:id});
