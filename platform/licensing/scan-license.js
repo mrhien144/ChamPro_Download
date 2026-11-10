@@ -5,7 +5,7 @@
 (function(){
 "use strict";
 const API="https://champro-platform-staging.luckylove1404.workers.dev";
-const state={token:null,popup:null,pending:null};
+const state={token:null,popup:null,pending:null,accountId:null};
 const el=id=>document.getElementById(id);
 const msg=message=>{el("scanLicenseStatus").textContent=message;};
 async function query(path,data){
@@ -19,6 +19,7 @@ async function query(path,data){
 }
 async function refresh(){
  const x=await query("/api/me");
+ state.accountId=x.account.id;
  const left=x.left.scan===null?"không giới hạn":String(x.left.scan);
  msg("Đã đăng nhập: "+(x.account.name||x.account.email)+
   " · Gói: "+x.account.plan+
@@ -43,7 +44,7 @@ window.addEventListener("message",async event=>{
 });
 el("scanLicenseRefresh").onclick=async()=>{try{await refresh();}catch(e){msg("Không tải được số lượt: "+e.message);}};
 el("scanLicenseLogout").onclick=()=>{
- state.token=null;el("scanLicenseRefresh").disabled=true;el("scanLicenseLogout").disabled=true;
+ state.token=null;state.accountId=null;el("scanLicenseRefresh").disabled=true;el("scanLicenseLogout").disabled=true;
  msg("Đã đăng xuất. Không thể lưu thêm kết quả cho đến khi đăng nhập lại.");
 };
 window.champroScanLicense={
@@ -52,7 +53,15 @@ window.champroScanLicense={
   if(!state.token)throw Error("Cần đăng nhập trước khi chấm và lưu.");
   if(state.pending&&state.pending.fingerprint!==fingerprint)
     throw Error("Một bài chấm trước chưa xác minh lượt do lỗi mạng. Hãy thử lại với bài cũ trước khi đổi phiếu.");
-  if(!state.pending)state.pending={fingerprint,requestId:"scan:"+crypto.randomUUID()};
+  if(!state.accountId)await refresh();
+  if(!state.pending){
+   // Same account + same test + same SBD always use the same request ID.
+   // This is also safe if the first response was lost or the page reloaded.
+   const payload=new TextEncoder().encode(state.accountId+"|"+fingerprint);
+   const digest=new Uint8Array(await crypto.subtle.digest("SHA-256",payload));
+   const hash=Array.from(digest,b=>b.toString(16).padStart(2,"0")).join("");
+   state.pending={fingerprint,requestId:"scan:"+hash};
+  }
   const r=await query("/api/usage/scan",{requestId:state.pending.requestId});
   state.pending=null;
   try{await refresh();}catch(e){msg("Đã ghi nhận lượt chấm; không tải được số dư mới.");}
