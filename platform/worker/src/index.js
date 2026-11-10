@@ -39,8 +39,11 @@ async function profile(env,who){
  const counts={scan:0,mix:0,qr:0};
  const rows=await env.DB.prepare('SELECT feature,COUNT(*) AS n FROM usage_events WHERE account_id=? GROUP BY feature').bind(who.id).all();
  for(const row of rows.results||[])if(row.feature in counts)counts[row.feature]=row.n;
- const plan=planOf(a),left=Object.fromEntries(Object.keys(LIMITS).map(k=>[k,plan==='suspended'?0:plan==='free'?Math.max(0,LIMITS[k]-counts[k]):null]));
- return send({ok:true,account:{id:a.id,name:a.display_name,email:a.email,plan,expiresAt:a.expires_at,status:a.status},used:counts,left,limits:LIMITS,isAdmin:adminIds(env).has(who.wpId)});
+ const bonus={scan:0,mix:0,qr:0};
+ const credits=await env.DB.prepare('SELECT feature,COALESCE(SUM(amount),0) AS n FROM bonus_credits WHERE account_id=? GROUP BY feature').bind(who.id).all();
+ for(const row of credits.results||[])if(Object.hasOwn(bonus,row.feature))bonus[row.feature]=Number(row.n||0);
+ const plan=planOf(a),left=Object.fromEntries(Object.keys(LIMITS).map(k=>[k,plan==='suspended'?0:plan==='free'?Math.max(0,LIMITS[k]+bonus[k]-counts[k]):null]));
+ return send({ok:true,account:{id:a.id,name:a.display_name,email:a.email,plan,expiresAt:a.expires_at,status:a.status},used:counts,bonus,left,limits:LIMITS,isAdmin:adminIds(env).has(who.wpId)});
 }
 async function secureBridge(req,env){
  const supplied=req.headers.get('X-Bridge-Secret')||'';
@@ -84,7 +87,7 @@ async function useCredit(env,who,feature,b){
  if(prev)return prev.account_id===who.id&&prev.feature===feature?send({ok:true,duplicate:true}):error('Mã thao tác trùng',409);
  // SQLite guards the free quota within the INSERT, preventing parallel
  // requests from overspending the five QR/mix credits or 100 scan credits.
- const res=await env.DB.prepare("INSERT INTO usage_events(request_id,account_id,feature,source) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM accounts WHERE id=? AND status='active' AND (plan='lifetime' OR (plan='annual' AND expires_at>datetime('now')) OR ((plan='free' OR (plan='annual' AND (expires_at IS NULL OR expires_at<=datetime('now')))) AND (SELECT COUNT(*) FROM usage_events WHERE account_id=? AND feature=?)<?))) ON CONFLICT(request_id) DO NOTHING").bind(rid,who.id,feature,'web',who.id,who.id,feature,LIMITS[feature]).run();
+ const res=await env.DB.prepare("INSERT INTO usage_events(request_id,account_id,feature,source) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM accounts WHERE id=? AND status='active' AND (plan='lifetime' OR (plan='annual' AND expires_at>datetime('now')) OR ((plan='free' OR (plan='annual' AND (expires_at IS NULL OR expires_at<=datetime('now')))) AND (SELECT COUNT(*) FROM usage_events WHERE account_id=? AND feature=?) < ? + (SELECT COALESCE(SUM(amount),0) FROM bonus_credits WHERE account_id=? AND feature=?)))) ON CONFLICT(request_id) DO NOTHING").bind(rid,who.id,feature,'web',who.id,who.id,feature,LIMITS[feature],who.id,feature).run();
  if(!res.meta?.changes){
   const second=await env.DB.prepare('SELECT account_id,feature FROM usage_events WHERE request_id=?').bind(rid).first();
   if(second?.account_id===who.id&&second.feature===feature)return send({ok:true,duplicate:true});
@@ -104,6 +107,45 @@ async function admin(env,who,path,req){
   const q='%'+String(new URL(req.url).searchParams.get('q')||'').slice(0,80)+'%';
   const list=await env.DB.prepare('SELECT id,email,display_name,plan,status,expires_at,created_at FROM accounts WHERE email LIKE ? OR display_name LIKE ? ORDER BY created_at DESC LIMIT 100').bind(q,q).all();
   return send({ok:true,accounts:list.results});
+ }
+ if(path==='/api/admin/bonus'&&req.method==='POST'){
+  const b=await body(req),ids=b.accountIds,feature=String(b.feature||''),
+   amount=b.amount,reason=String(b.reason||'').trim(),requestId=String(b.requestId||'');
+  if(!Array.isArray(ids)||ids.length<1||ids.length>100||
+    ids.some(id=>typeof id!=='string'||!/^wp:[1-9]\d{0,12}$/.test(id))||
+    new Set(ids).size!==ids.length||!Object.hasOwn(LIMITS,feature)||
+    !Number.isSafeInteger(amount)||amount<1||amount>10000||
+    reason.length<5||reason.length>250||
+    !/^[a-zA-Z0-9-]{20,80}$/.test(requestId))
+   return error('Thông tin cấp lượt không hợp lệ: 1–100 tài khoản, 1–10.000 lượt, lý do từ 5 ký tự',400);
+  const placeholders=ids.map(()=>'?').join(',');
+  const found=await env.DB.prepare('SELECT id FROM accounts WHERE id IN ('+placeholders+')').bind(...ids).all();
+  if(found.results.length!==ids.length)return error('Có tài khoản không tồn tại. Chưa cấp lượt cho ai.',404);
+  // Pre-check idempotency before batch. UNIQUE(request_id, account, feature)
+  // also protects against retries with identical identifiers.
+  const existing=await env.DB.prepare('SELECT account_id,feature,amount FROM bonus_credits WHERE grant_request_id=?')
+    .bind(requestId).all();
+  if(existing.results?.length){
+   const old=existing.results;
+   if(old.length===ids.length&&old.every(x=>ids.includes(x.account_id)&&x.feature===feature&&x.amount===amount))
+    return send({ok:true,duplicate:true,count:ids.length,amount,feature});
+   return error('Mã thao tác đã được dùng cho nội dung khác',409);
+  }
+  const commands=ids.flatMap(id=>[
+   env.DB.prepare('INSERT INTO bonus_credits(id,grant_request_id,account_id,feature,amount,actor,reason) VALUES(?,?,?,?,?,?,?)')
+    .bind(requestId+':'+id,requestId,id,feature,amount,who.id,reason),
+   env.DB.prepare('INSERT INTO admin_audit(actor,action,account_id,details) VALUES(?,?,?,?)')
+    .bind(who.id,'grant-bonus',id,JSON.stringify({feature,amount,reason,requestId}))
+  ]);
+  try{await env.DB.batch(commands);}
+  catch(e){
+   // Concurrent retries may see a unique constraint. Never grant twice.
+   const old=await env.DB.prepare('SELECT account_id,feature,amount FROM bonus_credits WHERE grant_request_id=?').bind(requestId).all();
+   if(old.results?.length===ids.length&&old.results.every(x=>ids.includes(x.account_id)&&x.feature===feature&&x.amount===amount))
+    return send({ok:true,duplicate:true,count:ids.length,amount,feature});
+   return error('Không cấp được lượt. Không có thay đổi nào được xác nhận.',409);
+  }
+  return send({ok:true,duplicate:false,count:ids.length,amount,feature});
  }
  if(path==='/api/admin/grant'&&req.method==='POST'){
   const b=await body(req),aid=String(b.accountId||''),action=String(b.action||'');
