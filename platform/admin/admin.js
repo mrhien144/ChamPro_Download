@@ -44,7 +44,7 @@ function showAccounts(accounts){
  state.selected.clear();
  if(!accounts.length){
   const tr=document.createElement('tr'),td=document.createElement('td');
-  td.colSpan=7;td.textContent='Không tìm thấy tài khoản';tr.append(td);tbody.append(tr);return;
+  td.colSpan=8;td.textContent='Không tìm thấy tài khoản';tr.append(td);tbody.append(tr);refreshSelection();return;
  }
  for(const a of accounts){
   const tr=document.createElement('tr'),checktd=document.createElement('td'),ch=document.createElement('input');
@@ -54,6 +54,29 @@ function showAccounts(accounts){
   for(const value of [a.display_name||a.id,a.email,a.plan,a.status,a.expires_at||'—']){
    const td=document.createElement('td');td.textContent=value;tr.append(td);
   }
+  // Read-only D1 quota view. All server-derived numbers are inserted as text.
+  const quotaTd=document.createElement('td');quotaTd.className='quota-cell';
+  const quota=a.quota||{},labels={scan:'Chấm',mix:'Trộn',qr:'QR'};
+  const table=document.createElement('table');table.className='quota-table';
+  const thead=document.createElement('thead'),thRow=document.createElement('tr');
+  for(const label of ['Chức năng','Mặc định','Tặng','Đã dùng','Còn lại']){
+   const th=document.createElement('th');th.textContent=label;thRow.append(th);
+  }
+  thead.append(thRow);table.append(thead);
+  const qBody=document.createElement('tbody');
+  for(const feature of ['scan','mix','qr']){
+   const data=quota[feature]||{},row=document.createElement('tr');
+   const fmt=n=>n===null?'∞':Number(n||0).toLocaleString('vi-VN');
+   const values=[labels[feature],fmt(data.included),fmt(data.bonus),fmt(data.used),a.effectivePlan==='suspended'?'0':fmt(data.remaining)];
+   for(const v of values){const td=document.createElement('td');td.textContent=v;row.append(td);}
+   qBody.append(row);
+  }
+  table.append(qBody);quotaTd.append(table);
+  if(a.effectivePlan==='annual'||a.effectivePlan==='lifetime'){
+   const note=document.createElement('small');note.className='quota-muted';
+   note.textContent='Gói '+a.effectivePlan+': không giới hạn; lượt tặng vẫn được lưu';quotaTd.append(note);
+  }
+  tr.append(quotaTd);
   const td=document.createElement('td'),btn=document.createElement('button');
   btn.type='button';btn.textContent='Chọn';btn.className='alt';btn.dataset.accountId=a.id;
   td.append(btn);tr.append(td);tbody.append(tr);
