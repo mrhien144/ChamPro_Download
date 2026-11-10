@@ -4,6 +4,7 @@ import {readSheet} from '/app/omr-native.mjs';
 import {readVerifiedWithMarkers} from '/app/omr-verified-paper.mjs';
 import {readPrinted120WithMarkers} from '/app/omr-printed-120.mjs';
 import {preserveSbd,canonicalSbd,validSbd,findStudentForSbd} from '/app/student-identity.mjs';
+import {existingFor,identityFor,creditIdentity} from './scan-identity.mjs';
 const $=id=>document.getElementById(id);
 // Canvas-only OMR: no heavy OpenCV startup on Samsung browsers.
 
@@ -374,20 +375,33 @@ function openReview(exam,omr){review={exam,omr};const student=findStudentForSbd(
 let resultSaving=false;
 async function saveResult(exam,student,ans,fromAuto=false){
  const value=grade(exam,{examCode:ans.examCode,I:ans.I,II:ans.II,III:ans.III});
- const exists=student?db.results.find(x=>x.examId===exam.id&&x.studentId===student.id):null;
- if(exists&&!fromAuto&&!confirm('Bài này đã được chấm. Ghi đè kết quả cũ?'))return null;
- if(exists&&fromAuto)throw Error('Bài đã có trong lịch sử, không chấm trùng');
- const record={id:exists?.id||id(),examId:exam.id,gradeClass:exam.gradeClass||student?.classroom||'',subject:exam.subject||'',period:exam.name,
+ const exists=existingFor(db,exam,student,ans);
+ const identity=identityFor(exam,student,ans);
+ let distinctUnknownId=null;
+ if(exists&&fromAuto)throw Error('Bài chấm này đã có trong lịch sử, KHÔNG trừ thêm lượt. Nếu chưa đọc rõ SBD, kiểm tra trong mục Kết quả.');
+ if(exists&&identity.type==='sbd'&&!fromAuto&&!confirm('Bài này đã lưu. Bạn có muốn cập nhật kết quả cũ? Sửa điểm KHÔNG trừ lượt.'))return null;
+ if(exists&&identity.type==='unknown'&&!fromAuto){
+  const confirmDistinct=confirm(
+   'Phát hiện một bài CHƯA CÓ SBD với cùng mã đề và các đáp án đã lưu. Hai học sinh khác nhau có thể trả lời giống nhau.\n\n'+
+   'OK: Tôi đã đối chiếu PHIẾU GIẤY và xác nhận đây là MỘT HỌC SINH KHÁC (sẽ tính 1 lượt mới).\n'+
+   'Hủy: Không lưu, không trừ lượt.'
+  );
+  if(!confirmDistinct)return null;
+  distinctUnknownId=id();
+ }
+ const old=exists&&identity.type==='sbd'?exists:null;
+ const record={id:old?.id||id(),examId:exam.id,gradeClass:exam.gradeClass||student?.classroom||'',subject:exam.subject||'',period:exam.name,
   studentId:student?.id||null,studentName:student?.name||'Chưa xác định học sinh',classroom:student?.classroom||'',sbd:student?.sbd||'',rawSbd:preserveSbd(ans.sbd),
   pendingStudent:!student,examCode:ans.examCode,answers:{I:ans.I,II:ans.II,III:ans.III},score:value.total,max:value.max,parts:value.points,savedAt:new Date().toISOString()};
- // Staging quota: charge only when a new saved result is created.
- // Regrading or modifying an existing saved grade does not consume a credit.
- if(!exists){
+ // In staging, only NEW saved grades consume one credit.
+ // A stable idempotency key covers retries, reloads and server-acknowledged
+ // charges followed by a failed local save.
+ if(!old){
   if(!window.champroScanLicense)throw Error('Không tải được bộ xác thực lượt Chấm Pro.');
-  const identity=student?.id||preserveSbd(ans.sbd)||'KHONG_DOC_SBD';
-  const fingerprint=JSON.stringify([exam.id,identity,record.examCode,record.answers.I,record.answers.II,record.answers.III]);
+  const fingerprint=creditIdentity(exam,student,ans,{distinctUnknownId});
   await window.champroScanLicense.charge(fingerprint);
  }
+ // Keep the original production grading and flash behavior.
  db.results=db.results.filter(x=>x.id!==record.id);db.results.push(record);save();
  $('scanPerson').textContent=record.studentName;$('scanScore').textContent=(student?'SBD '+record.sbd:'Chưa gán SBD')+' · '+record.score+'/'+record.max+' điểm';$('scanMode').textContent='Đã chấm';
  const flash=$('resultFlash');$('flashName').textContent=record.studentName;$('flashScore').textContent=record.score+'/'+record.max+' điểm';
