@@ -1,7 +1,7 @@
 /* ChấmPro staging admin. No token or student data stored in browser storage. */
 const API_BASE='https://champro-platform-staging.luckylove1404.workers.dev';
 const byId=id=>document.getElementById(id);
-const state={token:null,popup:null,admin:false};
+const state={token:null,popup:null,admin:false,selected:new Set()};
 const status=message=>{byId('status').textContent=message;};
 const configured=()=>/^https:\/\/[a-z0-9.-]+$/i.test(API_BASE)&&!API_BASE.includes('REPLACE');
 const money=n=>Number(n||0).toLocaleString('vi-VN')+'đ';
@@ -19,7 +19,7 @@ async function api(path,options={}){
  return data;
 }
 function clear(){
- state.token=null;state.admin=false;
+ state.token=null;state.admin=false;state.selected.clear();
  byId('adminPanel').hidden=true;byId('refresh').disabled=true;byId('logout').disabled=true;
  status('Đã đăng xuất khỏi bảng quản trị.');
 }
@@ -34,14 +34,23 @@ async function loadAll(){
   ' | '+(stats.used||[]).map(x=>x.feature+': '+x.count).join(' · ');
  showAccounts(list.accounts||[]);
 }
+function refreshSelection(){
+ byId('selectedCount').value=state.selected.size+' tài khoản';
+ const checkboxes=[...byId('users').querySelectorAll('.user-check')];
+ byId('selectAllUsers').checked=checkboxes.length>0&&checkboxes.every(ch=>ch.checked);
+}
 function showAccounts(accounts){
  const tbody=byId('users');tbody.replaceChildren();
+ state.selected.clear();
  if(!accounts.length){
   const tr=document.createElement('tr'),td=document.createElement('td');
-  td.colSpan=6;td.textContent='Không tìm thấy tài khoản';tr.append(td);tbody.append(tr);return;
+  td.colSpan=7;td.textContent='Không tìm thấy tài khoản';tr.append(td);tbody.append(tr);return;
  }
  for(const a of accounts){
-  const tr=document.createElement('tr');
+  const tr=document.createElement('tr'),checktd=document.createElement('td'),ch=document.createElement('input');
+  ch.type='checkbox';ch.className='user-check';ch.value=a.id;
+  ch.setAttribute('aria-label','Chọn '+(a.display_name||a.id));
+  checktd.append(ch);tr.append(checktd);
   for(const value of [a.display_name||a.id,a.email,a.plan,a.status,a.expires_at||'—']){
    const td=document.createElement('td');td.textContent=value;tr.append(td);
   }
@@ -49,8 +58,11 @@ function showAccounts(accounts){
   btn.type='button';btn.textContent='Chọn';btn.className='alt';btn.dataset.accountId=a.id;
   td.append(btn);tr.append(td);tbody.append(tr);
  }
+ refreshSelection();
 }
 byId('users').addEventListener('click',event=>{
+ const ch=event.target.closest('.user-check');
+ if(ch){if(ch.checked)state.selected.add(ch.value);else state.selected.delete(ch.value);refreshSelection();return;}
  const btn=event.target.closest('[data-account-id]');if(!btn)return;
  byId('accountId').value=btn.dataset.accountId;
  byId('accountId').scrollIntoView({behavior:'smooth',block:'center'});
@@ -98,4 +110,33 @@ byId('grant').onclick=async()=>{
   await api('/api/admin/grant',{method:'POST',body:{accountId,action,plan,reason}});
   status('Đã thực hiện thay đổi quyền.');await loadAll();
  }catch(e){status('Chưa đổi được quyền: '+e.message);}
+};
+
+byId('selectAllUsers').addEventListener('change',event=>{
+ const value=event.target.checked;
+ for(const ch of byId('users').querySelectorAll('.user-check')){
+  ch.checked=value;
+  if(value)state.selected.add(ch.value);else state.selected.delete(ch.value);
+ }
+ refreshSelection();
+});
+byId('grantBonus').onclick=async()=>{
+ const ids=[...state.selected],feature=byId('bonusFeature').value,
+  amount=Number(byId('bonusAmount').value),reason=byId('bonusReason').value.trim();
+ if(!state.admin)return status('Bạn chưa đăng nhập quản trị.');
+ if(!ids.length)return byId('bonusStatus').textContent='Hãy tick chọn ít nhất một khách hàng ở bảng trên.';
+ if(!Number.isSafeInteger(amount)||amount<1||amount>10000)
+  return byId('bonusStatus').textContent='Nhập số lượt nguyên từ 1 đến 10.000.';
+ if(reason.length<5)return byId('bonusStatus').textContent='Nhập lý do ít nhất 5 ký tự.';
+ const display={scan:'chấm bài',mix:'trộn đề',qr:'tạo QR'}[feature];
+ if(!confirm('Xác nhận cộng '+amount+' lượt '+display+' cho '+ids.length+' tài khoản? Thao tác được ghi nhật ký.'))return;
+ // Reuse requestId only if a request is retried. No persistent storage.
+ const requestId=crypto.randomUUID()+'-'+Date.now();
+ const btn=byId('grantBonus');btn.disabled=true;
+ try{
+  const result=await api('/api/admin/bonus',{method:'POST',body:{accountIds:ids,feature,amount,reason,requestId}});
+  byId('bonusStatus').textContent='Đã cấp '+result.amount+' lượt '+display+' cho '+result.count+' tài khoản'+(result.duplicate?' (yêu cầu lặp không cộng thêm).':'.');
+  await loadAll();
+ }catch(e){byId('bonusStatus').textContent='Không thể xác nhận cấp lượt: '+e.message+'. Hãy kiểm tra dữ liệu trên Cloudflare trước khi thao tác lại.';}
+ finally{btn.disabled=false;}
 };
