@@ -151,7 +151,7 @@ export async function showSheetPhoto(container,record,exam){
    g.drawImage(img,0,0);
    g.setTransform(1,0,0,1,0,0);
    const ref=REFS[stored.form],map=projection(ref,stored.markers);
-   const key=exam?.keys?.[record.examCode],details=key?null:null;
+   const key=exam?.keys?.[record.examCode];
    // Score engine remains the source of truth, including flexible answer keys.
    let gradeDetails=[];
    if(exam&&key){
@@ -183,7 +183,7 @@ export async function showSheetPhoto(container,record,exam){
      }
     }
    }
-   note.textContent='Xanh: đúng · Đỏ: sai · Vàng: đáp án được chấp nhận. Phần III đánh dấu khu vực câu, chưa khoanh từng ô số.';
+   note.textContent=map&&gradeDetails.length?'Xanh: đúng · Đỏ: sai · Vàng: đáp án được chấp nhận. Phần III đánh dấu khu vực câu, chưa khoanh từng ô số.':'Ảnh phiếu gốc. Chưa đủ dữ liệu tọa độ hoặc đáp án để đánh dấu trực tiếp.';
    c.className='champro-archived-photo';c.style.cssText='display:block;width:100%;height:auto;max-height:70vh;object-fit:contain;margin:10px 0;';
    container.append(c);
   }finally{URL.revokeObjectURL(url);}
