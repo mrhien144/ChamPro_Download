@@ -83,8 +83,13 @@ function chip(part,q,v,label,checked){
 }
 function questionRows(part,arr,count){
  const names={I:'Chọn một hoặc nhiều phương án đúng',II:'Tick Đúng và/hoặc Sai cho từng ý',III:'Thêm nhiều kết quả được chấp nhận'};
+ const hints={
+  I:'Chọn một hoặc nhiều phương án được chấp nhận. Học sinh tô đúng một phương án trong số đó sẽ có điểm; tô nhiều ô không hợp lệ không được điểm.',
+  II:'Mỗi ý có thể chọn Đúng, Sai hoặc cả hai. Khi chọn cả hai, học sinh tô một trong hai đều đúng ý đó; bỏ trống không tính điểm. Mỗi câu: đúng 1/2/3/4 ý được 0,1 / 0,25 / 0,5 / 1 điểm.',
+  III:'Có thể thêm nhiều kết quả được chấp nhận; chỉ cần đáp án học sinh trùng một kết quả hợp lệ là được điểm.'
+ };
  return '<details class="cp-visual-key-section" open><summary>Phần '+part+' — '+names[part]+'</summary>'+
-  '<div class="cp-visual-questions">'+Array.from({length:count},(_,q)=>{
+  '<p class="cp-visual-part-hint">'+hints[part]+'</p><div class="cp-visual-questions">'+Array.from({length:count},(_,q)=>{
    const raw=arr?.[q]??'';
    let body;
    if(part==='I'){
