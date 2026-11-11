@@ -21,11 +21,11 @@ const score=(partII,partI='A',partIII='4826')=>grade(exam,{examCode:'101',I:[par
 assert.equal(score('ĐĐĐS').total,1.5); // a Đ; b accepts Đ or S; c Đ; d S
 assert.equal(score('ĐSĐS').total,1.5);
 assert.equal(score('ĐĐĐĐ').points.II,.5); // 3 accepted ý
-assert.equal(score('ĐĐSS').points.II,.25); // 2 accepted ý
-assert.equal(score('ĐĐSS','B','1111').total,.25); // 2 accepted, others wrong
+assert.equal(score('ĐĐSS').points.II,.5); // 3 accepted ý
+assert.equal(score('ĐĐSS','B','1111').total,.5); // 3 accepted, others wrong
 assert.equal(score('ĐĐSĐ').points.II,.25);
 assert.equal(score('SĐSS').points.II,.25);
-assert.equal(score('SSSS').points.II,.1); // only d is correct
+assert.equal(score('SSSĐ').points.II,.1); // only b is accepted
 assert.equal(score('????').points.II,0); // no bubble => no credit, including override
 assert.equal(score('Đ?ĐS').points.II,.5);
 assert.equal(score('ĐĐĐS','C','8264').total,1.5);
