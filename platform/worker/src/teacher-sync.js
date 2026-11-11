@@ -21,7 +21,7 @@ async function ensureAccount(env,who){
 async function records(req,env,who,url){
  if(req.method==='GET'){
   const rawLimit=url.searchParams.get('limit')||'50',rawOffset=url.searchParams.get('offset')||'0';
-  if(!/^\\d{1,3}$/.test(rawLimit)||!/^\\d{1,6}$/.test(rawOffset))return fail('Tham số phân trang không hợp lệ');
+  if(!/^\d{1,3}$/.test(rawLimit)||!/^\d{1,6}$/.test(rawOffset))return fail('Tham số phân trang không hợp lệ');
   const limit=Math.min(100,Math.max(1,Number(rawLimit)));
   const offset=Math.min(100000,Number(rawOffset));
   const rows=await env.DB.prepare('SELECT record_type,record_id,revision,payload_json,updated_at,deleted_at FROM cp_records WHERE account_id=? ORDER BY record_type,record_id LIMIT ? OFFSET ?').bind(who.id,limit,offset).all();
