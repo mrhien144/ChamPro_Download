@@ -139,12 +139,6 @@ function mark(ctx,p,color,r=10){
  ctx.beginPath();ctx.arc(p[0],p[1],r,0,Math.PI*2);
  ctx.lineWidth=Math.max(3,r*.3);ctx.strokeStyle=color;ctx.stroke();
 }
-function fillDigit(ctx,p,color,r=10){
- if(!p||!Number.isFinite(p[0])||!Number.isFinite(p[1]))return;
- ctx.beginPath();ctx.arc(p[0],p[1],r,0,Math.PI*2);
- ctx.fillStyle=color;ctx.globalAlpha=.82;ctx.fill();ctx.globalAlpha=1;
- ctx.lineWidth=Math.max(2,r*.18);ctx.strokeStyle='#ffffff';ctx.stroke();
-}
 export async function showSheetPhoto(container,record,exam){
  container.replaceChildren();
  const note=document.createElement('p');note.className='hint';note.textContent='Đang mở ảnh phiếu đã lưu…';container.append(note);
@@ -195,12 +189,12 @@ export async function showSheetPhoto(container,record,exam){
        const point=positions[spot.column]?.[Number(spot.digit)];
        if(!point)continue;
        const colour=spot.color==='green'?'#166534':spot.color==='red'?'#dc2626':'#eab308';
-       fillDigit(g,map(...point),colour,Math.max(5,radius*.82));
+       mark(g,map(...point),colour,Math.max(5,radius*.82));
       }
      }
     }
    }
-   note.textContent=map&&gradeDetails.length?'Xanh đậm: ô đúng · Đỏ: ô tô sai · Vàng: ô đáp án đúng tương ứng. Phần III khoanh từng ô số; với bài cũ thiếu vị trí cột, đối chiếu lại ảnh gốc.':'Ảnh phiếu gốc. Chưa đủ dữ liệu tọa độ hoặc đáp án để đánh dấu trực tiếp.';
+   note.textContent=map&&gradeDetails.length?'Xanh đậm: ô đúng · Đỏ: ô tô sai · Vàng: ô đáp án đúng tương ứng. Phần III chỉ tô viền từng ô số, không che nét tô của học sinh. Đáp án đúng bắt đầu ở cột đầu tiên.':'Ảnh phiếu gốc. Chưa đủ dữ liệu tọa độ hoặc đáp án để đánh dấu trực tiếp.';
    c.className='champro-archived-photo';c.style.cssText='display:block;width:100%;height:auto;max-height:70vh;object-fit:contain;margin:10px 0;';
    container.append(c);
   }finally{URL.revokeObjectURL(url);}
