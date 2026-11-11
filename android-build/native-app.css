@@ -274,3 +274,97 @@ body.cp-native-app {
   scroll-margin-top:85px;
   padding-bottom:18px;
 }
+
+/* APK CAMERA FULL WIDTH v7 — match the reference photograph on mobile.
+   This only changes size/arrangement, never OMR pixels or stream processing. */
+.cp-native-app #page-scan {
+  width:100%;
+  max-width:none;
+}
+.cp-native-app #page-scan .scan-layout {
+  width:100%;
+  gap:0 !important;
+}
+.cp-native-app #page-scan .camera-card {
+  width:100% !important;
+  max-width:100% !important;
+  border-radius:0 !important;
+  overflow:hidden;
+  box-shadow:none;
+}
+.cp-native-app #page-scan .camera-top {
+  padding:8px 12px !important;
+}
+.cp-native-app #page-scan .camera-top strong { font-size:14px; }
+.cp-native-app #page-scan .camera-top small { font-size:11px; }
+.cp-native-app #page-scan #cameraSurface.camera-surface,
+.cp-native-app.scan-active #page-scan #cameraSurface.camera-surface {
+  display:block !important;
+  position:relative !important;
+  width:var(--cp-native-camera-width,100%) !important;
+  max-width:100% !important;
+  height:auto !important;
+  min-height:0 !important;
+  max-height:none !important;
+  aspect-ratio:3 / 4 !important;
+  margin:0 auto !important;
+  overflow:hidden !important;
+  border-radius:0 !important;
+  background:#061726;
+}
+.cp-native-app #page-scan #cameraSurface #video {
+  width:100% !important;
+  height:100% !important;
+  object-fit:cover;
+}
+.cp-native-app #page-scan #cameraSurface #captureGuide {
+  width:83% !important;
+  height:83% !important;
+  max-width:96%;
+  max-height:96%;
+}
+.cp-native-app #page-scan #cameraSurface #captureGuide i {
+  min-width:44px; min-height:44px;
+  border:4px solid #56efd9;
+}
+.cp-native-app #page-scan .camera-footer {
+  padding:9px 9px 12px !important;
+}
+.cp-native-app #page-scan .camera-footer .actions {
+  display:flex !important;
+  flex-wrap:nowrap !important;
+  align-items:stretch;
+  gap:5px !important;
+  margin-top:8px !important;
+}
+.cp-native-app #page-scan .camera-footer .actions button {
+  flex:1 1 0 !important;
+  min-width:0 !important;
+  grid-column:auto !important;
+  padding:10px 4px !important;
+  font-size:clamp(10px,2.7vw,13px) !important;
+  line-height:1.2;
+  white-space:normal !important;
+}
+.cp-native-app #page-scan .cp-native-camera-resize {
+  margin:0 !important;
+  padding:9px 12px !important;
+}
+.cp-native-app #page-scan .side-panel {
+  margin:12px 0 0 !important;
+  border-radius:16px;
+}
+.cp-native-app:has(#page-scan.shown) .main {
+  padding-left:0 !important;
+  padding-right:0 !important;
+}
+.cp-native-app #page-scan .side-panel {
+  margin-left:10px !important;
+  margin-right:10px !important;
+}
+@media (orientation:landscape) and (max-height:530px) {
+  .cp-native-app #page-scan #cameraSurface.camera-surface {
+    max-width:min(100%,calc((100dvh - 145px)*.75)) !important;
+    border-radius:12px !important;
+  }
+}
