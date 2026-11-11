@@ -457,10 +457,7 @@ $('closeReview').onclick=()=>{$('reviewDialog').close();lastReviewCanvas=null;de
  });
  window.addEventListener('champro-local-mirror',()=>void refreshLocalStatus());
  window.addEventListener('load',()=>{void refreshLocalStatus();},{once:true});
-// Offline PWA install prompt
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;$('installBtn').hidden=false;});
-$('installBtn').onclick=async()=>{if(installPrompt){await installPrompt.prompt();installPrompt=null;$('installBtn').hidden=true;}};
-if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+// Install prompt and service-worker registration live in pwa-install.mjs.
 document.querySelectorAll('[data-goto]').forEach(el=>el.onclick=()=>navigate(el.dataset.goto));
 $('nav').addEventListener('click',e=>{const b=e.target.closest('[data-page]');if(b)navigate(b.dataset.page)});
 initFlexibleKeyEditor();
