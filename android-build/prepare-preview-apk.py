@@ -16,6 +16,16 @@ s = s.replace('href="/tron-de/"', 'href="https://champro.mrhien.com/tron-de/"')
 s = s.replace('href="/ho-tro.html"', 'href="https://champro.mrhien.com/ho-tro.html"')
 # Capacitor already serves bundled content locally; PWA service workers
 # cannot be assumed to be supported in the Android WebView.
+# The APK has a dedicated, native-style presentation layer.
+# The original preview app remains unchanged and is still the grading engine.
+native_css = root / "native-app.css"
+native_js = root / "native-app.js"
+assert native_css.is_file() and native_js.is_file()
+s = s.replace("</head>", '<link rel="stylesheet" href="./native-app.css"></head>', 1)
+s = s.replace("</body>", '<script defer src="./native-app.js"></script></body>', 1)
+# This app is already bundled in the APK. Never register a browser service worker
+# that could pin an obsolete web layout or delay the native presentation.
+s = s.replace('<script type="module" src="./pwa-install.mjs?v=20261111-pwa-preview-v2"></script>', '')
 html.write_text(s, encoding="utf-8")
 # Ensure the bundled libraries needed for offline QR and Excel are present.
 for filename in ["app.mjs", "advanced.mjs", "qr-compatible.mjs",
