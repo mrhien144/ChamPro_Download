@@ -281,3 +281,54 @@
 
 /* Pending exam code is ungraded, never display a misleading zero. */
 .cp-pending-code{display:block;font-size:12px;font-weight:700;color:#9a3412;white-space:nowrap;margin-top:4px}
+
+/* Compact exam setup and imported-answer review; preview only. */
+.cp-exam-points {
+ border:1px solid #d9e5f5;
+ background:linear-gradient(135deg,#f7faff,#edf5ff);
+ border-radius:14px;
+ padding:15px;
+ margin:14px 0 17px;
+}
+.cp-exam-points h3{font-size:15px;margin:0 0 12px;color:#193e6c}
+.cp-exam-points-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:stretch}
+.cp-exam-points-grid>label,.cp-points-fixed{min-width:0;margin:0;display:flex;flex-direction:column;justify-content:flex-start}
+.cp-exam-points-grid input{margin-top:6px}
+.cp-exam-points-grid small{display:block;font-size:11px;line-height:1.55;color:#536e8b;margin-top:7px}
+.cp-points-fixed{border:1px solid #d7e3f4;border-radius:12px;background:white;padding:10px 12px}
+.cp-points-fixed span{font-size:12px;font-weight:750;color:#334d71}
+.cp-points-fixed strong{font-size:20px;color:#1a57b6;margin:5px 0}
+.cp-exam-total{border-top:1px solid #d6e2ef;margin:14px 0 0;padding-top:11px;font-weight:850;color:#1657ba}
+.cp-exam-total[data-valid="no"]{color:#b24b20}
+.cp-compact-answers{margin-top:12px}
+.cp-import-actions{margin:11px 0 18px}
+.cp-import-actions .inline-file,.cp-import-actions button{flex:0 1 auto}
+.cp-answer-picker{display:grid;grid-template-columns:minmax(220px,2fr) minmax(140px,1fr) auto;gap:11px;align-items:end;margin:10px 0}
+.cp-answer-picker label{min-width:0}
+.cp-answer-picker button{height:44px}
+.cp-key-summary{padding:11px 14px;border-radius:11px;background:#f1f6ff;border:1px solid #d9e6f5;color:#315477;font-size:12px;margin:13px 0}
+.cp-key-review-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:12px 0}
+.cp-key-part{border:1px solid #dbe4f1;background:#f9fbff;border-radius:14px;padding:12px;min-width:0}
+.cp-key-part h3{margin:0 0 12px;color:#1d4472;font-size:14px}
+.cp-key-part h3 small{display:inline;font-size:11px;color:#7489a4;margin-left:4px}
+.cp-key-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.cp-key-fields label{font-size:12px;min-width:0;font-weight:700}
+.cp-key-fields input{width:100%;min-width:0;margin-top:4px;padding:9px 10px;border-radius:9px;font-size:14px;font-weight:750}
+.cp-key-fields input[readonly]{background:#fff;color:#213a5e;opacity:1;border-color:#e1e9f3}
+.cp-key-fields input:not([readonly]){border:1.5px solid #4a83e8;background:#fff}
+.cp-key-review-actions{gap:10px;margin:16px 0}
+.cp-key-review-actions .primary{white-space:normal}
+@media(max-width:900px){
+ .cp-exam-points-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .cp-key-review-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .cp-answer-picker{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+ .cp-answer-picker button{grid-column:1/-1;width:100%}
+}
+@media(max-width:600px){
+ .cp-exam-points-grid,.cp-key-review-grid{grid-template-columns:minmax(0,1fr)}
+ .cp-answer-picker{grid-template-columns:minmax(0,1fr)}
+ .cp-answer-picker button{grid-column:auto}
+ .cp-key-fields{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .cp-import-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .cp-import-actions>button,.cp-import-actions>.inline-file{justify-content:center;text-align:center;min-width:0;font-size:12px;white-space:normal}
+}
