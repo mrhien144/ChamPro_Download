@@ -20,8 +20,10 @@ async function ensureAccount(env,who){
 }
 async function records(req,env,who,url){
  if(req.method==='GET'){
-  const limit=Math.min(100,Math.max(1,Number(url.searchParams.get('limit')||50)||50));
-  const offset=Math.max(0,Math.min(100000,Number(url.searchParams.get('offset')||0)||0));
+  const rawLimit=url.searchParams.get('limit')||'50',rawOffset=url.searchParams.get('offset')||'0';
+  if(!/^\\d{1,3}$/.test(rawLimit)||!/^\\d{1,6}$/.test(rawOffset))return fail('Tham số phân trang không hợp lệ');
+  const limit=Math.min(100,Math.max(1,Number(rawLimit)));
+  const offset=Math.min(100000,Number(rawOffset));
   const rows=await env.DB.prepare('SELECT record_type,record_id,revision,payload_json,updated_at,deleted_at FROM cp_records WHERE account_id=? ORDER BY record_type,record_id LIMIT ? OFFSET ?').bind(who.id,limit,offset).all();
   return json({ok:true,records:(rows.results||[]).map(r=>({...r,payload:JSON.parse(r.payload_json),payload_json:undefined})),limit,offset});
  }
@@ -55,8 +57,22 @@ async function photos(req,env,who,url){
  const type=(req.headers.get('content-type')||'').split(';')[0].trim().toLowerCase();
  const length=Number(req.headers.get('content-length')||0);
  if(type!=='image/jpeg'||length>2*1024*1024)return fail('Chỉ nhận JPEG tối đa 2 MB',413);
- const bytes=new Uint8Array(await req.arrayBuffer());
+ if(!req.body)return fail('Thiếu ảnh phiếu',400);
+ const reader=req.body.getReader(),chunks=[];let total=0;
+ try{
+  while(true){
+   const {done,value}=await reader.read();
+   if(done)break;
+   total+=value.byteLength;
+   if(total>2*1024*1024){await reader.cancel().catch(()=>{});return fail('Ảnh vượt giới hạn 2 MB',413);}
+   chunks.push(value);
+  }
+ }finally{reader.releaseLock();}
+ const bytes=new Uint8Array(total);let at=0;
+ for(const chunk of chunks){bytes.set(chunk,at);at+=chunk.length;}
  if(bytes.length<100||bytes.length>2*1024*1024||bytes[0]!==255||bytes[1]!==216||bytes.at(-2)!==255||bytes.at(-1)!==217)return fail('Ảnh JPEG không hợp lệ',400);
+ const resultRecord=await env.DB.prepare("SELECT record_id FROM cp_records WHERE account_id=? AND record_type='result' AND record_id=? AND deleted_at IS NULL").bind(who.id,resultId).first();
+ if(!resultRecord)return fail('Cần đồng bộ kết quả chấm trước khi lưu ảnh',409);
  const existing=await env.DB.prepare('SELECT result_id FROM cp_photo_objects WHERE account_id=? AND result_id=?').bind(who.id,resultId).first();
  if(existing)return json({ok:false,error:'Ảnh đã tồn tại; không tự động ghi đè'},409);
  const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',bytes));
