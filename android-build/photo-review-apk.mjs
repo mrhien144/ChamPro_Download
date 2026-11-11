@@ -117,14 +117,15 @@ function attachViewer(container,canvas,mode){
  bar.innerHTML='<strong>Phiếu trả lời · '+(mode==='rectified'?'Đã cắt & căn thẳng':'Đã cắt ảnh')+'</strong>'+
  '<div class="cp-apk-paper-buttons"><button type="button" data-zoom="out" aria-label="Thu nhỏ ảnh">−</button>'+
  '<output aria-live="polite">100%</output><button type="button" data-zoom="in" aria-label="Phóng to ảnh">+</button>'+
- '<button type="button" data-zoom="fit">Vừa màn hình</button></div>';
+ '<button type="button" data-zoom="fit">Vừa màn hình</button></div>'+
+ '<button type="button" class="cp-apk-jump-edit" data-review-action="edit">✎ Chỉnh sửa bài</button>';
  const viewport=document.createElement('div');viewport.className='cp-apk-paper-viewport';
  viewport.setAttribute('aria-label','Ảnh phiếu đã chấm, vuốt để xem và dùng hai ngón để phóng to');
  canvas.className='cp-apk-paper-canvas';
  canvas.style.cssText='display:block;max-width:none;max-height:none;height:auto;margin:0 auto;';
  viewport.append(canvas);viewer.append(bar,viewport);
  const hint=document.createElement('p');hint.className='cp-apk-paper-hint';
- hint.textContent='Dùng + / − hoặc chụm hai ngón tay để phóng to, sau đó vuốt để xem từng ô.';
+ hint.textContent='Vuốt lên để xem phần chỉnh sửa bên dưới. Khi phóng to, có thể kéo ảnh để kiểm tra từng ô.';
  viewer.append(hint);
  let zoom=1,fitWidth=0;
  const out=bar.querySelector('output');
@@ -135,6 +136,10 @@ function attachViewer(container,canvas,mode){
   const ratioY=viewport.scrollHeight>viewport.clientHeight?
    (viewport.scrollTop+viewport.clientHeight/2)/Math.max(1,canvas.getBoundingClientRect().height):.5;
   zoom=Math.min(4,Math.max(.65,Number(next)||1));
+  // At fit-size, the page is a normal document section: one-finger swipes
+  // must scroll the review dialog to reach the student-answer editor.
+  // Only a zoomed paper becomes a separate pannable scroll viewport.
+  viewport.classList.toggle('cp-apk-paper-zoomed',zoom>1.01);
   fitWidth=Math.max(150,viewport.clientWidth-2);
   const newWidth=Math.round(fitWidth*zoom);
   canvas.style.width=newWidth+'px';
@@ -143,6 +148,18 @@ function attachViewer(container,canvas,mode){
   viewport.scrollTop=Math.max(0,newWidth*canvas.height/canvas.width*ratioY-viewport.clientHeight/2);
  }
  bar.addEventListener('click',e=>{
+  if(e.target.closest('[data-review-action="edit"]')){
+   const editor=container.closest('#reviewBody')?.querySelector('.cp-manual-editor');
+   const dialog=container.closest('#reviewDialog');
+   if(editor&&dialog){
+    // Scroll the modal, not the image and not the underlying app screen.
+    const offset=editor.getBoundingClientRect().top-dialog.getBoundingClientRect().top;
+    dialog.scrollTo({top:dialog.scrollTop+offset-72,behavior:'smooth'});
+    const first=editor.querySelector('input,select,button');
+    if(first)first.setAttribute('data-cp-edit-target','');
+   }
+   return;
+  }
   const action=e.target.closest('button[data-zoom]')?.dataset.zoom;
   if(action==='out')setZoom(zoom/1.5);
   if(action==='in')setZoom(zoom*1.5);
