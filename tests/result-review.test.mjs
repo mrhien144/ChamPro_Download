@@ -10,7 +10,8 @@ assert.deepEqual(actual(shortCellMarks('124','134')),
 assert.deepEqual(actual(shortCellMarks('124','134',['1','2','4',''])),
  [[0,'1','green'],[1,'2','red'],[1,'3','yellow'],[2,'4','green']]);
 assert.deepEqual(actual(shortCellMarks('134','134',['','1','3','4'])),
- [[1,'1','green'],[2,'3','green'],[3,'4','green']]);
+ [[0,'1','yellow'],[1,'1','red'],[1,'3','yellow'],[2,'3','red'],
+  [2,'4','yellow'],[3,'4','red']]);
 assert.deepEqual(actual(shortCellMarks('','3')),
  [[0,'3','yellow']], 'A blank response must show the answer in the first column');
 assert.deepEqual(actual(shortCellMarks('4','3')),
