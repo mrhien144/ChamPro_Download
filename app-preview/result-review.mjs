@@ -8,6 +8,7 @@ export function shortDigitColumns(value,width=4){
   return out.every(v=>v===''||/^[0-9]$/.test(v))?out:null;
  }
  const text=String(value??'').trim();
+ if(text==='')return Array(width).fill('');
  if(!/^[0-9]{1,4}$/.test(text)||text.length>width)return null;
  return [...text,...Array(width-text.length).fill('')];
 }
@@ -17,40 +18,35 @@ function numericChoices(key,width){
 }
 /**
  * Returns explicit bubbles to colour on the ORIGINAL four-column short-answer
- * sheet. If earlier scans did not preserve columns, the legacy text is
- * left-aligned and consumers must state this limitation to the reviewer.
+ * sheet. Correct answers always start in the leftmost printed column;
+ * saved scan columns retain the observed bubbles at their actual positions.
  *
  * Bubble marks: green = the filled digit is right in its column,
  * red = an incorrect filled digit, yellow = the expected digit in that column.
  */
 export function shortCellMarks(response,key,savedColumns=null,width=4){
+ // Expected answer digits are anchored at the FIRST printed column.
+ // A saved physical scan may preserve different observed filled columns.
  const actual=shortDigitColumns(savedColumns??response,width);
  if(!actual)return [];
- const selected=String(response??'').trim();
- const choices=numericChoices(key,width),all=String(key??'').toUpperCase()==='ALL';
+ const choices=numericChoices(key,width);
+ const all=String(key??'').trim().toUpperCase()==='ALL';
  if(all)return actual.flatMap((digit,column)=>digit?[{column,digit,color:'green'}]:[]);
  if(!choices.length)return [];
  let best=null,bestScore=-Infinity;
  for(const candidate of choices){
-  for(let offset=0;offset<=width-candidate.length;offset++){
-   const expected=Array(width).fill('');
-   [...candidate].forEach((digit,j)=>{expected[offset+j]=digit;});
-   const matches=actual.reduce((sum,v,i)=>sum+(v&&v===expected[i]?1:0),0);
-   const conflicts=actual.reduce((sum,v,i)=>sum+(v&&expected[i]&&v!==expected[i]?1:0),0);
-   const missing=actual.reduce((sum,v,i)=>sum+(!v&&expected[i]?1:0),0);
-   const extras=actual.reduce((sum,v,i)=>sum+(v&&!expected[i]?1:0),0);
-   let score=matches*10-conflicts*3-missing-extras;
-   if(equalShort(selected,candidate))score+=50;
-   if(score>bestScore){bestScore=score;best=expected;}
-  }
+  const expected=[...candidate,...Array(width-candidate.length).fill('')];
+  const matches=actual.reduce((sum,v,i)=>sum+(v&&v===expected[i]?1:0),0);
+  const conflicts=actual.reduce((sum,v,i)=>sum+(v&&v!==expected[i]?1:0),0);
+  const missing=actual.reduce((sum,v,i)=>sum+(!v&&expected[i]?1:0),0);
+  const score=matches*10-conflicts*3-missing;
+  if(score>bestScore){bestScore=score;best=expected;}
  }
- if(!best)return [];
  const marks=[];
  for(let column=0;column<width;column++){
   const observed=actual[column],correct=best[column];
-  if(observed){
-   marks.push({column,digit:observed,color:observed===correct?'green':'red'});
-  }
+  if(observed)marks.push({column,digit:observed,
+   color:observed===correct?'green':'red'});
   if(correct&&correct!==observed)marks.push({column,digit:correct,color:'yellow'});
  }
  return marks;
@@ -115,11 +111,15 @@ export function correctedRecord(data,exam,old,changes){
  for(let i=0;i<counts.III;i++){
   const response=plain(changes.answers.III[i]);
   if(response.length>32||!/^[0-9.,\-+ ]*$/.test(response))throw Error('Phần III chỉ nhận đáp án dạng số');
-  const cols=shortDigitColumns(changes.answers.IIIColumns?.[i]);
-  // Physical columns are authoritative when edited through the four
-  // per-column dropdowns. Otherwise preserve numeric text with no fake map.
-  if(changes.answers.IIIColumns?.[i]!=null&&!cols)throw Error('Cột số phần III không hợp lệ');
-  if(cols&&cols.join('')!==response.replace(/\s/g,''))
+  const supplied=changes.answers.IIIColumns?.[i];
+  const original=old.answers?.III?.[i]??'';
+  // Keep physical scan positions only when the teacher has not changed
+  // this answer. A manual edit uses the leftmost-first printed convention.
+  const cols=supplied==null&&response===String(original).trim()
+   ?(old.answers?.IIIColumns?.[i]??null)
+   :supplied==null?null:shortDigitColumns(supplied);
+  if(supplied!=null&&!cols)throw Error('Cột số phần III không hợp lệ');
+  if(cols&&supplied!=null&&cols.join('')!==response.replace(/\s/g,''))
    throw Error('Các ô số phần III không khớp giá trị nhập ở câu '+(i+1));
   answers.III.push(response);answers.IIIColumns.push(cols);
  }
