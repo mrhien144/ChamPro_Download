@@ -4,6 +4,8 @@ on:
     paths:
       - 'app/**'
       - 'tests/**'
+      - 'platform/worker/**'
+      - 'platform/migrations/**'
       - '.github/workflows/champro-preview-check.yml'
   workflow_dispatch:
 jobs:
@@ -25,6 +27,8 @@ jobs:
           node --check platform/worker/src/teacher-sync.js
       - name: Existing grading regression test
         run: node tests/grade.test.mjs
+      - name: Staging cloud-sync security regression
+        run: node tests/teacher-sync.test.mjs
       - name: Check offline core files exist
         run: |
           node --input-type=module <<'JS'
