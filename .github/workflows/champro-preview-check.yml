@@ -1,0 +1,39 @@
+name: ChamPro preview regression
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'tests/**'
+      - '.github/workflows/champro-preview-check.yml'
+  workflow_dispatch:
+jobs:
+  syntax-and-grading:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax-check modified application modules
+        run: |
+          node --check app/app.mjs
+          node --check app/advanced.mjs
+          node --check app/local-data-store.mjs
+          node --check app/sheet-photo-store.mjs
+          node --check app/sw.js
+      - name: Existing grading regression test
+        run: node tests/grade.test.mjs
+      - name: Check offline core files exist
+        run: |
+          node --input-type=module <<'JS'
+          import {readFileSync,existsSync} from 'node:fs';
+          const sw=readFileSync('app/sw.js','utf8');
+          const core=sw.match(/const CORE=(\[[^;]+\]);/)?.[1];
+          if(!core)throw Error('Service worker CORE list missing');
+          const files=JSON.parse(core.replaceAll("'",'"'));
+          for(const file of files){
+            const path='app/'+(file==='./'?'index.html':file.replace(/^\.\//,''));
+            if(!existsSync(path))throw Error('Missing offline asset: '+path);
+          }
+          console.log('Offline precache assets exist:',files.length);
+          JS
