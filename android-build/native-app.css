@@ -171,3 +171,48 @@ body.cp-native-app {
 /* Keep horizontal drag on the camera-size slider and scrollable tables. */
 .cp-native-app .cp-native-camera-resize input[type="range"] { touch-action:pan-x; }
 .cp-native-app .tablewrap { touch-action:auto; }
+
+/* APK PHOTO REVIEW v4: only the paper, near screen width, pinch/pan. */
+.cp-native-app #reviewDialog {
+  width:calc(100vw - 12px) !important;
+  max-width:calc(100vw - 12px) !important;
+  max-height:calc(100dvh - 16px) !important;
+  margin:auto !important;
+  padding:13px 10px 20px !important;
+  overflow-y:auto !important;
+  overscroll-behavior-y:contain;
+}
+.cp-native-app #reviewDialog .dialog-head {
+  position:sticky;top:-13px;z-index:5;
+  background:#fff;padding:9px 4px 12px;
+}
+.cp-native-app #reviewDialog .dialog-head strong { font-size:17px; }
+.cp-native-app #reviewDialog .champro-photo-review { margin:8px -4px 16px; }
+.cp-native-app .cp-apk-paper-viewer { width:100%; max-width:100%; min-width:0; }
+.cp-native-app .cp-apk-paper-tools {
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  flex-wrap:wrap;padding:8px 5px;background:#f0f5ff;
+  border:1px solid #d8e4f5;border-radius:12px 12px 0 0;
+}
+.cp-native-app .cp-apk-paper-tools strong { font-size:12px;color:#163f77; }
+.cp-native-app .cp-apk-paper-buttons { display:flex;align-items:center;gap:5px; }
+.cp-native-app .cp-apk-paper-buttons button {
+  padding:6px 10px;min-width:34px;min-height:34px;
+  background:#fff;border:1px solid #cbdaf0;border-radius:9px;
+  color:#1b4c8d;font-size:14px;font-weight:700;
+}
+.cp-native-app .cp-apk-paper-buttons output { min-width:38px;text-align:center;font-size:12px;font-variant-numeric:tabular-nums; }
+.cp-native-app .cp-apk-paper-viewport {
+  width:100%;max-width:100%;height:min(69dvh,700px);min-height:280px;
+  overflow:auto !important;overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;
+  background:#e8eef6;border:1px solid #d8e4f5;
+  border-top:0;border-radius:0 0 12px 12px;
+}
+.cp-native-app .cp-apk-paper-canvas {
+  display:block !important;
+  max-width:none !important;max-height:none !important;
+  object-fit:fill !important;touch-action:pan-x pan-y;
+  box-shadow:0 0 7px #183c6229;
+}
+.cp-native-app .cp-apk-paper-hint {font-size:11px;color:#49627e;margin:8px 4px 12px;}
