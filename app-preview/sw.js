@@ -1,9 +1,9 @@
 /* ChấmPro Preview: immutable static shell, no student/photo/API caching. */
-const CACHE='champro-app-preview-pwa-v3-compact-answers-20261111';
+const CACHE='champro-app-preview-pwa-v4-visual-answers-20261111';
 const CORE=[
  './','./index.html','./styles.css','./app.mjs','./pwa-install.mjs',
  './advanced.mjs','./qr-compatible.mjs','./multisubject.mjs',
- './compact-answer-ui.mjs','./compact-points.mjs',
+ './compact-answer-ui.mjs','./compact-points.mjs','./visual-answer-model.mjs',
  './grader.mjs','./result-review.mjs','./result-review-ui.mjs',
  './omr-native.mjs','./omr-verified-paper.mjs','./omr-printed-120.mjs',
  './answer-flex-editor.mjs','./student-identity.mjs',
