@@ -1,0 +1,42 @@
+name: ChấmPro exact visual answer regression v9
+on:
+  push:
+    branches:
+      - feature/champro-visual-answers-exact-v9-20261111
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check
+        run: |
+          node --check app-preview/grader.mjs
+          node --check app-preview/compact-answer-ui.mjs
+          node --check app-preview/visual-answer-model.mjs
+          node --check app-preview/result-review.mjs
+      - name: Verify answer logic and score reconciliation
+        run: |
+          node tests/visual-answer-ii.test.mjs
+          node tests/compact-points-preview.test.mjs
+          node tests/preview-pending-code.test.mjs
+      - name: Verify reference layout and direct edit controls
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          ui=Path('app-preview/compact-answer-ui.mjs').read_text()
+          css=Path('app-preview/styles.css').read_text()
+          assert "let editing=true" in ui
+          assert "'cpSaveKey').hidden=false" in ui
+          assert "i+'T'" in ui and "i+'F'" in ui
+          assert "checkedValues(part,q)" in ui
+          assert "serializeChoiceI" in ui and "serializeChoiceII" in ui
+          assert "grid-template-columns:minmax(0,1fr) !important" in css
+          assert "V9 reference-exact" in css
+          print("PASS: immediate selectable chips, independent D/S, one-card-per-row UI")
+          PY

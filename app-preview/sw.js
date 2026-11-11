@@ -1,5 +1,5 @@
 /* ChấmPro Preview: immutable static shell, no student/photo/API caching. */
-const CACHE='champro-app-preview-pwa-v4-visual-answers-20261111';
+const CACHE='champro-app-preview-pwa-v5-exact-answers-20261111';
 const CORE=[
  './','./index.html','./styles.css','./app.mjs','./pwa-install.mjs',
  './advanced.mjs','./qr-compatible.mjs','./multisubject.mjs',

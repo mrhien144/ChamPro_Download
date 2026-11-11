@@ -29,6 +29,24 @@ assert.equal(score('SSSĐ').points.II,.1); // only b is accepted
 assert.equal(score('????').points.II,0); // no bubble => no credit, including override
 assert.equal(score('Đ?ĐS').points.II,.5);
 assert.equal(score('ĐĐĐS','C','8264').total,1.5);
+
+assert.equal(score('ĐĐĐS','A').points.I,.25,'Phần I: học sinh chỉ tô A trong A|C có điểm');
+assert.equal(score('ĐĐĐS','C').points.I,.25,'Phần I: học sinh chỉ tô C trong A|C có điểm');
+assert.equal(score('ĐĐĐS','B').points.I,0,'Phần I: B không thuộc A|C không điểm');
+assert.equal(score('ĐĐĐS','D').points.I,0,'Phần I: D không thuộc A|C không điểm');
+assert.equal(score('ĐĐĐS','A+C').points.I,0,'Phần I: tô cả hai A và C không điểm');
+assert.equal(score('ĐĐĐS','A+B').points.I,0,'Phần I: tô nhiều ô không hợp lệ không điểm');
+assert.equal(score('ĐĐĐS','').points.I,0,'Phần I: bỏ trống không điểm');
+assert.equal(score('ĐĐĐS').points.II,1,'Phần II: cả bốn ý đúng thì được 1 điểm');
+assert.equal(score('ĐSĐS').points.II,1,'Phần II: b chọn Sai cũng được đủ điểm');
+assert.equal(score('ĐĐĐĐ').points.II,.5,'Phần II: ba ý đúng được 0.5 điểm');
+assert.equal(score('ĐĐSĐ').points.II,.25,'Phần II: hai ý đúng được 0.25 điểm');
+assert.equal(score('SSSĐ').points.II,.1,'Phần II: một ý đúng được 0.1 điểm');
+assert.equal(score('????').points.II,0,'Phần II: bỏ cả bốn ý được 0 điểm');
+assert.equal(score('Đ?ĐS').points.II,.5,'Phần II: ý được chấp nhận Đ/S nhưng bỏ trống không được tính');
+assert.equal(score('Đ ĐS').points.II,.5,'Phần II: ô trống thay vì Đ/S không được tính');
+assert.equal(serializeChoiceII(parseChoiceII('Đ*ĐS').columns),'Đ*ĐS','Phần II: lưu và mở lại giữ cả Đúng/Sai');
+
 exam.keys['101'].II=['ALL'];
 assert.equal(score('????').points.II,1);
 console.log('PASS: part II Đ and Sai simultaneous accepts either, fixed partial credit and visual model');
