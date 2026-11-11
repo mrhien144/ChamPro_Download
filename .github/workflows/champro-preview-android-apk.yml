@@ -6,6 +6,7 @@ on:
     paths:
       - 'android-build/**'
       - 'app-preview/**'
+      - 'tests/compact-points-preview.test.mjs'
       - '.github/workflows/champro-preview-android-apk.yml'
   workflow_dispatch:
 permissions:
