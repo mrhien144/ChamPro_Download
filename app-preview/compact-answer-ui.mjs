@@ -10,7 +10,7 @@ const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const exam=()=>getDb().exams.find(e=>e.id===$('keyExam').value);
 const form=$('examForm');
-let editing=false,draftCode='',activeKey='';
+let editing=true,draftCode='',activeKey='';
 const fields={
  I:form?.elements.namedItem('totalI'),
  III:form?.elements.namedItem('totalIII')
@@ -128,18 +128,15 @@ function renderReview(){
   review.hidden=true;activeKey='';return;
  }
  const key=item.keys?.[code]||{I:[],II:[],III:[]};
- if(activeKey!==item.id+':'+code){editing=code===draftCode&&!item.keys?.[code];activeKey=item.id+':'+code;}
+ if(activeKey!==item.id+':'+code){editing=true;activeKey=item.id+':'+code;}
  $('keyCode').value=code; // Keep legacy Excel/QR adapter and manual export in sync.
  $('cpKeyGrid').innerHTML=['I','II','III'].filter(p=>item.counts[p]>0)
   .map(p=>questionRows(p,key[p],item.counts[p])).join('');
  review.hidden=false;
- $('cpEditKey').hidden=editing;
- $('cpSaveKey').hidden=!editing;
- $('cpCancelKey').hidden=!editing;
- if(editing){
-  const first=$('cpKeyGrid').querySelector('input');
-  first?.focus({preventScroll:true});
- }
+ $('cpEditKey').hidden=true;
+ $('cpSaveKey').hidden=false;
+ $('cpCancelKey').hidden=false;
+ // Do not force-focus or reopen the keyboard while displaying an answer key.
 }
 function refresh(options={}){
  const {item}=keyOptions(options.focus);
@@ -154,9 +151,10 @@ function enterEdit(){
  editing=true;renderReview();
 }
 function cancelEdit(){
- editing=false;
  if(draftCode&&!exam()?.keys?.[draftCode])draftCode='';
- refresh();
+ editing=true;
+ activeKey='';
+ refresh(); // discard unsaved changes while remaining directly editable
 }
 function checkedValues(part,q){
  const scope=$('cpKeyGrid').querySelector('[data-cp-question="'+part+':'+q+'"]');
@@ -198,12 +196,12 @@ function saveEdit(){
    throw Error('Mã đề phải đủ '+item.digits+' chữ số');
   const next=parseInputs(item),old=item.keys?.[code];
   if(old&&JSON.stringify(old)===JSON.stringify(next)){
-   editing=false;draftCode='';refresh({focus:code});toast('Đáp án không có thay đổi.');return;
+   editing=true;draftCode='';refresh({focus:code});toast('Đáp án không có thay đổi.');return;
   }
   // Scores are recomputed only on teacher save, never while the camera scans.
   item.keys[code]=next;
   const stats=regradeAffectedResults(getDb(),item,'Giáo viên cập nhật đáp án mã '+code,code);
-  editing=false;draftCode='';
+  editing=true;draftCode='';
   save();refresh({focus:code});
   toast('Đã lưu đáp án mã '+code+'. Đã cập nhật '+stats.changed+' bài chấm.');
  }catch(error){toast('Chưa lưu: '+error.message);}
@@ -253,8 +251,8 @@ $('cpKeyGrid').addEventListener('click',event=>{
   });
  }
 });
-$('cpKeyCodeSelect').addEventListener('change',()=>{editing=false;renderReview();});
-$('keyExam').addEventListener('change',()=>{editing=false;draftCode='';refresh();});
+$('cpKeyCodeSelect').addEventListener('change',()=>{editing=true;renderReview();});
+$('keyExam').addEventListener('change',()=>{editing=true;draftCode='';refresh();});
 $('cpEditKey').addEventListener('click',enterEdit);
 $('cpCancelKey').addEventListener('click',cancelEdit);
 $('cpSaveKey').addEventListener('click',saveEdit);
@@ -267,19 +265,19 @@ $('cpNewKey').addEventListener('click',()=>{
  draftCode=code.trim();editing=true;refresh({focus:draftCode});
 });
 $('examList').addEventListener('click',event=>{
- if(event.target.closest('[data-editexam]'))queueMicrotask(()=>{editing=false;draftCode='';refresh({focus:$('keyCode').value});});
+ if(event.target.closest('[data-editexam]'))queueMicrotask(()=>{editing=true;draftCode='';refresh({focus:$('keyCode').value});});
 });
 window.addEventListener('champro-db-updated',()=>{
  // Never rebuild the answer-key editor while the camera is scanning.
  // Import/teacher edits refresh when this page is visible; the result scanner
  // stays on its original fast path.
- if(!editing&&$('page-exams')?.classList.contains('shown'))refresh();
+ if($('page-exams')?.classList.contains('shown')&&!$('cpKeyGrid').querySelector(':focus'))refresh();
 });
 $('nav')?.addEventListener('click',event=>{
- if(event.target.closest('[data-page="exams"]'))queueMicrotask(()=>{if(!editing)refresh();});
+ if(event.target.closest('[data-page="exams"]'))queueMicrotask(()=>{if(!$('cpKeyGrid').querySelector(':focus'))refresh();});
 });
 window.addEventListener('champro-keys-imported',event=>{
  const detail=event.detail||{};
- if(detail.examId){$('keyExam').value=detail.examId;draftCode='';editing=false;refresh({focus:detail.codes?.[0]});}
+ if(detail.examId){$('keyExam').value=detail.examId;draftCode='';editing=true;refresh({focus:detail.codes?.[0]});}
 });
 refresh();
