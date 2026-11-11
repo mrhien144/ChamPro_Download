@@ -8,6 +8,7 @@ export function shortDigitColumns(value,width=4){
   return out.every(v=>v===''||/^[0-9]$/.test(v))?out:null;
  }
  const text=String(value??'').trim();
+ if(text==='')return Array(width).fill('');
  if(!/^[0-9]{1,4}$/.test(text)||text.length>width)return null;
  return [...text,...Array(width-text.length).fill('')];
 }
@@ -110,11 +111,15 @@ export function correctedRecord(data,exam,old,changes){
  for(let i=0;i<counts.III;i++){
   const response=plain(changes.answers.III[i]);
   if(response.length>32||!/^[0-9.,\-+ ]*$/.test(response))throw Error('Phần III chỉ nhận đáp án dạng số');
-  const cols=shortDigitColumns(changes.answers.IIIColumns?.[i]);
-  // Physical columns are authoritative when edited through the four
-  // per-column dropdowns. Otherwise preserve numeric text with no fake map.
-  if(changes.answers.IIIColumns?.[i]!=null&&!cols)throw Error('Cột số phần III không hợp lệ');
-  if(cols&&cols.join('')!==response.replace(/\s/g,''))
+  const supplied=changes.answers.IIIColumns?.[i];
+  const original=old.answers?.III?.[i]??'';
+  // Keep physical scan positions only when the teacher has not changed
+  // this answer. A manual edit uses the leftmost-first printed convention.
+  const cols=supplied==null&&response===String(original).trim()
+   ?(old.answers?.IIIColumns?.[i]??null)
+   :supplied==null?null:shortDigitColumns(supplied);
+  if(supplied!=null&&!cols)throw Error('Cột số phần III không hợp lệ');
+  if(cols&&supplied!=null&&cols.join('')!==response.replace(/\s/g,''))
    throw Error('Các ô số phần III không khớp giá trị nhập ở câu '+(i+1));
   answers.III.push(response);answers.IIIColumns.push(cols);
  }
