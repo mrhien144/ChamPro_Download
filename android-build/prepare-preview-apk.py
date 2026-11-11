@@ -2,6 +2,7 @@
 """Prepare isolated, fully bundled ChấmPro preview for Android WebView."""
 from pathlib import Path
 import sys
+import re
 
 root = Path(sys.argv[1])
 assert root.is_dir()
@@ -35,10 +36,11 @@ app_js.write_text(app_code, encoding="utf-8")
 
 # This app is already bundled in the APK. Never register a browser service worker
 # that could pin an obsolete web layout or delay the native presentation.
-s = s.replace('<script type="module" src="./pwa-install.mjs?v=20261111-pwa-preview-v2"></script>', '')
+s = re.sub(r'<script type="module" src="\\./pwa-install\\.mjs\\?v=[^"]+"></script>', '', s)
 html.write_text(s, encoding="utf-8")
 # Ensure the bundled libraries needed for offline QR and Excel are present.
 for filename in ["app.mjs", "advanced.mjs", "qr-compatible.mjs",
+                 "compact-answer-ui.mjs", "compact-points.mjs",
                  "vendor/jsQR.js", "vendor/xlsx.full.min.js",
                  "layouts.json", "sheet-photo-store.mjs"]:
     assert (root / filename).is_file(), filename
