@@ -216,3 +216,61 @@ body.cp-native-app {
   box-shadow:0 0 7px #183c6229;
 }
 .cp-native-app .cp-apk-paper-hint {font-size:11px;color:#49627e;margin:8px 4px 12px;}
+
+/* APK REVIEW SCROLL v5: the paper is a section of the vertically scrollable
+   review dialog at fit size. Panning is enabled only after zooming in. */
+.cp-native-app #reviewDialog {
+  overflow-x:hidden !important;
+  overflow-y:auto !important;
+  overscroll-behavior-y:auto !important;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y !important;
+  scroll-padding-top:72px;
+}
+.cp-native-app #reviewDialog #reviewBody {
+  overflow:visible !important;
+  touch-action:pan-y;
+}
+.cp-native-app #reviewDialog .cp-apk-paper-viewer {
+  overflow:visible !important;
+  touch-action:pan-y;
+}
+.cp-native-app #reviewDialog .cp-apk-paper-viewport {
+  height:auto !important;
+  min-height:0 !important;
+  max-height:none !important;
+  overflow:visible !important;
+  overscroll-behavior-y:auto !important;
+  touch-action:pan-y !important;
+  -webkit-overflow-scrolling:touch;
+}
+.cp-native-app #reviewDialog .cp-apk-paper-canvas {
+  touch-action:pan-y !important;
+}
+.cp-native-app #reviewDialog .cp-apk-paper-viewport.cp-apk-paper-zoomed {
+  height:min(67dvh,690px) !important;
+  min-height:260px !important;
+  max-height:67dvh !important;
+  overflow:auto !important;
+  overscroll-behavior:auto !important;
+  touch-action:pan-x pan-y !important;
+}
+.cp-native-app #reviewDialog .cp-apk-paper-zoomed .cp-apk-paper-canvas {
+  touch-action:pan-x pan-y !important;
+}
+.cp-native-app #reviewDialog .cp-apk-jump-edit {
+  display:block;
+  flex:1 0 100%;
+  width:100%;
+  padding:11px 13px;
+  background:#1e58d6;
+  border:0;
+  border-radius:10px;
+  color:#fff;
+  font-size:13px;
+  font-weight:800;
+}
+.cp-native-app #reviewDialog .cp-manual-editor {
+  scroll-margin-top:85px;
+  padding-bottom:18px;
+}
