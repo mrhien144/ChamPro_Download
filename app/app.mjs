@@ -438,7 +438,7 @@ $('closeReview').onclick=()=>{$('reviewDialog').close();lastReviewCanvas=null;};
   }catch(e){toast('Không thể khôi phục: '+e.message);}finally{void refreshLocalStatus();}
  });
  window.addEventListener('champro-local-mirror',()=>void refreshLocalStatus());
- window.addEventListener('load',()=>{queueLocalMirror(()=>db);void refreshLocalStatus();},{once:true});
+ window.addEventListener('load',()=>{void refreshLocalStatus();},{once:true});
 // Offline PWA install prompt
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;$('installBtn').hidden=false;});
 $('installBtn').onclick=async()=>{if(installPrompt){await installPrompt.prompt();installPrompt=null;$('installBtn').hidden=true;}};
