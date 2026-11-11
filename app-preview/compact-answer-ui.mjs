@@ -94,8 +94,8 @@ function questionRows(part,arr,count){
    }else if(part==='II'){
     const parsed=parseChoiceII(raw);
     body='<div class="cp-visual-ii-grid">'+['a','b','c','d'].map((letter,i)=>
-      '<div class="flex-sub"><b>Ý '+letter+')</b>'+chip(part,q,i+'T','Đúng',parsed.columns[i].trueValue)+
-      chip(part,q,i+'F','Sai',parsed.columns[i].falseValue)+'</div>').join('')+
+      '<div class="flex-sub cp-ii-answer-row"><b>Ý '+letter+')</b><div class="cp-ii-answer-options">'+chip(part,q,i+'T','Đúng',parsed.columns[i].trueValue)+
+      chip(part,q,i+'F','Sai',parsed.columns[i].falseValue)+'</div></div>').join('')+
       '</div><div class="cp-visual-all">'+chip(part,q,'ALL','Cho điểm toàn câu',parsed.all)+'</div>';
    }else{
     const parsed=parseChoiceIII(raw);
