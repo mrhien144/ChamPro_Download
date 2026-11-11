@@ -1,6 +1,6 @@
 {
-  "appId": "com.champro.preview",
-  "appName": "ChấmPro Test",
+  "appId": "com.champro.nativepreview",
+  "appName": "ChấmPro App Test",
   "webDir": "app",
   "server": {
     "androidScheme": "https"
