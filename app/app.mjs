@@ -5,6 +5,7 @@ import {readVerifiedWithMarkers} from './omr-verified-paper.mjs';
 import {readPrinted120WithMarkers} from './omr-printed-120.mjs';
 import {preserveSbd,canonicalSbd,validSbd,findStudentForSbd} from './student-identity.mjs';
 import {enqueueSheetPhoto,showSheetPhoto} from './sheet-photo-store.mjs';
+import {queueLocalMirror,readLocalMirror,isValidSnapshot,getLocalStorageStatus,requestPersistentLocalStorage} from './local-data-store.mjs';
 const $=id=>document.getElementById(id);
 // Canvas-only OMR: no heavy OpenCV startup on Samsung browsers.
 
@@ -14,7 +15,7 @@ const fresh=()=>({schema:1,exams:[],students:[],results:[]});
 let db=fresh(),layouts=null,cvPromise=null,stream=null,autoTimer=null,captureBusy=false,review=null,lastAuto=null,lastSaved='',installPrompt=null,lastReviewImage='',cameraRotation=0;
 try{const old=JSON.parse(localStorage.getItem(storedKey)||'null');if(old&&Array.isArray(old.exams)&&Array.isArray(old.students)&&Array.isArray(old.results))db=old;}catch(e){console.warn('localStorage invalid',e)}
 const id=()=>globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random().toString(16).slice(2);
-function save(){try{localStorage.setItem(storedKey,JSON.stringify(db));}catch(e){toast('Không lưu được: bộ nhớ trình duyệt đầy. Hãy xuất bản sao lưu.');throw e;}render();window.dispatchEvent(new Event('champro-db-updated'));}
+function save(){try{localStorage.setItem(storedKey,JSON.stringify(db));}catch(e){toast('Không lưu được: bộ nhớ trình duyệt đầy. Hãy xuất bản sao lưu.');throw e;}render();window.dispatchEvent(new Event('champro-db-updated'));queueLocalMirror(()=>db);}
 function toast(m){$('toast').textContent=m;clearTimeout(toast._t);toast._t=setTimeout(()=>$('toast').textContent='',6200);}
 function navigate(page){document.body.classList.toggle('scan-active',page==='scan');document.querySelectorAll('.page').forEach(x=>x.classList.toggle('shown',x.id==='page-'+page));document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===page));if(page!=='scan')stopCamera();window.scrollTo({top:0,behavior:'smooth'});}
 function parseLines(text){return String(text||'').split(/\r?\n/).map(x=>x.trim());}
@@ -407,6 +408,37 @@ $('saveReview').onclick=()=>{try{if(!review)return;const student=db.students.fin
 $('closeReview').onclick=()=>{$('reviewDialog').close();lastReviewCanvas=null;};
  $('reviewDialog').addEventListener('close',()=>{lastReviewCanvas=null;});
  // Do not auto-delete student sheet photos without a confirmed retention policy.
+ const mirrorStatus=$('localStorageStatus');
+ async function refreshLocalStatus(){
+  if(!mirrorStatus)return;
+  try{
+   const x=await getLocalStorageStatus();
+   const size=n=>n===null?'Chưa xác định':(n/1048576).toFixed(1)+' MB';
+   mirrorStatus.textContent='Bản dự phòng trên thiết bị: '+(x.mirrorValid?'Có · '+new Date(x.mirrorAt).toLocaleString('vi-VN'):'Chưa có')+
+    ' · Dung lượng dùng: '+size(x.used)+' / '+size(x.quota)+
+    ' · Bảo vệ khỏi dọn dẹp tự động: '+(x.persisted?'Đã được cấp':'Chưa được cấp')+
+    (x.lastError?' · Lỗi sao lưu: '+x.lastError:'');
+  }catch(e){mirrorStatus.textContent='Không đọc được trạng thái lưu trữ: '+e.message;}
+ }
+ $('refreshLocalStorage')?.addEventListener('click',()=>void refreshLocalStatus());
+ $('requestPersistentStorage')?.addEventListener('click',async()=>{
+  try{
+   const ok=await requestPersistentLocalStorage();
+   toast(ok?'Trình duyệt đã cho phép lưu trữ bền vững.':'Trình duyệt chưa cấp quyền lưu trữ bền vững; hãy xuất bản sao lưu định kỳ.');
+  }catch(e){toast(e.message);}finally{void refreshLocalStatus();}
+ });
+ $('recoverLocalMirror')?.addEventListener('click',async()=>{
+  try{
+   const snapshot=await readLocalMirror();
+   if(!isValidSnapshot(snapshot?.data))throw Error('Chưa có bản dự phòng hợp lệ');
+   if(!confirm('Khôi phục bản dự phòng ngày '+new Date(snapshot.updatedAt).toLocaleString('vi-VN')+'? Dữ liệu hiện tại sẽ được thay thế. Hãy tải bản sao lưu JSON trước khi tiếp tục.'))return;
+   const before=db;db=snapshot.data;
+   try{save();toast('Đã khôi phục bản dự phòng trên thiết bị.');}
+   catch(e){db=before;throw e;}
+  }catch(e){toast('Không thể khôi phục: '+e.message);}finally{void refreshLocalStatus();}
+ });
+ window.addEventListener('champro-local-mirror',()=>void refreshLocalStatus());
+ window.addEventListener('load',()=>{queueLocalMirror(()=>db);void refreshLocalStatus();},{once:true});
 // Offline PWA install prompt
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;$('installBtn').hidden=false;});
 $('installBtn').onclick=async()=>{if(installPrompt){await installPrompt.prompt();installPrompt=null;$('installBtn').hidden=true;}};
