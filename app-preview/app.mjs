@@ -26,7 +26,7 @@ function examOptions(target,all=false){const prev=target.value;target.innerHTML=
  else if(!all&&db.exams.length)target.value=db.exams[0].id;}
 function selectedExam(selector='scanExam'){return db.exams.find(x=>x.id===$(selector).value);}
 function render(){
- $('statExams').textContent=new Set(db.exams.map(e=>JSON.stringify([e.gradeClass||'',e.name]))).size;$('statStudents').textContent=db.students.length;$('statResults').textContent=db.results.length;$('statLast').textContent=db.results.length?String(db.results.at(-1).score)+'đ':'—';
+ $('statExams').textContent=new Set(db.exams.map(e=>JSON.stringify([e.gradeClass||'',e.name]))).size;$('statStudents').textContent=db.students.length;$('statResults').textContent=db.results.length;$('statLast').textContent=db.results.length?(db.results.at(-1).pendingCode?'Chờ mã đề':String(db.results.at(-1).score)+'đ'):'—';
  ['scanExam','keyExam','filterExam'].forEach((x,i)=>examOptions($(x),i===2));
  $('examList').innerHTML=db.exams.length?db.exams.map(e=>`<div class="record"><div><strong>${esc([e.gradeClass,e.name,e.subject].filter(Boolean).join(' · '))}</strong><small>${e.form==='120'?'120 câu':'3 phần'} · Mã ${e.digits} số · ${Object.keys(e.keys||{}).length} mã đề</small></div><div class="actions"><button class="outline" data-editexam="${esc(e.id)}">Đáp án</button><button class="outline" data-delexam="${esc(e.id)}">Xóa</button></div></div>`).join(''):'<p class="muted">Chưa có kỳ kiểm tra. Hãy tạo ở bên trái.</p>';
  renderStudents();renderResults();
