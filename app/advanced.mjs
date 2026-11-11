@@ -1,5 +1,5 @@
 /** ChấmPro: QR Web import, multi-subject gradebook, and Excel matrix import/export. */
-import {getDb,save,toast,spreadsheetRows,loadScript,sendFile} from './app.mjs?v=20261109-120-camera-r2';
+import {getDb,save,toast,spreadsheetRows,loadScript,sendFile} from './app.mjs?v=20261110-photo-archive-preview';
 import {listGroups,makeReport,sheetMatrix} from './multisubject.mjs';
 import {decodeChamProQR,studentsFromQR,keysFromQR,parseAnswerMatrix} from './qr-compatible.mjs';
 import {toCsv} from './grader.mjs';
@@ -27,7 +27,7 @@ $('summarySubjects').onchange=setSettings;
 $('summaryTotalLabel').onchange=setSettings;
 function selectedReport(){const base=makeReport(db(),$('summaryGroup').value);if(!base)throw Error('Chưa chọn kỳ kiểm tra');const opts=config(base);if(!opts.subjects.length)throw Error('Cần chọn môn cộng điểm');return {r:makeReport(db(),$('summaryGroup').value,opts.subjects),label:opts.label};}
 $('exportSummaryCSV').onclick=()=>{try{const {r,label}=selectedReport();sendFile('ChamPro_BangDiem_'+Date.now()+'.csv',toCsv(sheetMatrix(r,label)),'text/csv;charset=utf-8');}catch(e){toast(e.message);}};
-async function xlsx(){if(!window.XLSX)await loadScript('https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js','XLSX');return window.XLSX;}
+async function xlsx(){if(!window.XLSX)await loadScript('./vendor/xlsx.full.min.js','XLSX');return window.XLSX;}
 function createSummaryWorkbook(X,report){
  const {r,label}=report,arr=sheetMatrix(r,label),ws=X.utils.aoa_to_sheet(arr),book=X.utils.book_new();
  ws['!cols']=[{wch:13},{wch:28},{wch:15},...r.subjectNames.map(()=>({wch:13})),{wch:20},{wch:9}];
@@ -181,7 +181,7 @@ $('keysFile').addEventListener('change',async ev=>{
   Object.assign(exam.keys,keys);save();toast('Đã nhập '+Object.keys(keys).length+' mã đề.');}
  catch(e){toast('Không nhập được đáp án: '+e.message);}finally{ev.target.value='';}
 },{capture:true});
-async function loadJsQR(){if(globalThis.jsQR)return globalThis.jsQR;if(!qrScript)qrScript=loadScript('https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js','jsQR');await qrScript;return globalThis.jsQR;}
+async function loadJsQR(){if(globalThis.jsQR)return globalThis.jsQR;if(!qrScript)qrScript=loadScript('./vendor/jsQR.js','jsQR');await qrScript;return globalThis.jsQR;}
 async function readQR(source){
  const w=source.videoWidth||source.naturalWidth||source.width,h=source.videoHeight||source.naturalHeight||source.height;if(!w||!h)throw Error('Camera QR chưa sẵn sàng');
  const c=$('qrCanvas'),k=Math.min(1,1700/Math.max(w,h));c.width=Math.max(2,Math.round(w*k));c.height=Math.max(2,Math.round(h*k));const ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(source,0,0,c.width,c.height);
