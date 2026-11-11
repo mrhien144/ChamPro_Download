@@ -36,7 +36,7 @@ app_js.write_text(app_code, encoding="utf-8")
 
 # This app is already bundled in the APK. Never register a browser service worker
 # that could pin an obsolete web layout or delay the native presentation.
-s = re.sub(r'<script type="module" src="\\./pwa-install\\.mjs\\?v=[^"]+"></script>', '', s)
+s = re.sub(r'<script type="module" src="\./pwa-install\.mjs\?v=[^"]+"></script>', '', s)
 html.write_text(s, encoding="utf-8")
 # Ensure the bundled libraries needed for offline QR and Excel are present.
 for filename in ["app.mjs", "advanced.mjs", "qr-compatible.mjs",
