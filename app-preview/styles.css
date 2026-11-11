@@ -278,3 +278,6 @@
 .pwa-install-dialog .pwa-offline-info{padding:12px 14px;background:#f2f7ff;border:1px solid #dbe7f7;border-radius:12px;margin:14px 0}
 .pwa-install-dialog .pwa-offline-info p{font-size:14px;line-height:1.6}
 .pwa-install-dialog .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+
+/* Pending exam code is ungraded, never display a misleading zero. */
+.cp-pending-code{display:block;font-size:12px;font-weight:700;color:#9a3412;white-space:nowrap;margin-top:4px}

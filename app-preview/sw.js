@@ -1,5 +1,5 @@
 /* ChấmPro Preview: immutable static shell, no student/photo/API caching. */
-const CACHE='champro-app-preview-pwa-v1-20261111';
+const CACHE='champro-app-preview-pwa-v2-20261111';
 const CORE=[
  './','./index.html','./styles.css','./app.mjs','./pwa-install.mjs',
  './advanced.mjs','./qr-compatible.mjs','./multisubject.mjs',
@@ -45,10 +45,15 @@ self.addEventListener('fetch',event=>{
  if(req.method!=='GET'||url.origin!==scope.origin||!url.pathname.startsWith(scope.pathname))return;
  if(req.mode==='navigate'){
   event.respondWith((async()=>{
+   // Prefer fresh HTML online; use the fully cached app shell offline.
+   // This prevents an old cache-first page from hiding the Install button fix.
+   try{
+    const response=await fetch(req);
+    if(response.ok)return response;
+   }catch{}
    const cache=await caches.open(CACHE);
-   // Always open the same local app shell; no network needed after install.
    const local=await cache.match(new URL('./index.html',scope).href);
-   return local||fetch(req);
+   return local||Response.error();
   })());
   return;
  }

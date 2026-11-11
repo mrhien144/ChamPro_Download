@@ -26,7 +26,7 @@ function examOptions(target,all=false){const prev=target.value;target.innerHTML=
  else if(!all&&db.exams.length)target.value=db.exams[0].id;}
 function selectedExam(selector='scanExam'){return db.exams.find(x=>x.id===$(selector).value);}
 function render(){
- $('statExams').textContent=new Set(db.exams.map(e=>JSON.stringify([e.gradeClass||'',e.name]))).size;$('statStudents').textContent=db.students.length;$('statResults').textContent=db.results.length;$('statLast').textContent=db.results.length?String(db.results.at(-1).score)+'đ':'—';
+ $('statExams').textContent=new Set(db.exams.map(e=>JSON.stringify([e.gradeClass||'',e.name]))).size;$('statStudents').textContent=db.students.length;$('statResults').textContent=db.results.length;$('statLast').textContent=db.results.length?(db.results.at(-1).pendingCode?'Chờ mã đề':String(db.results.at(-1).score)+'đ'):'—';
  ['scanExam','keyExam','filterExam'].forEach((x,i)=>examOptions($(x),i===2));
  $('examList').innerHTML=db.exams.length?db.exams.map(e=>`<div class="record"><div><strong>${esc([e.gradeClass,e.name,e.subject].filter(Boolean).join(' · '))}</strong><small>${e.form==='120'?'120 câu':'3 phần'} · Mã ${e.digits} số · ${Object.keys(e.keys||{}).length} mã đề</small></div><div class="actions"><button class="outline" data-editexam="${esc(e.id)}">Đáp án</button><button class="outline" data-delexam="${esc(e.id)}">Xóa</button></div></div>`).join(''):'<p class="muted">Chưa có kỳ kiểm tra. Hãy tạo ở bên trái.</p>';
  renderStudents();renderResults();
@@ -34,7 +34,7 @@ function render(){
 function renderStudents(){const keyword=$('studentSearch').value.toLowerCase();const rows=db.students.filter(s=>(s.sbd+' '+s.name+' '+s.classroom).toLowerCase().includes(keyword)).sort((a,b)=>a.classroom.localeCompare(b.classroom)||a.sbd.localeCompare(b.sbd));
  $('studentsTable').innerHTML=rows.map(s=>`<tr><td>${esc(s.sbd)}</td><td>${esc(s.name)}</td><td>${esc(s.classroom)}</td><td><button class="outline" data-delstudent="${esc(s.id)}">Xóa</button></td></tr>`).join('')||'<tr><td colspan="4">Chưa có học sinh.</td></tr>';}
 function filteredResults(){const e=$('filterExam').value,q=$('resultsSearch').value.toLowerCase();return db.results.filter(r=>(!e||r.examId===e)&&(!q||(r.studentName+' '+r.sbd+' '+r.examCode+' '+(r.rawSbd||'')).toLowerCase().includes(q))).sort((a,b)=>b.savedAt.localeCompare(a.savedAt));}
-function renderResults(){$('resultsTable').innerHTML=filteredResults().map(r=>`<tr><td>${esc(new Date(r.savedAt).toLocaleString('vi-VN'))}</td><td>${esc(db.exams.find(e=>e.id===r.examId)?.subject||r.subject||'')}</td><td>${esc(r.pendingStudent?'Chưa xác định học sinh':r.studentName)}</td><td>${esc(r.sbd||'Chưa gán')}</td><td>${esc(r.examCode)}</td><td class="grade">${esc(r.score)} / ${esc(r.max)}</td><td><button class="outline" data-result="${esc(r.id)}">Xem</button></td></tr>`).join('')||'<tr><td colspan="7">Chưa có kết quả.</td></tr>';}
+function renderResults(){$('resultsTable').innerHTML=filteredResults().map(r=>`<tr><td>${esc(new Date(r.savedAt).toLocaleString('vi-VN'))}</td><td>${esc(db.exams.find(e=>e.id===r.examId)?.subject||r.subject||'')}</td><td>${esc(r.pendingStudent?'Chưa xác định học sinh':r.studentName)}</td><td>${esc(r.sbd||'Chưa gán')}</td><td>${esc(r.examCode)}${r.pendingCode?'<small class="cp-pending-code">Chờ sửa mã đề</small>':''}</td><td class="grade">${r.pendingCode?'<span class="cp-pending-code">Chưa chấm</span>':esc(r.score)+' / '+esc(r.max)}</td><td><button class="outline" data-result="${esc(r.id)}">Xem</button></td></tr>`).join('')||'<tr><td colspan="7">Chưa có kết quả.</td></tr>';}
 function validateExamInput(f){const form=f.get('form'),digits=Number(f.get('digits')),counts={I:Number(f.get('cI')),II:Number(f.get('cII')),III:Number(f.get('cIII'))};if(!f.get('name')?.trim())throw Error('Hãy nhập tên kỳ kiểm tra');if(![3,4].includes(digits))throw Error('Mã đề phải có 3 hoặc 4 chữ số');if(Object.values(counts).some(x=>!Number.isInteger(x)||x<0))throw Error('Số câu không hợp lệ');if(form==='120'&&(counts.I>120||counts.II||counts.III))throw Error('Phiếu 120 câu chỉ dùng phần I (tối đa 120 câu).');if(form==='three'&&(counts.I>40||counts.II>8||counts.III>6))throw Error('Phiếu 3 phần chỉ hỗ trợ I≤40, II≤8, III≤6 trên mẫu giấy gốc.');return {form,digits,counts};}
 $('examForm').addEventListener('submit',ev=>{ev.preventDefault();try{const f=new FormData(ev.target);const v=validateExamInput(f);const gradeClass=String(f.get('gradeClass')||'').trim(),subject=String(f.get('subject')||'').trim(),period=String(f.get('name')||'').trim();
 if(!gradeClass||!subject)throw Error('Cần nhập Khối/Lớp và Môn học');
@@ -136,7 +136,7 @@ function showSavedResult(resultId,formOverride=null){
  const view=formOverride||r,body=$('reviewBody');
  const line='<p><strong>'+esc(r.studentName||'Chưa xác định học sinh')+
   '</strong> · '+esc(r.sbd||'Chưa gán SBD')+' · Mã đề '+esc(r.examCode)+'</p>'+
-  '<p class="success">Điểm hiện tại: '+esc(r.score)+' / '+esc(r.max)+'</p>';
+  (r.pendingCode?'<p class="warning">Chờ sửa mã đề: chưa tính điểm. Sửa mã đề bên dưới rồi bấm “Lưu chỉnh sửa & chấm lại”.</p>':'<p class="success">Điểm hiện tại: '+esc(r.score)+' / '+esc(r.max)+'</p>');
  body.innerHTML=line+(ex?renderResultEditor(view,ex,db.students):
   '<p class="warning">Kỳ kiểm tra gốc đã bị xóa; không thể chỉnh đáp án hoặc chấm lại.</p>');
  const photo=document.createElement('section');photo.className='champro-photo-review';
@@ -370,15 +370,19 @@ async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;
       [result.I,result.II,result.III].flat().some(v=>String(v).includes('?')))
      issues.push('Còn ký tự chưa rõ trên phiếu');
   if(result.codeConfidence!==1)issues.push('Mã đề chưa đọc đủ');
-  if(issues.length){
+  // Unknown but confidently read exam code: save without grading.
+  // Other uncertain answers/incomplete codes still require review.
+  const pendingUnknownCode=result.codeConfidence===1&&!match.knownCode;
+  const blockingIssues=issues.filter(issue=>!(pendingUnknownCode&&issue==='Mã đề chưa tồn tại trong bộ đáp án'));
+  if(blockingIssues.length){
    lastAuto=null;
    const mismatch=issues.includes('Mã đề chưa tồn tại trong bộ đáp án');
    const stored=Object.keys(exam.keys||{}).sort();
    const note=mismatch
     ?'Camera đọc mã '+(result.examCode||'(trống)')+' · Môn/kỳ đang chọn: '+[exam.gradeClass,exam.name,exam.subject].filter(Boolean).join(' · ')+' · Mã đã lưu: '+(stored.join(', ')||'(trống)')+'. '
     :'';
-   $('scanStatus').textContent='Chưa thể lưu: '+note+issues.slice(0,3).join('; ');
-   $('scanInfo').textContent+=' | '+note+issues.join('; ');
+   $('scanStatus').textContent='Chưa thể lưu: '+note+blockingIssues.slice(0,3).join('; ');
+   $('scanInfo').textContent+=' | '+note+blockingIssues.join('; ');
    return;
   }
   const fingerprint=JSON.stringify([exam.id,student?.id||'CHUA_GAN',result.examCode,result.I.slice(0,exam.counts.I),result.II.slice(0,exam.counts.II),result.III.slice(0,exam.counts.III)]);
@@ -388,7 +392,7 @@ async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;
    // Photo archiving is optional and never awaited by grading or camera.
    if(done)try{enqueueSheetPhoto({id:done.id,canvas:match.deg?rotatedCanvas(c,match.deg):c,markers:result.markers,angle:0,form:exam.form,digits:exam.digits,examId:exam.id,examCode:result.examCode});}catch(e){console.warn('Lưu ảnh không khả dụng',e);}
    lastSaved=fingerprint;lastAuto=null;lastGoodOrientation=match.deg;
-  $('scanStatus').textContent='Đã chấm: '+done.score+'/'+done.max+' điểm'+(student?'':' · Chưa xác định học sinh; gán SBD trong Kết quả');
+  $('scanStatus').textContent=done.pendingCode?'Đã lưu phiếu · Chờ sửa mã đề trong Kết quả (chưa chấm điểm)':'Đã chấm: '+done.score+'/'+done.max+' điểm'+(student?'':' · Chưa xác định học sinh; gán SBD trong Kết quả');
  }catch(e){if(manual)toast('Không nhận diện được: '+e.message+'; có thể nhập thủ công.');$('scanStatus').textContent='Không nhận diện: '+e.message;$('scanInfo').textContent='Lỗi nhận diện: '+e.message;lastAuto=null;if(manual){lastReviewImage=c.toDataURL('image/jpeg',.65);openReview(exam,{sbd:'',examCode:'',I:[],II:[],III:[],confidence:0,uncertain:['Chưa đọc được ảnh – nhập tay']});}}
  finally{captureBusy=false;}}
 async function autoScanOnce(){if(!stream||captureBusy||$('reviewDialog').open||!$('autoScan').checked)return;try{await readCanvas(captureVideo(),false);}catch(e){$('scanStatus').textContent=e.message;}}
@@ -400,20 +404,21 @@ function openReview(exam,omr,angle=0){delete $('reviewDialog').dataset.savedResu
  $('reviewBody').innerHTML=info+(lastReviewImage?`<details><summary>Ảnh phiếu đang kiểm tra (không lưu vào kết quả)</summary><img src="${lastReviewImage}" alt="Ảnh phiếu để đối chiếu" style="display:block;width:100%;max-height:460px;object-fit:contain;background:#0b1724;margin:8px 0 15px"></details>`:'')+`<div class="review-data"><label>Học sinh<select id="reviewStudent"><option value="">-- Chọn học sinh --</option>${db.students.map(s=>`<option value="${esc(s.id)}" ${student?.id===s.id?'selected':''}>${esc(s.sbd)} - ${esc(s.name)}</option>`).join('')}</select></label><label>SBD đọc từ phiếu<input id="reviewSbd" value="${esc(omr.sbd)}" maxlength="12" inputmode="numeric"></label><label>Mã đề<input id="reviewCode" value="${esc(omr.examCode)}" maxlength="4" inputmode="numeric"></label></div><h3>Phần I</h3><div class="answeredit">${Array.from({length:exam.counts.I},(_,i)=>field('I',i+1,omr.I?.[i]||'', 'maxlength="3"')).join('')}</div>${exam.counts.II?'<h3>Phần II (Đ/S, 4 ý)</h3><div class="answeredit">'+Array.from({length:exam.counts.II},(_,i)=>field('II',i+1,omr.II?.[i]||'', 'maxlength="4"')).join('')+'</div>':''}${exam.counts.III?'<h3>Phần III</h3><div class="answeredit">'+Array.from({length:exam.counts.III},(_,i)=>field('III',i+1,omr.III?.[i]||'', '')).join('')+'</div>':''}`;
  $('saveReview').hidden=false;$('reviewDialog').showModal();}
 function saveResult(exam,student,ans,fromAuto=false){
- const value=grade(exam,{examCode:ans.examCode,I:ans.I,II:ans.II,III:ans.III});
+ const pendingCode=!exam.keys?.[ans.examCode];
+ const value=pendingCode?null:grade(exam,{examCode:ans.examCode,I:ans.I,II:ans.II,III:ans.III});
  const exists=student?db.results.find(x=>x.examId===exam.id&&x.studentId===student.id):null;
  if(exists&&!fromAuto&&!confirm('Bài này đã được chấm. Ghi đè kết quả cũ?'))return null;
  if(exists&&fromAuto)throw Error('Bài đã có trong lịch sử, không chấm trùng');
  const record={id:exists?.id||id(),examId:exam.id,gradeClass:exam.gradeClass||student?.classroom||'',subject:exam.subject||'',period:exam.name,
   studentId:student?.id||null,studentName:student?.name||'Chưa xác định học sinh',classroom:student?.classroom||'',sbd:student?.sbd||'',rawSbd:preserveSbd(ans.sbd),
-  pendingStudent:!student,examCode:ans.examCode,answers:{I:ans.I,II:ans.II,III:ans.III,IIIColumns:ans.IIIColumns||[]},score:value.total,max:value.max,parts:value.points,savedAt:new Date().toISOString()};
+  pendingStudent:!student,pendingCode,examCode:ans.examCode,answers:{I:ans.I,II:ans.II,III:ans.III,IIIColumns:ans.IIIColumns||[]},score:value?.total??null,max:value?.max??null,parts:value?.points??{I:null,II:null,III:null},savedAt:new Date().toISOString()};
  db.results=db.results.filter(x=>x.id!==record.id);db.results.push(record);save();
- $('scanPerson').textContent=record.studentName;$('scanScore').textContent=(student?'SBD '+record.sbd:'Chưa gán SBD')+' · '+record.score+'/'+record.max+' điểm';$('scanMode').textContent='Đã chấm';
- const flash=$('resultFlash');$('flashName').textContent=record.studentName;$('flashScore').textContent=record.score+'/'+record.max+' điểm';
+ $('scanPerson').textContent=record.studentName;$('scanScore').textContent=record.pendingCode?'Đã lưu phiếu · Chờ sửa mã đề':(student?'SBD '+record.sbd:'Chưa gán SBD')+' · '+record.score+'/'+record.max+' điểm';$('scanMode').textContent=record.pendingCode?'Đã lưu, chưa chấm':'Đã chấm';
+ const flash=$('resultFlash');$('flashName').textContent=record.studentName;$('flashScore').textContent=record.pendingCode?'Chờ sửa mã đề':record.score+'/'+record.max+' điểm';
  flash.hidden=false;clearTimeout(saveResult._flash);saveResult._flash=setTimeout(()=>{flash.hidden=true;$('scanMode').textContent='Sẵn sàng chấm bài tiếp';},1100);
  if(navigator.vibrate)try{navigator.vibrate(90);}catch{}return record;
 }
-$('saveReview').onclick=()=>{try{if(!review)return;const student=db.students.find(s=>s.id===$('reviewStudent').value),exam=review.exam,sbd=preserveSbd($('reviewSbd').value),examCode=$('reviewCode').value.trim();if(student&&sbd&&canonicalSbd(student.sbd)!==canonicalSbd(sbd))throw Error('SBD không khớp học sinh đã chọn');if(!exam.keys[examCode])throw Error('Không tìm thấy đáp án cho mã đề '+examCode);
+$('saveReview').onclick=()=>{try{if(!review)return;const student=db.students.find(s=>s.id===$('reviewStudent').value),exam=review.exam,sbd=preserveSbd($('reviewSbd').value),examCode=$('reviewCode').value.trim();if(student&&sbd&&canonicalSbd(student.sbd)!==canonicalSbd(sbd))throw Error('SBD không khớp học sinh đã chọn');if(examCode&&(examCode.length!==Number(exam.digits)||![...examCode].every(c=>c>='0'&&c<='9')))throw Error('Mã đề phải đủ '+exam.digits+' chữ số');
  const answers={sbd,examCode,I:[],II:[],III:[],IIIColumns:[]};document.querySelectorAll('#reviewBody input[data-p]').forEach(i=>{answers[i.dataset.p][Number(i.dataset.q)]=i.value.trim().toUpperCase()});
  if(!Object.values({I:answers.I,II:answers.II,III:answers.III}).flat().some(Boolean))throw Error('Chưa có câu trả lời nào');
  if(answers.I.some(x=>x&&!/^[ABCD]$/.test(x)))throw Error('Phần I chỉ chọn A/B/C/D');
@@ -421,7 +426,7 @@ $('saveReview').onclick=()=>{try{if(!review)return;const student=db.students.fin
  answers.IIIColumns=answers.III.map((value,i)=>value===review.omr.III?.[i]?(review.omr.IIIColumns?.[i]??null):null);
  const done=saveResult(exam,student,answers,false);if(!done)return;
   if(lastReviewCanvas)try{enqueueSheetPhoto({id:done.id,canvas:review.angle?rotatedCanvas(lastReviewCanvas,review.angle):lastReviewCanvas,markers:review.omr.markers,angle:0,form:exam.form,digits:exam.digits,examId:exam.id,examCode});}catch(e){console.warn('Lưu ảnh không khả dụng',e);}
-  lastReviewCanvas=null;$('reviewDialog').close();toast('Đã chấm và lưu: '+done.score+'/'+done.max+' điểm');
+  lastReviewCanvas=null;$('reviewDialog').close();toast(done.pendingCode?'Đã lưu phiếu, chờ sửa mã đề trong Kết quả':'Đã chấm và lưu: '+done.score+'/'+done.max+' điểm');
  }catch(e){toast('Không lưu được: '+e.message);}};
 $('closeReview').onclick=()=>{$('reviewDialog').close();lastReviewCanvas=null;delete $('reviewDialog').dataset.savedResult;};
  $('reviewDialog').addEventListener('close',()=>{lastReviewCanvas=null;});

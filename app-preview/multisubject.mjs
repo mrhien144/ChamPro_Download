@@ -15,7 +15,7 @@ export function makeReport(db,selectedGroup,subjectIds=null){
  const people=db.students.filter(s=>matchClass(s,group.gradeClass)).sort((a,b)=>{const x=splitName(a.name),y=splitName(b.name);return x.given.localeCompare(y.given,'vi')||x.family.localeCompare(y.family,'vi')||String(a.sbd).localeCompare(String(b.sbd));});
  const rows=people.map(s=>{
   const scores={};
-  for(const subject of subjectNames){const ids=new Set(exams.filter(e=>norm(e.subject)===subject).map(e=>e.id));const r=db.results.filter(r=>r.studentId===s.id&&ids.has(r.examId)).sort((a,b)=>String(b.savedAt).localeCompare(String(a.savedAt)))[0];scores[subject]=r&&Number.isFinite(Number(r.score))?Number(r.score):null;}
+  for(const subject of subjectNames){const ids=new Set(exams.filter(e=>norm(e.subject)===subject).map(e=>e.id));const r=db.results.filter(r=>r.studentId===s.id&&ids.has(r.examId)).sort((a,b)=>String(b.savedAt).localeCompare(String(a.savedAt)))[0];scores[subject]=r&&!r.pendingCode&&r.score!==null&&r.score!==undefined&&Number.isFinite(Number(r.score))?Number(r.score):null;}
   const complete=chosen.length>0&&chosen.every(p=>scores[p]!==null);
   const total=complete?Math.round((chosen.reduce((n,p)=>n+scores[p],0)+Number.EPSILON)*1000)/1000:null;
   return {id:s.id,sbd:String(s.sbd),...splitName(s.name),classroom:s.classroom,scores,total,rank:null};
