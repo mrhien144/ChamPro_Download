@@ -1,5 +1,6 @@
 /** ChấmPro: QR Web import, multi-subject gradebook, and Excel matrix import/export. */
-import {getDb,save,toast,spreadsheetRows,loadScript,sendFile} from './app.mjs?v=20261110-photo-archive-preview';
+import {getDb,save,toast,spreadsheetRows,loadScript,sendFile} from './app.mjs?v=20261111-compact-answers-v1';
+import {regradeAffectedResults} from './result-review.mjs';
 import {listGroups,makeReport,sheetMatrix} from './multisubject.mjs';
 import {decodeChamProQR,studentsFromQR,keysFromQR,parseAnswerMatrix} from './qr-compatible.mjs';
 import {toCsv} from './grader.mjs';
@@ -178,7 +179,10 @@ $('keysFile').addEventListener('change',async ev=>{
    for(const row of rows){const code=String(row[ci]??'').trim().replace(/\.0$/,'').padStart(exam.digits,'0'),p=String(row[pi]||'').trim().toUpperCase(),q=Number(row[qi]);if(!new RegExp('^\\d{'+exam.digits+'}$').test(code)||!['I','II','III'].includes(p)||!Number.isInteger(q)||q<1||q>exam.counts[p])throw Error('Dữ liệu đáp án sai mã, phần hoặc số câu');keys[code]||={I:[],II:[],III:[]};keys[code][p][q-1]=String(row[ai]??'').trim();}
   }
   for(const [code,key] of Object.entries(keys))for(const part of ['I','II','III'])if(key[part].length!==exam.counts[part]||key[part].some(x=>!x))throw Error('Mã '+code+' thiếu đáp án phần '+part);
-  Object.assign(exam.keys,keys);save();toast('Đã nhập '+Object.keys(keys).length+' mã đề.');}
+  Object.assign(exam.keys,keys);
+   let updated=0;for(const code of Object.keys(keys))updated+=regradeAffectedResults(db(),exam,'Nhập đáp án Excel/CSV mã '+code,code).changed;
+   save();window.dispatchEvent(new CustomEvent('champro-keys-imported',{detail:{examId:exam.id,codes:Object.keys(keys),source:'excel'}}));
+   toast('Đã nhập '+Object.keys(keys).length+' mã đề và cập nhật '+updated+' bài chấm.');}
  catch(e){toast('Không nhập được đáp án: '+e.message);}finally{ev.target.value='';}
 },{capture:true});
 async function loadJsQR(){if(globalThis.jsQR)return globalThis.jsQR;if(!qrScript)qrScript=loadScript('./vendor/jsQR.js','jsQR');await qrScript;return globalThis.jsQR;}
@@ -206,7 +210,10 @@ async function applyQR(raw){
  }else{
   const exam=db().exams.find(e=>e.id===$('keyExam').value);const keys=keysFromQR(payload,exam);
   if(!confirm('Nhập '+Object.keys(keys).length+' mã đề của môn '+(exam.subject||'')+'?'))return;
-  Object.assign(exam.keys,keys);save();toast('Đã nhập '+Object.keys(keys).length+' mã đề từ QR.');
+  Object.assign(exam.keys,keys);
+   let updated=0;for(const code of Object.keys(keys))updated+=regradeAffectedResults(db(),exam,'Nhập đáp án QR mã '+code,code).changed;
+   save();window.dispatchEvent(new CustomEvent('champro-keys-imported',{detail:{examId:exam.id,codes:Object.keys(keys),source:'qr'}}));
+   toast('Đã nhập '+Object.keys(keys).length+' mã đề từ QR và cập nhật '+updated+' bài chấm.');
  }
  closeQR();
 }
