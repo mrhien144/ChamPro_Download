@@ -35,11 +35,13 @@ jobs:
           node --check app-preview/grader.mjs
           node --check app-preview/result-review.mjs
           node --check app-preview/sheet-photo-store.mjs
+          node --check android-build/native-app.js
           node --test tests/preview-pending-code.test.mjs
       - name: Assemble complete offline preview web bundle
         run: |
           mkdir -p _champro_android/app
           cp -a app-preview/. _champro_android/app/
+          cp android-build/native-app.css android-build/native-app.js _champro_android/app/
           cp android-build/package.json _champro_android/package.json
           cp android-build/preview-capacitor.config.json _champro_android/capacitor.config.json
           # All local navigation must remain within this bundled offline app.
@@ -64,7 +66,7 @@ jobs:
           sha256sum _champro_android/android/app/build/outputs/apk/debug/app-debug.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: ChamPro-Preview-Android-APK
+          name: ChamPro-Preview-Android-Native-UI-APK
           path: _champro_android/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
