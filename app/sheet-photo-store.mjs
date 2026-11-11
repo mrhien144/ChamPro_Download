@@ -57,9 +57,11 @@ export function enqueueSheetPhoto({id,canvas,markers,angle=0,form='three',digits
  if(!id||!canvas?.width||!canvas?.height)return false;
  if(queue.length>=3)return false;
  const snapshot=document.createElement('canvas');
- snapshot.width=canvas.width;snapshot.height=canvas.height;
- snapshot.getContext('2d').drawImage(canvas,0,0);
- queue.push({id,snapshot,markers:structuredClone(markers||[]),angle,form,digits,examId,examCode,createdAt:new Date().toISOString()});
+ const scale=Math.min(1,1400/Math.max(canvas.width,canvas.height));
+ snapshot.width=Math.max(1,Math.round(canvas.width*scale));snapshot.height=Math.max(1,Math.round(canvas.height*scale));
+ snapshot.getContext('2d').drawImage(canvas,0,0,snapshot.width,snapshot.height);
+ const adjusted=(markers||[]).map(([x,y])=>[x*scale,y*scale]);
+ queue.push({id,snapshot,markers:adjusted,angle,form,digits,examId,examCode,createdAt:new Date().toISOString()});
  if(!busy)void drain();
  return true;
 }
