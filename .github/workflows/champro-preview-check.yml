@@ -20,6 +20,8 @@ jobs:
       - name: Syntax-check modified application modules
         run: |
           node --check app/app.mjs
+          node --check app/result-review.mjs
+          node --check app/result-review-ui.mjs
           node --check app/advanced.mjs
           node --check app/local-data-store.mjs
           node --check app/sheet-photo-store.mjs
@@ -37,7 +39,9 @@ jobs:
           if-no-files-found: error
           retention-days: 7
       - name: Existing grading regression test
-        run: node tests/grade.test.mjs
+        run: |
+          node tests/grade.test.mjs
+          node tests/result-review.test.mjs
       - name: Staging cloud-sync security regression
         run: node tests/teacher-sync.test.mjs
       - name: Check offline core files exist
