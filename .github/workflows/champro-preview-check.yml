@@ -21,6 +21,8 @@ jobs:
           node --check app/local-data-store.mjs
           node --check app/sheet-photo-store.mjs
           node --check app/sw.js
+          node --check platform/worker/src/index.js
+          node --check platform/worker/src/teacher-sync.js
       - name: Existing grading regression test
         run: node tests/grade.test.mjs
       - name: Check offline core files exist
