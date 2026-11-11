@@ -133,3 +133,41 @@ body.cp-native-app { background:var(--cp-native-bg); color:#172a45; overflow-x:h
  .cp-native-app .cp-native-bottom { height:calc(58px + env(safe-area-inset-bottom,0px)); }
  .cp-native-app .cp-native-tab .cp-native-tab-icon { height:24px; }
 }
+
+/* APK SCROLL FIX v3: one dedicated touch-scrolling content viewport.
+   Top and bottom navigation remain fixed. Browser /app/ and /app-preview/ are unchanged. */
+html:has(body.cp-native-app) {
+  height:100%;
+  width:100%;
+  overflow:hidden;
+}
+body.cp-native-app {
+  height:100dvh;
+  min-height:0;
+  overflow:hidden !important;
+}
+.cp-native-app .shell {
+  display:block !important;
+  height:100dvh !important;
+  min-height:0 !important;
+  overflow:hidden !important;
+}
+.cp-native-app .main {
+  display:block;
+  height:100dvh !important;
+  max-height:100dvh !important;
+  min-height:0 !important;
+  margin:0 auto !important;
+  overflow-x:hidden !important;
+  overflow-y:auto !important;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;
+  scroll-behavior:auto;
+}
+.cp-native-app .page.shown { min-height:0; }
+/* Scrolling must also work when a swipe begins over the live camera video. */
+.cp-native-app #cameraSurface,
+.cp-native-app #cameraSurface video { touch-action:pan-y; }
+/* Keep horizontal drag on the camera-size slider and scrollable tables. */
+.cp-native-app .cp-native-camera-resize input[type="range"] { touch-action:pan-x; }
+.cp-native-app .tablewrap { touch-action:auto; }
