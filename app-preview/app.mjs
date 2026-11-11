@@ -41,7 +41,9 @@ $('examForm').addEventListener('submit',ev=>{ev.preventDefault();try{const f=new
 if(!gradeClass||!subject)throw Error('Cần nhập Khối/Lớp và Môn học');
 if(db.exams.some(e=>String(e.gradeClass||'').toLowerCase()===gradeClass.toLowerCase()&&e.name.toLowerCase()===period.toLowerCase()&&String(e.subject||'').toLowerCase()===subject.toLowerCase()))throw Error('Môn này đã có trong kỳ kiểm tra. Hãy mở để nhập mã đề khác.');
 const allocation=allocateExamPoints(v.form,v.counts,f.get('totalI'),f.get('totalIII'));
- db.exams.push({id:id(),name:period,gradeClass,subject,...v,keys:{},rules:allocation.rules});save();ev.target.reset();toast('Đã tạo kỳ kiểm tra và thiết lập điểm. Tiếp tục nhập đáp án Excel hoặc QR.');}catch(e){toast(e.message);}});
+ const created={id:id(),name:period,gradeClass,subject,...v,keys:{},rules:allocation.rules};db.exams.push(created);save();
+ $('keyExam').value=created.id;$('keyExam').dispatchEvent(new Event('change',{bubbles:true}));
+ ev.target.reset();toast('Đã tạo kỳ kiểm tra và chọn môn vừa tạo. Tiếp tục nhập đáp án Excel hoặc QR.');}catch(e){toast(e.message);}});
 document.querySelector('[name=form]').addEventListener('change',ev=>{const f=$('examForm');if(ev.target.value==='120'){f.elements.cI.value=120;f.elements.cII.value=0;f.elements.cIII.value=0;f.elements.totalI.value=1200;f.elements.totalIII.value=0;}else{f.elements.cI.value=18;f.elements.cII.value=4;f.elements.cIII.value=6;f.elements.totalI.value=4.5;f.elements.totalIII.value=1.5;}});
 function update120PointsPreview(){
  const e=selectedExam('keyExam'),panel=$('rule120Panel');
