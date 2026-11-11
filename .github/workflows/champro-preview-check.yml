@@ -23,6 +23,7 @@ jobs:
           node --check app/local-data-store.mjs
           node --check app/sheet-photo-store.mjs
           node --check app/sw.js
+          node --check app/account-bridge.mjs
           node --check platform/worker/src/index.js
           node --check platform/worker/src/teacher-sync.js
       - name: Existing grading regression test
