@@ -47,30 +47,32 @@ const net=$('cpNativeNet');
 function network(){const online=navigator.onLine;net.textContent=online?'Trực tuyến':'Offline';net.classList.toggle('offline',!online);}
 window.addEventListener('online',network);window.addEventListener('offline',network);network();sync();
 
-// Move the existing exam selector, without replacing its DOM node or listeners.
-// This preserves selectedExam(), QR imports and the entire grading pipeline.
+// APK camera presentation only: keep the existing exam picker in
+// "Cài đặt quét" BELOW the camera, as in the phone reference screenshot.
+// Do not relocate it or replace any existing camera/listener elements.
 const card=document.querySelector('#page-scan .camera-card');
 const surface=$('cameraSurface');
-const exam=$('scanExam');
-const label=exam?.closest('label');
-if(card&&surface&&label){
- label.classList.add('cp-native-scan-exam');
- const cameraTop=card.querySelector('.camera-top');
- if(cameraTop)cameraTop.after(label);
+if(card&&surface){
  const resize=document.createElement('div');
  resize.className='cp-native-camera-resize';
- resize.innerHTML='<label for="cpNativeZoom">Khung camera</label><button id="cpNativeZoomOut" type="button" aria-label="Thu nhỏ khung">−</button><input id="cpNativeZoom" type="range" min="34" max="100" step="2" value="72" aria-label="Kích thước khung camera"><button id="cpNativeZoomIn" type="button" aria-label="Phóng to khung">+</button><output id="cpNativeZoomValue" for="cpNativeZoom">72%</output>';
- surface.before(resize);
+ resize.innerHTML='<label for="cpNativeZoom">Khung camera</label><button id="cpNativeZoomOut" type="button" aria-label="Thu nhỏ khung">−</button><input id="cpNativeZoom" type="range" min="34" max="100" step="2" value="100" aria-label="Kích thước khung camera"><button id="cpNativeZoomIn" type="button" aria-label="Phóng to khung">+</button><output id="cpNativeZoomValue" for="cpNativeZoom">100%</output>';
+ // The live view starts directly beneath the candidate banner. Sizing tools
+ // stay BELOW the live view so they never shrink the camera on first opening.
+ surface.after(resize);
  const slider=$('cpNativeZoom'),output=$('cpNativeZoomValue');
- let zoom=72;
+ let zoom=100;
  function setZoom(value){
-  zoom=Math.max(34,Math.min(100,Number(value)||72));
+  zoom=Math.max(34,Math.min(100,Number(value)||100));
   slider.value=String(zoom);output.textContent=zoom+'%';
-  const available=Math.max(190,Math.min(window.innerWidth-44,card.clientWidth-26));
-  // Camera viewport is 3:4; constrain height to the available visible screen.
-  const safeHeight=Math.max(180,Math.min(window.innerHeight-250,540));
-  const maxWidth=Math.min(available,safeHeight*.75);
-  const width=Math.max(130,Math.round(maxWidth*zoom/100));
+  const widthAvailable=card.clientWidth>50?card.clientWidth:
+   Math.min(window.innerWidth,690);
+  // Use the full camera-card width by default, not a 72% shrunk area.
+  // In portrait, a 3:4 viewport fills the phone width like the reference.
+  // In landscape, cap height to keep touch controls reachable.
+  const maxWidth=window.innerWidth>window.innerHeight?
+   Math.min(widthAvailable,Math.max(240,(window.innerHeight-145)*.75)):
+   widthAvailable;
+  const width=Math.max(100,Math.round(maxWidth*zoom/100));
   surface.style.setProperty('--cp-native-camera-width',width+'px');
  }
  slider.addEventListener('input',()=>setZoom(slider.value));
@@ -78,7 +80,11 @@ if(card&&surface&&label){
  $('cpNativeZoomIn').addEventListener('click',()=>setZoom(zoom+10));
  window.addEventListener('resize',()=>setZoom(zoom));
  window.addEventListener('orientationchange',()=>setZoom(zoom));
- setZoom(72);
+ if('ResizeObserver' in window){
+  const observer=new ResizeObserver(()=>setZoom(zoom));
+  observer.observe(card);
+ }
+ setZoom(100);
 }
 // No modification to video stream, getUserMedia, canvas, auto-scan timing,
 // fiducial detection, answer grading, photo queue or IndexedDB.
