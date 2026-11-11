@@ -23,6 +23,16 @@ native_js = root / "native-app.js"
 assert native_css.is_file() and native_js.is_file()
 s = s.replace("</head>", '<link rel="stylesheet" href="./native-app.css"></head>', 1)
 s = s.replace("</body>", '<script defer src="./native-app.js"></script></body>', 1)
+# APK-only photo review wrapper: preserve the original grader, overlays and
+# stored photos, then crop/deskew the annotated canvas for visual inspection.
+app_js = root / "app.mjs"
+app_code = app_js.read_text(encoding="utf-8")
+original_import = "import {enqueueSheetPhoto,showSheetPhoto} from './sheet-photo-store.mjs';"
+assert original_import in app_code, "Photo import changed; do not silently patch"
+app_code = app_code.replace(original_import,
+ "import {enqueueSheetPhoto,showSheetPhoto} from './photo-review-apk.mjs';", 1)
+app_js.write_text(app_code, encoding="utf-8")
+
 # This app is already bundled in the APK. Never register a browser service worker
 # that could pin an obsolete web layout or delay the native presentation.
 s = s.replace('<script type="module" src="./pwa-install.mjs?v=20261111-pwa-preview-v2"></script>', '')
