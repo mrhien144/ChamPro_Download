@@ -139,7 +139,8 @@ function parseInputs(item){
   if(inputs.length!==count)throw Error('Thiếu câu ở phần '+part);
   for(let i=0;i<inputs.length;i++){
    let value=inputs[i].value.trim();
-   if(part!=='III')value=value.toUpperCase().replaceAll('D','Đ');
+   if(part==='I')value=value.toUpperCase();
+   else if(part==='II')value=value.toUpperCase().replaceAll('D','Đ');
    if(!value)throw Error('Phần '+part+', câu '+(i+1)+' chưa có đáp án');
    if(part==='I'){
     if(value!=='ALL'&&!/^[ABCD](\|[ABCD]){0,3}$/.test(value))
