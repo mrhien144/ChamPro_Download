@@ -1,0 +1,38 @@
+name: ChấmPro visual answer review regression
+on:
+  push:
+    branches:
+      - feature/preview-answers-visual-all-parts-20261111
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate syntax
+        run: |
+          node --check app-preview/compact-answer-ui.mjs
+          node --check app-preview/visual-answer-model.mjs
+          node --check app-preview/grader.mjs
+      - name: Verify choice acceptance and score ladder
+        run: |
+          node tests/visual-answer-ii.test.mjs
+          node tests/compact-points-preview.test.mjs
+          node tests/preview-pending-code.test.mjs
+      - name: Verify no camera or storage changes and correct UI controls
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          editor=Path('app-preview/compact-answer-ui.mjs').read_text()
+          for token in ['data-cp-chip','i+\'T\'','i+\'F\'','data-cp-short-add','data-cp-short-remove','serializeChoiceII','regradeAffectedResults']:
+              assert token in editor, token
+          model=Path('app-preview/visual-answer-model.mjs').read_text()
+          assert "c.trueValue&&c.falseValue?'*'" in model
+          assert "if(all)return 'ALL'" in model
+          print('PASS: visual checks/roundtrip/double acceptance')
+          PY
