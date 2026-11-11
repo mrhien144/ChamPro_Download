@@ -19,7 +19,7 @@ assert.deepEqual(actual(shortCellMarks('4','3')),
 assert.deepEqual(actual(shortCellMarks('3','3',['','','3',''])),
  [[2,'3','red'],[0,'3','yellow']], 'The answer must never shift to match a wrong scan');
 assert.equal(shortCellMarks('1,5','1,5').length,0);
-assert.equal(shortCellMarks('','134').length,0);
+assert.deepEqual(actual(shortCellMarks('','134')),[[0,'1','yellow'],[1,'3','yellow'],[2,'4','yellow']]);
 
 const exam={id:'ex',digits:3,form:'three',counts:{I:2,II:1,III:1},
  rules:{I:.25,II:[0,.1,.25,.5,1],III:.25},
