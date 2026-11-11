@@ -61,13 +61,13 @@ export function regradeAffectedResults(data,exam,reason='Giáo viên sửa đáp
    const newGrade=grade(exam,{...r.answers,examCode:r.examCode});
    const differs=r.score!==newGrade.total||r.max!==newGrade.max||
     ['I','II','III'].some(p=>r.parts?.[p]!==newGrade.points[p]);
-   if(!differs)continue;
+   if(!differs&&!r.pendingCode)continue;
    const now=new Date().toISOString();
    if(!Array.isArray(r.scoreHistory))r.scoreHistory=[];
    r.scoreHistory.push({at:now,oldScore:r.score,oldMax:r.max,
     oldParts:{...(r.parts||{})},newScore:newGrade.total,newMax:newGrade.max,
     reason});
-   r.score=newGrade.total;r.max=newGrade.max;r.parts=newGrade.points;
+   r.score=newGrade.total;r.max=newGrade.max;r.parts=newGrade.points;r.pendingCode=false;
    r.regradedAt=now;stats.changed++;
   }catch{stats.skipped++;}
  }
@@ -142,7 +142,7 @@ export function correctedRecord(data,exam,old,changes){
   oldParts:{...(old.parts||{})},newScore:scored.total,newMax:scored.max,
   reason:changes.reason||'Giáo viên chỉnh sửa bài đã chấm',oldExamCode:old.examCode,
   newExamCode:code});
- next.score=scored.total;next.max=scored.max;next.parts=scored.points;
+ next.score=scored.total;next.max=scored.max;next.parts=scored.points;next.pendingCode=false;
  next.manualEditedAt=now;
  return {record:next,changed:true};
 }
