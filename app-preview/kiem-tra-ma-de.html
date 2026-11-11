@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>Kiểm tra mã đề đã lưu | ChấmPro</title>
+<style>
+:root{font-family:system-ui,-apple-system,sans-serif;color:#172c45}*{box-sizing:border-box}
+body{margin:0;background:#f3f6fb;padding:16px}main{max-width:780px;margin:auto;background:#fff;border-radius:17px;padding:23px;box-shadow:0 10px 30px #0f274710}
+h1{font-size:23px;margin:0 0 8px}.muted{color:#5f7087;font-size:14px;line-height:1.6}
+.card{padding:14px 16px;margin:12px 0;border:1px solid #dce4ee;border-radius:12px}.title{font-size:17px;font-weight:750}
+.codes{font-weight:700;color:#1745a2;overflow-wrap:anywhere}.small{font-size:13px;color:#65758b}
+.warn{background:#fff5df;border-color:#f0d48a}.ok{background:#e8f7f0;border-color:#badfc9}
+a{color:#1251b8}button{border:0;background:#245bd8;color:white;padding:12px 17px;border-radius:11px;cursor:pointer;font-weight:700}
+</style></head>
+<body><main>
+<h1>Kiểm tra mã đề đã lưu</h1>
+<p class="muted">Trang kiểm tra độc lập chỉ đọc thông tin <strong>kỳ kiểm tra và mã đề</strong> trong bộ nhớ trình duyệt hiện tại. Không đọc tên học sinh, không đọc nội dung đáp án, không thay đổi hay gửi dữ liệu lên mạng.</p>
+<div id="status" class="card">Đang kiểm tra...</div>
+<div id="exams"></div>
+<p class="muted">Nếu danh sách không xuất hiện nhưng bạn đã nhập đáp án, có thể bạn đang mở ChấmPro bằng trình duyệt khác, chế độ riêng tư hoặc đã thay đổi dữ liệu trang web. Tránh xóa dữ liệu trình duyệt trước khi sao lưu.</p>
+<p><button id="refresh" type="button">Kiểm tra lại</button> <a href="./?v=20261105-code-check-r1">Trở về ChấmPro</a></p>
+</main>
+<script>
+const esc=s=>String(s??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
+function verify(){
+ const status=document.getElementById('status'),view=document.getElementById('exams');
+ view.textContent='';
+ try{
+  const raw=localStorage.getItem('champro-web-beta-v1');
+  if(!raw){status.className='card warn';status.textContent='Không tìm thấy dữ liệu ChấmPro trong trình duyệt hiện tại.';return;}
+  const obj=JSON.parse(raw),exams=Array.isArray(obj.exams)?obj.exams:[];
+  const list=exams.filter(e=>/sinh/i.test(e.subject||e.name||''));
+  status.className='card '+(list.some(e=>Object.keys(e.keys||{}).length)?'ok':'warn');
+  status.textContent='Tìm thấy '+exams.length+' kỳ/môn kiểm tra; trong đó có '+list.length+' bộ môn Sinh. Tổng mã đề đã lưu: '+exams.reduce((n,e)=>n+Object.keys(e.keys||{}).length,0)+'.';
+  for(const e of exams){
+   const codes=Object.keys(e.keys||{}).sort(),body=document.createElement('div');
+   body.className='card'+(codes.length?'':' warn');
+   const count=codes.filter(k=>['I','II','III'].some(p=>(e.keys[k]?.[p]||[]).some(x=>String(x||'').trim()))).length;
+   body.innerHTML='<div class="title">'+esc([e.gradeClass,e.name,e.subject].filter(Boolean).join(' · '))+'</div>'+
+      '<div class="small">Loại phiếu: '+esc(e.form==='120'?'120 câu':'3 phần')+' · Quy định mã '+esc(e.digits)+' số</div>'+
+      '<div class="codes">Mã đề: '+esc(codes.join(', ')||'CHƯA CÓ')+'</div>'+
+      '<div class="small">Mã đề có ít nhất một đáp án: '+count+'/'+codes.length+'</div>';
+   view.append(body);
+  }
+ }catch(e){status.className='card warn';status.textContent='Không đọc được thông tin: '+e.message;}
+}
+document.getElementById('refresh').onclick=verify;verify();
+</script></body></html>

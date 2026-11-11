@@ -1,0 +1,11 @@
+ChấmPro – BẢN THỬ NGHIỆM RIÊNG
+
+Chỉ dùng dữ liệu giả. Không thay thế thư mục /app/ đang chấm bài.
+Toàn bộ nội dung thư mục này được thiết kế cho /app-preview/ trên champro.mrhien.com.
+Các kho dữ liệu localStorage, IndexedDB, Cache Storage và Service Worker của
+bản này có tên hoặc phạm vi độc lập với /app/.
+WordPress Bridge dùng postMessage theo origin https://champro.mrhien.com;
+nếu triển khai ở tên miền khác, đăng nhập sẽ KHÔNG hoạt động.
+Đây chưa phải bản thương mại; chưa kích hoạt upload điểm hoặc ảnh lên Cloudflare.
+Muốn thử đăng nhập: Sao lưu & dữ liệu → Kết nối tài khoản WordPress.
+Lưu ý: Không nhấn Merge PR số 2 hoặc đè lên /app/ chỉ để chạy thử.

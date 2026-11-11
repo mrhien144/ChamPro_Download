@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#122b56">
+<title>Kiểm tra đọc phiếu thật — ChấmPro</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:15px;background:#f0f4fa;color:#172840;font:16px/1.6 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:740px;margin:18px auto;background:#fff;padding:24px;border-radius:18px;box-shadow:0 10px 40px #18335716}
+h1{font-size:24px;line-height:1.3;margin:0 0 8px}
+p{margin:9px 0 14px}
+label{display:block;font-weight:650;margin:17px 0 6px}
+input,select{width:100%;font:inherit;padding:12px;border:1px solid #cbd7e5;border-radius:10px;background:white}
+button{font:inherit;font-weight:700;border:0;background:#205add;color:white;padding:12px 18px;border-radius:10px;cursor:pointer;margin-top:16px}
+button:disabled{opacity:.55}
+button.secondary{background:#eaf0fb;color:#16468f}
+.status{margin:17px 0;border-radius:11px;padding:12px 14px;border:1px solid #d5e2f2;background:#f3f8ff;font-weight:650}
+small,.hint{font-size:13px;color:#5a6d85}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.cell{border:1px solid #e2e8f0;border-radius:12px;padding:10px}
+.cell small{display:block}.cell strong{display:block;font-size:18px}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.6 ui-monospace,Consolas,monospace;background:#111e30;color:#eaf1ff;padding:14px;border-radius:12px;max-height:340px;overflow:auto}
+img{display:block;max-height:350px;max-width:100%;margin:12px auto;object-fit:contain;border-radius:10px}
+[hidden]{display:none!important}
+@media(max-width:440px){main{padding:18px}.grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body><main>
+<h1>Kiểm tra nhận diện phiếu thật</h1>
+<p>Trang này kiểm tra riêng việc đọc ảnh, <strong>không chấm điểm, không lưu bài</strong> và không thay đổi học sinh/đáp án hiện có. Ảnh được xử lý ngay trên điện thoại.</p>
+<label for="photo">1. Chụp hoặc chọn ảnh phiếu trắc nghiệm</label>
+<input id="photo" type="file" accept="image/*" capture="environment">
+<p class="hint">Chụp nguyên tờ phiếu, đủ 4 ô vuông đen ngoài cùng; giữ máy thẳng, rõ nét và đủ sáng. Có thể dùng ảnh đã chụp trong Thư viện.</p>
+<label for="layout">2. Chọn loại phiếu đang dùng</label>
+<select id="layout">
+<option value="ChamPro_Phieu_3Phan_MaDe3" selected>Phiếu 3 phần — mã đề 3 chữ số</option>
+<option value="ChamPro_Phieu_3Phan_MaDe4">Phiếu 3 phần — mã đề 4 chữ số</option>
+<option value="ChamPro_Phieu_120Cau_MaDe3">Phiếu 120 câu — mã đề 3 chữ số</option>
+<option value="ChamPro_Phieu_120Cau_MaDe4">Phiếu 120 câu — mã đề 4 chữ số</option>
+</select>
+<button id="run" type="button">3. Phân tích phiếu</button>
+<div id="status" class="status" role="status" aria-live="polite">Chưa chọn ảnh.</div>
+<div id="report" hidden>
+<div class="grid">
+<div class="cell"><small>Mã đề camera nhận diện</small><strong id="code">—</strong></div>
+<div class="cell"><small>SBD camera nhận diện</small><strong id="sbd">—</strong></div>
+<div class="cell"><small>Độ tin cậy mã đề</small><strong id="confidence">—</strong></div>
+<div class="cell"><small>Hướng ảnh đã thử</small><strong id="rotation">—</strong></div>
+</div>
+<p id="codes" class="hint"></p>
+<p id="issues" class="hint"></p>
+<details><summary>Chi tiết các câu đã đọc (để đối chiếu với phiếu)</summary><pre id="answers"></pre></details>
+</div>
+<section id="overlaySection" hidden>
+<h3>Ảnh đánh dấu vị trí ChấmPro đang đọc</h3>
+<p class="hint">Các vòng tròn phải nằm đúng giữa các ô tô. <strong>Đỏ:</strong> mã đề; <strong>xanh dương:</strong> SBD; <strong>vàng:</strong> Phần I (10 câu đầu); <strong>xanh lá:</strong> bốn mốc ngoài cùng. Đây chỉ là ảnh chẩn đoán, không sửa ảnh gốc.</p>
+<label for="previewAngle">Xem ảnh ở hướng</label>
+<select id="previewAngle"></select>
+<canvas id="overlayCanvas" style="display:block;width:100%;height:auto;max-height:960px;object-fit:contain;border:1px solid #ced9e6;border-radius:10px;margin:12px auto"></canvas>
+<button class="secondary" id="saveOverlay" type="button">Lưu ảnh đánh dấu về điện thoại</button>
+</section>
+<section id="calibrationSection" hidden>
+<h3>Kiểm tra độ lệch lưới ô tô (thử nghiệm)</h3>
+<p class="hint">Đây là bước kiểm tra độc lập để tìm tâm ô SBD và mã đề trên ảnh thật. Kết quả đọc mực ở tâm ô chỉ phục vụ kiểm thử. <strong>Không dùng để chấm tự động</strong> trước khi kiểm tra các phần và đáp án trên giấy.</p>
+<div id="calibrationText" class="status"></div>
+<p class="hint">Trên ảnh phía trên, vòng tròn tím thể hiện các vị trí sau khi hiệu chỉnh. Nếu các vòng này nằm đúng tâm ô tô, hãy lưu ảnh đánh dấu và gửi để đối chiếu.</p>
+</section>
+<section id="printedSection" hidden>
+<h3>Kiểm tra tọa độ riêng từng phần</h3>
+<div id="printedResult" class="status"></div>
+<p class="hint">Đổi chế độ hiển thị bên dưới để xem những điểm lấy mẫu mới. ChấmPro chưa sử dụng các điểm này để lưu điểm tự động. Chỉ xác nhận khi các điểm nằm giữa ô in và câu trả lời đọc đúng với phiếu giấy.</p>
+<button id="togglePrinted" class="secondary" type="button">Xem các điểm mới (màu hồng)</button>
+</section>
+<h3>Nhật ký kiểm tra</h3>
+<pre id="log">Chưa kiểm tra.</pre>
+<button class="secondary" id="copy" type="button">Sao chép nhật ký</button>
+<a href="./" style="margin-left:10px">Trở về ChấmPro</a>
+<p class="hint">Khi gửi nhật ký, bạn có thể che phần SBD nếu muốn. Không cần gửi ảnh chứa tên học sinh nếu chỉ kiểm tra lỗi mã đề.</p>
+</main>
+<script type="module">
+import {readSheet} from './omr-native.mjs?real-photo-check-3';
+import {calibrateIdentity} from './omr-grid-calibration.mjs?lattice-r1';
+import {printedThreePartLayout} from './omr-printed-layout-diagnostic.mjs?v=measured-r2';
+import {inspectPrintedInk} from './omr-center-diagnostic.mjs?v=center-r1';
+const $=id=>document.getElementById(id);
+let log=[], lastCanvas=null,lastLayout=null,lastSuccess=[], lastGrid=null,lastCorrected=null;
+const line=s=>{log.push(s);$('log').textContent=log.join('\n')};
+const setStatus=s=>$('status').textContent=s;
+function rotate(source,deg){
+ if(!deg)return source;
+ const c=document.createElement('canvas'),w=source.width,h=source.height;
+ c.width=deg===90||deg===270?h:w;c.height=deg===90||deg===270?w:h;
+ const ctx=c.getContext('2d',{willReadFrequently:true});
+ if(deg===90){ctx.translate(c.width,0);ctx.rotate(Math.PI/2)}
+ else if(deg===180){ctx.translate(c.width,c.height);ctx.rotate(Math.PI)}
+ else if(deg===270){ctx.translate(0,c.height);ctx.rotate(-Math.PI/2)}
+ ctx.drawImage(source,0,0);return c;
+}
+async function readImage(file){
+ const url=URL.createObjectURL(file);
+ try{
+  const img=new Image();img.decoding='async';img.src=url;
+  if(img.decode)await img.decode();else await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject});
+  const c=document.createElement('canvas'),scale=Math.min(1,1800/Math.max(img.naturalWidth,img.naturalHeight));
+  c.width=Math.round(img.naturalWidth*scale);c.height=Math.round(img.naturalHeight*scale);
+  c.getContext('2d',{willReadFrequently:true}).drawImage(img,0,0,c.width,c.height);
+  return c;
+ }finally{URL.revokeObjectURL(url)}
+}
+function solve8(rows,values){
+ const n=8,a=rows.map((r,i)=>[...r,values[i]]);
+ for(let k=0;k<n;k++){
+  let pivot=k;for(let j=k+1;j<n;j++)if(Math.abs(a[j][k])>Math.abs(a[pivot][k]))pivot=j;
+  if(Math.abs(a[pivot][k])<1e-9)throw Error('Không xác định được phép chiếu');
+  [a[k],a[pivot]]=[a[pivot],a[k]];
+  const divisor=a[k][k];for(let j=k;j<=n;j++)a[k][j]/=divisor;
+  for(let i=0;i<n;i++){if(i===k)continue;const ratio=a[i][k];for(let j=k;j<=n;j++)a[i][j]-=ratio*a[k][j];}
+ }
+ return a.map(row=>row[n]);
+}
+function projectLayout(layout,marks){
+ const rows=[],v=[];
+ layout.markers.forEach(([x,y],i)=>{
+  const [u,w]=marks[i];rows.push([x,y,1,0,0,0,-x*u,-y*u]);v.push(u);
+  rows.push([0,0,0,x,y,1,-x*w,-y*w]);v.push(w);
+ });
+ const m=solve8(rows,v);
+ return ([x,y])=>{const z=m[6]*x+m[7]*y+1;return [(m[0]*x+m[1]*y+m[2])/z,(m[3]*x+m[4]*y+m[5])/z];};
+}
+function drawOverlay(){
+ const angle=Number($('previewAngle').value),entry=lastSuccess.find(x=>x.deg===angle);
+ if(!entry||!lastCanvas||!lastLayout)return;
+ const canvas=rotate(lastCanvas,angle),out=$('overlayCanvas'),ctx=out.getContext('2d');
+ const scale=Math.min(1,1050/Math.max(canvas.width,canvas.height));
+ out.width=Math.round(canvas.width*scale);out.height=Math.round(canvas.height*scale);
+ ctx.drawImage(canvas,0,0,out.width,out.height);
+ const fit=projectLayout(lastLayout,entry.res.markers);
+ function ring(pt,color,r=5){
+  const [x,y]=fit(pt);ctx.beginPath();ctx.arc(x*scale,y*scale,r,0,Math.PI*2);
+  ctx.lineWidth=2.1;ctx.strokeStyle=color;ctx.stroke();
+ }
+ function marker(pt){
+  const [x,y]=pt;ctx.beginPath();ctx.arc(x*scale,y*scale,11,0,Math.PI*2);
+  ctx.lineWidth=3;ctx.strokeStyle='#00ee66';ctx.stroke();
+ }
+ for(const p of entry.res.markers)marker(p);
+ for(const group of lastLayout.candidate_no)for(const p of group)ring(p,'#1877f2',3.6);
+ for(const group of lastLayout.exam_code)for(const p of group)ring(p,'#ff3434',4.1);
+ for(const group of lastLayout.parts.I.slice(0,10))for(const p of group)ring(p,'#ffcc00',3.8);
+ if(lastCorrected?.show&&angle===lastCorrected.deg){
+  const drawGroup=(groups,max)=>{for(const q of groups.slice(0,max))for(const row of q){
+   if(Array.isArray(row[0]))for(const point of row)ring(point,'#fa19b8',4);
+   else ring(row,'#fa19b8',4);
+  }};
+  for(const group of lastCorrected.layout.exam_code)for(const p of group)ring(p,'#fa19b8',4);
+  for(const group of lastCorrected.layout.candidate_no)for(const p of group)ring(p,'#fa19b8',4);
+  drawGroup(lastCorrected.layout.parts.I,10);
+  drawGroup(lastCorrected.layout.parts.II,2);
+  drawGroup(lastCorrected.layout.parts.III,2);
+ }
+ if(lastGrid?.deg===angle){
+  for(const arr of [lastGrid.code?.cells,lastGrid.sbd?.cells])if(arr){
+   for(const row of arr)for(const [x,y] of row){
+    ctx.beginPath();ctx.arc(x*scale,y*scale,4.4,0,2*Math.PI);
+    ctx.lineWidth=2;ctx.strokeStyle='#b000ef';ctx.stroke();
+   }
+  }
+ }
+ line('Hướng hiển thị '+angle+'°: 4 mốc ảnh '+JSON.stringify(entry.res.markers.map(p=>p.map(v=>Math.round(v)))));
+}
+function savedCodes(){
+ try{
+  const raw=localStorage.getItem('champro-web-beta-v1');
+  if(!raw)return [];
+  return (JSON.parse(raw).exams||[]).map(e=>({name:[e.gradeClass,e.name,e.subject].filter(Boolean).join(' · '),codes:Object.keys(e.keys||{}).sort()}));
+ }catch(e){return []}
+}
+$('run').onclick=async()=>{
+ $('run').disabled=true;$('report').hidden=true;log=[];$('log').textContent='';
+ try{
+  const file=$('photo').files[0];if(!file)throw Error('Hãy chọn hoặc chụp ảnh phiếu trước.');
+  const started=performance.now();line('Ảnh: '+file.type+', '+file.size+' byte');
+  setStatus('Đang mở ảnh và tải 4 mẫu phiếu…');
+  const [canvas,resp]=await Promise.all([readImage(file),fetch('./layouts.json',{cache:'no-store'})]);
+  if(!resp.ok)throw Error('Không tải được mẫu phiếu: HTTP '+resp.status);
+  const layouts=await resp.json(),layout=layouts[$('layout').value];
+  if(!layout)throw Error('Không tìm thấy tọa độ loại phiếu đã chọn');
+  line('Ảnh xử lý: '+canvas.width+' × '+canvas.height);
+  const success=[],fail=[];lastCanvas=null;lastLayout=null;lastSuccess=[];lastGrid=null;lastCorrected=null;$('overlaySection').hidden=true;$('calibrationSection').hidden=true;$('printedSection').hidden=true;
+  for(const deg of [0,90,270,180]){
+   setStatus('Đang nhận diện hướng '+deg+'°…');
+   await new Promise(resolve=>requestAnimationFrame(resolve));
+   try{
+    const res=readSheet(rotate(canvas,deg),layout,null,layout.parts.I.length===120?{I:120,II:0,III:0}:{I:40,II:8,III:6});
+    const validCode=Number(res.codeConfidence)===1;
+    const score=(validCode?10:0)+res.confidence*3-Math.min(res.uncertain.length,40)*.06;
+    success.push({deg,res,score});
+    line('Hướng '+deg+'°: mã '+(res.examCode||'?')+'; SBD '+(res.sbd||'?')+'; mã rõ '+(validCode?'có':'không')+'; ô chưa rõ '+res.uncertain.length+'; 4 mốc '+res.markerMode+' (điểm '+res.markerScore+')');
+   }catch(err){fail.push({deg,message:err.message});line('Hướng '+deg+'°: '+err.message);}
+  }
+  if(!success.length)throw Error('Không đọc được cả 4 hướng. '+fail.slice(0,2).map(x=>x.message).join(' | '));
+  const local=savedCodes();success.sort((a,b)=>{
+   const fit=x=>local.some(e=>e.codes.includes(x.res.examCode));
+   const rank=x=>x.score+(fit(x)?8:0);
+   return rank(b)-rank(a);
+  });
+  const initialBest=success[0],upright=success.find(x=>x.deg===0)||initialBest;
+  // When no orientation yields a complete, registered code, do not promote
+  // a sideways partial reading merely because it filled a few SBD bubbles.
+  const confirmed=success.find(x=>x.res.codeConfidence===1&&local.some(e=>e.codes.includes(x.res.examCode)));
+  const best=confirmed||upright,r=best.res,matched=local.filter(e=>e.codes.includes(r.examCode));
+  lastCanvas=canvas;lastLayout=layout;lastSuccess=success;
+  const correctedLayout=printedThreePartLayout(layout);
+  if(correctedLayout&&upright.deg===0){
+   try{
+    const corrected=readSheet(canvas,correctedLayout,null,{I:40,II:8,III:6});
+    const inkCheck=inspectPrintedInk(canvas,correctedLayout,corrected.markers,{I:40,II:8,III:6});
+    lastCorrected={layout:correctedLayout,deg:0,show:true};
+    const printedSummary='Mã '+(corrected.examCode||'?')+'; SBD '+(corrected.sbd||'?')+
+      '; Phần I 10 câu đầu: '+corrected.I.slice(0,10).join(' ')+'; II 2 câu đầu: '+corrected.II.slice(0,2).join(' | ')+
+      '; III 2 câu đầu: '+corrected.III.slice(0,2).join(' | ')+
+      '; Ô chưa rõ: '+corrected.uncertain.length;
+    $('printedSection').hidden=false;
+    $('printedResult').textContent=printedSummary;
+    line('TOẠ ĐỘ MỚI THEO TỪNG VÙNG (CHƯA XÁC NHẬN): '+printedSummary);
+    line('MỰC TÂM Ô (THỬ NGHIỆM): mã '+inkCheck.code+', SBD '+inkCheck.sbd+', phần I '+inkCheck.I+', II '+inkCheck.II.slice(0,4).join(' | ')+', III '+inkCheck.III.slice(0,6).join(' | ')+', cần xem lại '+JSON.stringify(inkCheck.unread));
+    line('ĐỘ TƯƠNG PHẢN MÃ ĐỀ: '+JSON.stringify(inkCheck.confidence.code));
+   }catch(error){line('Lỗi thử tọa độ mới: '+error.message);}
+  }
+
+  // Diagnostic only: calibrate the printed grids at the upright orientation,
+  // not the score-selected orientation when every code read is incomplete.
+  try{
+   setStatus('Đang đối chiếu tâm các ô tô thực tế…');
+   await new Promise(resolve=>requestAnimationFrame(resolve));
+   const calibrated=calibrateIdentity(rotate(canvas,upright.deg),layout,upright.res.markers);
+   lastGrid={deg:upright.deg,...calibrated};
+   const fmt=x=>x?('gợi ý '+x.value+', điểm khớp vòng '+x.fitScore+' (chưa hiệu chỉnh '+x.rawScore+'), tham số '+JSON.stringify(x.parameters)):'không rõ';
+   $('calibrationText').textContent='Hướng '+upright.deg+'° · Mã đề: '+fmt(calibrated.code)+' · SBD: '+fmt(calibrated.sbd);
+   $('calibrationSection').hidden=false;
+   line('LƯỚI THỰC TẾ (CHẨN ĐOÁN) hướng '+upright.deg+'°: mã '+fmt(calibrated.code)+'; SBD '+fmt(calibrated.sbd));
+   if(calibrated.code?.parameters?.sx<=.67)line('CẢNH BÁO: Hệ số co giãn ngang mã đề đang sát giới hạn; phải kiểm tra vòng tím có nằm đúng tâm trước khi tin mã gợi ý.');
+  }catch(error){line('Lỗi hiệu chỉnh lưới: '+error.message);}
+
+  $('previewAngle').innerHTML=success.map(x=>'<option value="'+x.deg+'">Hướng '+x.deg+'° — mã '+(x.res.examCode||'?')+'</option>').join('');
+  $('previewAngle').value=String(lastGrid?.deg??best.deg);
+  $('overlaySection').hidden=false;drawOverlay();
+  $('code').textContent=confirmed?(r.examCode||'Không rõ'):'Chưa xác định';$('sbd').textContent=r.sbd||'Không rõ';
+  $('confidence').textContent=confirmed?'Đủ số, khớp một mã đã lưu':'Chưa đủ rõ — không chấm';
+  $('rotation').textContent=best.deg+'°';
+  $('issues').textContent='Ô chưa rõ: '+r.uncertain.length+' ('+r.uncertain.slice(0,12).join('; ')+(r.uncertain.length>12?'…':'')+')';
+  $('codes').textContent='Mã đề lưu trên trình duyệt: '+(local.length?local.map(x=>x.name+': '+x.codes.join(', ')).join(' | '):'Chưa tìm thấy dữ liệu.');
+  $('answers').textContent='Phần I: '+r.I.join(' ')+'\nPhần II: '+r.II.join(' | ')+'\nPhần III: '+r.III.join(' | ');
+  line('Kết quả ưu tiên: hướng '+best.deg+'°, mã '+(r.examCode||'?')+', khớp bộ đáp án: '+(matched.length?matched.map(x=>x.name).join(' | '):'KHÔNG')+'; mốc '+r.markerMode+'; '+(confirmed?'đã có mã khớp':'chưa đủ căn cứ chấm tự động'));
+  line('Thời gian '+Math.round(performance.now()-started)+' ms');
+  $('report').hidden=false;setStatus('Đã phân tích. Hãy đối chiếu mã đề hiển thị với mã được tô trên phiếu.');
+ }catch(e){line('LỖI: '+(e?.message||String(e)));setStatus('Chưa phân tích được: '+(e?.message||e));}
+ finally{$('run').disabled=false}
+};
+$('previewAngle').onchange=drawOverlay;
+$('togglePrinted').onclick=()=>{if(!lastCorrected)return;lastCorrected.show=!lastCorrected.show;$('togglePrinted').textContent=lastCorrected.show?'Ẩn các điểm mới (màu hồng)':'Xem các điểm mới (màu hồng)';drawOverlay();};
+$('saveOverlay').onclick=()=>{const c=$('overlayCanvas');if(!c.width)return;const a=document.createElement('a');a.href=c.toDataURL('image/png');a.download='ChamPro_Kiem_Tra_Toa_Do.png';document.body.appendChild(a);a.click();a.remove();};
+$('copy').onclick=async()=>{
+ const payload=log.filter(s=>!s.startsWith('Ảnh:')).join('\n');
+ try{await navigator.clipboard.writeText(payload);setStatus('Đã sao chép nhật ký.')}
+ catch(e){const t=document.createElement('textarea');t.value=payload;document.body.append(t);t.select();document.execCommand('copy');t.remove();setStatus('Đã thử sao chép nhật ký.')}
+};
+</script>
+</body></html>

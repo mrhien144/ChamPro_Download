@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#10345c">
+<title>ChấmPro — kiểm tra bộ nhận diện</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f1f5fa;color:#162a40;font:16px/1.55 system-ui,-apple-system,sans-serif}
+main{max-width:660px;margin:22px auto;background:white;padding:24px;border-radius:18px;box-shadow:0 8px 32px #182b4c16}
+h1{font-size:23px;line-height:1.3;margin:0 0 8px}p{margin:8px 0 14px}.hint{color:#52667c;font-size:14px}
+button,.link{background:#245bd8;color:#fff;border:0;border-radius:10px;padding:12px 15px;font-weight:700;font:inherit;cursor:pointer;display:inline-block;text-decoration:none;margin:4px 6px 4px 0}
+button:disabled{opacity:.5}.link{background:#eaf0fb;color:#1c458b}.status{border:1px solid #dce6f2;background:#f8fbff;border-radius:12px;padding:13px;margin:15px 0;font-weight:700}
+pre{background:#121c2a;color:#e3f5ea;padding:15px;border-radius:12px;font-size:13px;white-space:pre-wrap;word-break:break-word;min-height:130px;max-height:50vh;overflow:auto}
+canvas{display:none}
+</style>
+</head>
+<body>
+<main>
+<h1>Kiểm tra bộ nhận diện ChấmPro</h1>
+<p class="hint">Trang kiểm tra độc lập, không thay đổi camera, đáp án, danh sách học sinh hoặc kết quả chấm. Chỉ chạy trên trình duyệt của bạn, không gửi dữ liệu đi. Bản kiểm tra sử dụng Canvas thuần, không cần OpenCV.</p>
+<button id="run">Bắt đầu kiểm tra</button>
+<button id="copy" class="link" type="button">Sao chép kết quả</button>
+<a class="link" href="./">Trở về ChấmPro</a>
+<div class="status" id="status" role="status" aria-live="polite">Chưa kiểm tra.</div>
+<pre id="log" aria-label="Nhật ký kỹ thuật"></pre>
+<canvas id="test" width="840" height="1200"></canvas>
+<p class="hint">Nếu kết quả báo lỗi, bạn chỉ cần sao chép phần nhật ký và gửi vào cuộc trò chuyện. Không cần gửi dữ liệu của học sinh.</p>
+</main>
+<script type="module">
+import {readSheet} from './omr-native.mjs?diag=20261105-native-r1';
+const by=id=>document.getElementById(id);
+const logs=[];
+function line(s){logs.push(new Date().toLocaleTimeString('vi-VN')+'  '+s);by('log').textContent=logs.join('\n');}
+function status(s){by('status').textContent=s;}
+window.addEventListener('error',e=>{if(e?.message)line('Lỗi JavaScript: '+e.message);});
+async function run(){
+ by('run').disabled=true;logs.length=0;by('log').textContent='';
+ const start=performance.now();
+ try{
+  line('Bộ đọc ảnh Canvas Native, không dùng OpenCV hoặc WebAssembly');
+  status('1/4 — Kiểm tra mẫu phiếu…');
+  const res=await fetch('./layouts.json',{cache:'no-store'});
+  if(!res.ok)throw Error('Không tải được mẫu phiếu: HTTP '+res.status);
+  const layouts=await res.json();
+  line('Mẫu phiếu: '+Object.keys(layouts).length+' mẫu');
+  status('2/4 — Chuẩn bị ảnh mô phỏng…');
+  const c=by('test');c.width=600;c.height=850;
+  const g=c.getContext('2d');
+  g.fillStyle='#fff';g.fillRect(0,0,600,850);
+  g.fillStyle='#000';for(const [x,y] of [[24,24],[575,24],[575,825],[24,825]])g.fillRect(x-10,y-10,20,20);
+  const candidate_no=Array.from({length:6},(_,i)=>Array.from({length:10},(_,j)=>[405+17*i,90+18*j]));
+  const exam_code=Array.from({length:3},(_,i)=>Array.from({length:10},(_,j)=>[520+17*i,90+18*j]));
+  const points=Array.from({length:18},(_,i)=>[0,1,2,3].map(j=>[170+20*j,540+12*i]));
+  function dot(x,y,r=4){g.beginPath();g.arc(x,y,r,0,2*Math.PI);g.fill();}
+  for(let i=0;i<6;i++)dot(...candidate_no[i][i]);
+  for(let i=0;i<3;i++)dot(...exam_code[i][i+2]);
+  for(let i=0;i<18;i++)dot(...points[i][i%4]);
+  status('3/4 — Thử nhận diện 4 góc, SBD và đáp án…');
+  await new Promise(resolve=>requestAnimationFrame(resolve));
+  const layout={mode:'three',markers:[[24,24],[575,24],[575,825],[24,825]],candidate_no,exam_code,parts:{I:points,II:[],III:[]}};
+  const result=readSheet(c,layout,null,{I:18,II:0,III:0});
+  line('Mốc: '+JSON.stringify(result.markers));
+  line('SBD: '+result.sbd+' / cần 012345');
+  line('Mã đề: '+result.examCode+' / cần 234');
+  line('Phần I: '+result.I.join('')+' / cần ABCDABCDABCDABCDAB');
+  if(result.sbd!=='012345'||result.examCode!=='234'||result.I.join('')!=='ABCDABCDABCDABCDAB')throw Error('Bộ đọc không khớp đáp án mô phỏng');
+  status('4/4 — Kiểm tra tốc độ…');
+  line('Nhận diện ảnh mô phỏng: CHÍNH XÁC');
+  line('Thời gian: '+Math.round(performance.now()-start)+' ms');
+  line('KẾT LUẬN: bộ đọc ảnh hoạt động; cần kiểm thử trên phiếu giấy thật.');
+  status('ĐẠT — Bộ nhận diện đã vượt qua kiểm tra mô phỏng.');
+ }catch(e){
+  line('LỖI: '+(e.stack||e.message||String(e)).slice(0,650));
+  status('CHƯA ĐẠT — '+(e.message||String(e)));
+ }finally{by('run').disabled=false;}
+}
+by('run').onclick=run;
+by('copy').onclick=async()=>{
+ const str=logs.join('\n')||'Chưa có kết quả';
+ try{await navigator.clipboard.writeText(str);status('Đã sao chép nhật ký.');}
+ catch(e){
+  const t=document.createElement('textarea');t.value=str;t.style.position='fixed';t.style.top='0';document.body.append(t);t.select();
+  document.execCommand('copy');t.remove();status('Đã thử sao chép; bạn có thể chụp màn hình nếu không dán được.');
+ }
+};
+</script>
+</body></html>
