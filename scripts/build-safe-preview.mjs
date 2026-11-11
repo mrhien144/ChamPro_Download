@@ -32,7 +32,7 @@ await edit('local-data-store.mjs',"const DB_NAME='champro-local-mirror-v1'",
 await edit('sheet-photo-store.mjs',"const DB_NAME='champro-sheet-photos-v1'",
  "const DB_NAME='champro-sheet-photos-preview-v1'");
 await edit('sw.js',"const CACHE='champro-web-v2-20261111-account-bridge-preview'",
- "const CACHE='champro-app-preview-v1-20261111-smoke'");
+ "const CACHE='champro-app-preview-v1-20261111-corrections-v1'");
 await edit('sw.js',"n.startsWith('champro-web-')",
  "n.startsWith('champro-app-preview-')");
 await edit('manifest.webmanifest','"short_name":"ChấmPro"',
@@ -41,6 +41,10 @@ await edit('manifest.webmanifest','"name":"ChấmPro – Chấm trắc nghiệm"
  '"name":"ChấmPro – Bản thử nghiệm riêng"');
 await edit('index.html','./account-bridge.mjs?v=20261111-account-preview',
  './account-bridge.mjs?v=20261111-account-smoke');
+await edit('index.html','./app.mjs?v=20261110-photo-archive-preview',
+ './app.mjs?v=20261111-review-corrections-v1');
+await edit('index.html','./styles.css?v=20261110-photo-archive-preview',
+ './styles.css?v=20261111-review-corrections-v1');
 await edit('index.html','<small>WEB · BETA</small>',
  '<small>BẢN THỬ NGHIỆM RIÊNG</small>');
 await edit('index.html','Bản web thử nghiệm: dữ liệu được lưu trong bộ nhớ trình duyệt của thiết bị này.',
@@ -60,6 +64,8 @@ assert(!files.local.includes("'champro-local-mirror-v1'"));
 assert(!files.sw.includes("n.startsWith('champro-web-')"));
 assert(files.sw.includes("n.startsWith('champro-app-preview-')"));
 assert(files.sw.includes("'./account-bridge.mjs'"));
+assert(files.sw.includes("'./result-review.mjs'"));
+assert(files.sw.includes("'./result-review-ui.mjs'"));
 const instructions=[
  'ChấmPro – BẢN THỬ NGHIỆM RIÊNG',
  '',
