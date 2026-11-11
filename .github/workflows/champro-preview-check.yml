@@ -4,6 +4,7 @@ on:
     paths:
       - 'app/**'
       - 'tests/**'
+      - 'scripts/build-safe-preview.mjs'
       - 'platform/worker/**'
       - 'platform/migrations/**'
       - '.github/workflows/champro-preview-check.yml'
@@ -26,6 +27,8 @@ jobs:
           node --check app/account-bridge.mjs
           node --check platform/worker/src/index.js
           node --check platform/worker/src/teacher-sync.js
+      - name: Build isolated browser-storage preview
+        run: node scripts/build-safe-preview.mjs
       - name: Existing grading regression test
         run: node tests/grade.test.mjs
       - name: Staging cloud-sync security regression
