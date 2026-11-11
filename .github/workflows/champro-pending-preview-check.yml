@@ -1,0 +1,45 @@
+name: ChấmPro Preview pending-code regression
+on:
+  push:
+    branches:
+      - feature/preview-save-invalid-code-pwa-fix-20261111
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check syntax of changed and grading modules
+        run: |
+          node --check app-preview/app.mjs
+          node --check app-preview/pwa-install.mjs
+          node --check app-preview/sw.js
+          node --check app-preview/grader.mjs
+          node --check app-preview/result-review.mjs
+          node --check app-preview/result-review-ui.mjs
+          node --check app-preview/multisubject.mjs
+      - name: Pending code and manual correction regression
+        run: node tests/preview-pending-code.test.mjs
+      - name: Verify preview isolation and PWA fallback
+        run: |
+          python - <<'PY'
+          import pathlib
+          root=pathlib.Path('app-preview')
+          app=(root/'app.mjs').read_text()
+          html=(root/'index.html').read_text()
+          sw=(root/'sw.js').read_text()
+          assert "pendingUnknownCode=result.codeConfidence===1&&!match.knownCode" in app
+          assert "score:value?.total??null" in app
+          assert "pendingCode" in app
+          assert "pwaModuleReady" in html
+          assert "pwaModuleReady" in (root/'pwa-install.mjs').read_text()
+          assert "await fetch(req)" in sw
+          assert "champro-app-preview-pwa-v2" in sw
+          assert "champro-app-preview-v1" in app
+          print("PASS: preview-only PWA and pending-code changes")
+          PY
