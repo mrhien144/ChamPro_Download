@@ -538,13 +538,17 @@
   gap:9px;
 }
 .cp-compact-answers #cpKeyReview .cp-key-review-actions{
-  position:sticky;
-  bottom:0;
-  z-index:2;
-  padding:12px 4px;
-  margin-bottom:0;
-  background:linear-gradient(to top,#fff 86%,rgba(255,255,255,.92));
+  position:static;
+  bottom:auto;
+  z-index:auto;
+  padding:16px 4px 8px;
+  margin:14px 0 0;
+  background:transparent;
   border-top:1px solid #e0e8f5;
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:center;
 }
 @media(max-width:620px){
   .cp-compact-answers .cp-visual-question{padding:12px 11px}
