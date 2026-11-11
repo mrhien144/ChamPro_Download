@@ -70,6 +70,7 @@ window.addEventListener('appinstalled',()=>{
 });
 if(button){
  button.hidden=false;
+ button.dataset.pwaModuleReady='1';
  button.addEventListener('click',showDialog);
 }
 if(closeButton)closeButton.addEventListener('click',()=>dialog.close());
