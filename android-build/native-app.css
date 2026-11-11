@@ -437,3 +437,14 @@ body.cp-native-app {
  .cp-native-app #page-exams #cpKeyGrid .cp-ii-answer-options {gap:4px !important}
  .cp-native-app #page-exams #cpKeyGrid .cp-ii-answer-options .flex-chip {font-size:11px !important;padding:7px 3px !important;gap:3px !important}
 }
+
+.cp-native-app #page-exams #cpKeyGrid .cp-visual-part-hint {
+  margin:2px 12px 9px !important;
+  padding:10px 12px !important;
+  font-size:12px !important;
+  line-height:1.55 !important;
+  color:#30557f !important;
+  border:1px solid #dbe7f8;
+  background:#eef5ff;
+  border-radius:10px;
+}
