@@ -269,3 +269,12 @@
 .cp-short-columns label{display:flex;flex-direction:column;align-items:flex-start}
 .cp-manual-editor>.actions{margin:16px 0}
 @media(max-width:760px){.cp-edit-grid{grid-template-columns:1fr;padding:8px}.cp-edit-question{gap:9px}.cp-manual-editor>.review-data{grid-template-columns:1fr}}
+
+/* PWA installation: scoped to the preview install dialog only. */
+.pwa-install-dialog{width:min(560px,calc(100vw - 28px));max-height:calc(100dvh - 36px);overflow:auto;border:1px solid #d8e4f1;border-radius:18px;padding:20px;background:#fff;color:#17314d}
+.pwa-install-dialog::backdrop{background:rgba(10,22,38,.56)}
+.pwa-install-dialog .dialog-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.pwa-install-dialog .dialog-head strong{font-size:18px}
+.pwa-install-dialog .pwa-offline-info{padding:12px 14px;background:#f2f7ff;border:1px solid #dbe7f7;border-radius:12px;margin:14px 0}
+.pwa-install-dialog .pwa-offline-info p{font-size:14px;line-height:1.6}
+.pwa-install-dialog .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
