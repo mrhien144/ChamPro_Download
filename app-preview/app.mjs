@@ -418,7 +418,7 @@ function saveResult(exam,student,ans,fromAuto=false){
  flash.hidden=false;clearTimeout(saveResult._flash);saveResult._flash=setTimeout(()=>{flash.hidden=true;$('scanMode').textContent='Sẵn sàng chấm bài tiếp';},1100);
  if(navigator.vibrate)try{navigator.vibrate(90);}catch{}return record;
 }
-$('saveReview').onclick=()=>{try{if(!review)return;const student=db.students.find(s=>s.id===$('reviewStudent').value),exam=review.exam,sbd=preserveSbd($('reviewSbd').value),examCode=$('reviewCode').value.trim();if(student&&sbd&&canonicalSbd(student.sbd)!==canonicalSbd(sbd))throw Error('SBD không khớp học sinh đã chọn');if(examCode&&!new RegExp('^\\d{'+exam.digits+'}
+$('saveReview').onclick=()=>{try{if(!review)return;const student=db.students.find(s=>s.id===$('reviewStudent').value),exam=review.exam,sbd=preserveSbd($('reviewSbd').value),examCode=$('reviewCode').value.trim();if(student&&sbd&&canonicalSbd(student.sbd)!==canonicalSbd(sbd))throw Error('SBD không khớp học sinh đã chọn');if(examCode&&(examCode.length!==Number(exam.digits)||![...examCode].every(c=>c>='0'&&c<='9')))throw Error('Mã đề phải đủ '+exam.digits+' chữ số');
  const answers={sbd,examCode,I:[],II:[],III:[],IIIColumns:[]};document.querySelectorAll('#reviewBody input[data-p]').forEach(i=>{answers[i.dataset.p][Number(i.dataset.q)]=i.value.trim().toUpperCase()});
  if(!Object.values({I:answers.I,II:answers.II,III:answers.III}).flat().some(Boolean))throw Error('Chưa có câu trả lời nào');
  if(answers.I.some(x=>x&&!/^[ABCD]$/.test(x)))throw Error('Phần I chỉ chọn A/B/C/D');
