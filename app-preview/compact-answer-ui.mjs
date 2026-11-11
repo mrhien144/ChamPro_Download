@@ -192,8 +192,13 @@ $('examList').addEventListener('click',event=>{
  if(event.target.closest('[data-editexam]'))queueMicrotask(()=>{editing=false;draftCode='';refresh({focus:$('keyCode').value});});
 });
 window.addEventListener('champro-db-updated',()=>{
- // Refresh imported keys, including multi-code Excel/QR imports.
- if(!editing)refresh();
+ // Never rebuild the answer-key editor while the camera is scanning.
+ // Import/teacher edits refresh when this page is visible; the result scanner
+ // stays on its original fast path.
+ if(!editing&&$('page-exams')?.classList.contains('shown'))refresh();
+});
+$('nav')?.addEventListener('click',event=>{
+ if(event.target.closest('[data-page="exams"]'))queueMicrotask(()=>{if(!editing)refresh();});
 });
 window.addEventListener('champro-keys-imported',event=>{
  const detail=event.detail||{};
