@@ -11,6 +11,12 @@ assert.deepEqual(actual(shortCellMarks('124','134',['1','2','4',''])),
  [[0,'1','green'],[1,'2','red'],[1,'3','yellow'],[2,'4','green']]);
 assert.deepEqual(actual(shortCellMarks('134','134',['','1','3','4'])),
  [[1,'1','green'],[2,'3','green'],[3,'4','green']]);
+assert.deepEqual(actual(shortCellMarks('','3')),
+ [[0,'3','yellow']], 'A blank response must show the answer in the first column');
+assert.deepEqual(actual(shortCellMarks('4','3')),
+ [[0,'4','red'],[0,'3','yellow']], 'A single-digit wrong answer must be left-anchored');
+assert.deepEqual(actual(shortCellMarks('3','3',['','','3',''])),
+ [[2,'3','red'],[0,'3','yellow']], 'The answer must never shift to match a wrong scan');
 assert.equal(shortCellMarks('1,5','1,5').length,0);
 assert.equal(shortCellMarks('','134').length,0);
 
@@ -42,6 +48,7 @@ assert.equal(out.record.studentId,'s2');
 assert.equal(out.record.examCode,'102');
 assert.equal(out.record.score,1.75);
 assert.equal(out.record.machineReadOriginal.examCode,'101');
+assert.deepEqual(out.record.answers.IIIColumns[0],['1','2','4','']);
 assert.equal(out.record.scoreHistory.length,2);
 assert.equal(old.sbd,'1234','original must not mutate before saving');
 assert.throws(()=>correctedRecord(data,exam,old,{
