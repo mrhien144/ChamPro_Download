@@ -368,3 +368,72 @@ body.cp-native-app {
     border-radius:12px !important;
   }
 }
+
+/* APK v11: each of the four Part II ý has Đúng and Sai on exactly ONE row.
+   This overrides the older .flex-sub {flex-wrap:wrap} styles, including
+   tablet and narrow-phone media rules, without touching scanning UI. */
+.cp-native-app #page-exams #cpKeyGrid .cp-visual-ii-grid {
+  display:flex !important;
+  flex-direction:column !important;
+  gap:8px !important;
+  min-width:0 !important;
+  width:100% !important;
+}
+.cp-native-app #page-exams #cpKeyGrid .cp-visual-ii-grid .flex-sub.cp-ii-answer-row {
+  display:grid !important;
+  grid-template-columns:34px minmax(0,1fr) !important;
+  align-items:center !important;
+  gap:6px !important;
+  width:100% !important;
+  min-width:0 !important;
+  padding:7px 8px !important;
+  flex-wrap:nowrap !important;
+  border-radius:11px;
+}
+.cp-native-app #page-exams #cpKeyGrid .cp-ii-answer-row > b {
+  min-width:0 !important;
+  margin:0 !important;
+  white-space:nowrap !important;
+  font-size:12px !important;
+}
+.cp-native-app #page-exams #cpKeyGrid .cp-ii-answer-options {
+  display:grid !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  gap:6px !important;
+  min-width:0 !important;
+  width:100% !important;
+  align-items:stretch !important;
+}
+.cp-native-app #page-exams #cpKeyGrid .cp-ii-answer-options .flex-chip {
+  display:inline-flex !important;
+  flex-wrap:nowrap !important;
+  min-width:0 !important;
+  width:100% !important;
+  align-items:center !important;
+  justify-content:center !important;
+  white-space:nowrap !important;
+  gap:5px !important;
+  padding:9px 5px !important;
+  font-size:12px !important;
+  min-height:42px;
+}
+.cp-native-app #page-exams #cpKeyGrid .cp-ii-answer-options .flex-chip input {
+  flex:0 0 19px !important;
+  width:19px !important;
+  height:19px !important;
+}
+.cp-native-app #page-exams #cpKeyGrid .cp-ii-answer-options .flex-chip span {
+  white-space:nowrap;
+  font-size:12px;
+}
+.cp-native-app #page-exams .cp-key-review-actions {
+  position:static !important;
+  bottom:auto !important;
+  transform:none !important;
+  margin:16px 0 0 !important;
+}
+@media (max-width:360px) {
+ .cp-native-app #page-exams #cpKeyGrid .cp-visual-ii-grid .flex-sub.cp-ii-answer-row {grid-template-columns:30px minmax(0,1fr) !important;padding:6px 5px !important;gap:4px !important}
+ .cp-native-app #page-exams #cpKeyGrid .cp-ii-answer-options {gap:4px !important}
+ .cp-native-app #page-exams #cpKeyGrid .cp-ii-answer-options .flex-chip {font-size:11px !important;padding:7px 3px !important;gap:3px !important}
+}
