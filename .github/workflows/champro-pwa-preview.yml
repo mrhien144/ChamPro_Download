@@ -1,0 +1,67 @@
+name: ChấmPro PWA Preview checks and icons
+on:
+  push:
+    branches:
+      - feature/champro-pwa-install-preview-20261111
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  pwa-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate JavaScript modules and legacy grading
+        run: |
+          node --check app-preview/app.mjs
+          node --check app-preview/pwa-install.mjs
+          node --check app-preview/sw.js
+          node --check app-preview/result-review.mjs
+          node --check app-preview/sheet-photo-store.mjs
+          node tests/grade.test.mjs
+      - name: Generate Android and iOS PNG icons
+        run: |
+          python -m pip install --disable-pip-version-check pillow
+          python scripts/make_pwa_icons.py
+      - name: Verify PWA offline manifest and resources
+        run: |
+          python - <<'PY'
+          import json,re,pathlib
+          root=pathlib.Path('app-preview')
+          manifest=json.loads((root/'manifest.webmanifest').read_text())
+          assert manifest['start_url']=='/app-preview/'
+          assert manifest['scope']=='/app-preview/'
+          assert manifest['display']=='standalone'
+          for icon in manifest['icons']:
+              assert (root/icon['src']).is_file(),icon
+          sw=(root/'sw.js').read_text()
+          assets=re.findall(r"'(\./[^']+)'",sw.split('const CORE=')[1].split('];')[0])
+          missing=[x for x in assets if not (root/x).exists()]
+          assert not missing,missing
+          assert "CHAMPRO_OFFLINE_STATUS" in sw
+          assert "caches.open(CACHE)" in sw
+          assert "champro-app-preview-" in sw
+          assert "champro-web-" not in sw
+          assert "champro-web-beta-v1" not in (root/'app.mjs').read_text()
+          assert "champro-app-preview-v1" in (root/'app.mjs').read_text()
+          html=(root/'index.html').read_text()
+          assert "pwa-install.mjs" in html
+          assert 'id="pwaInstallDialog"' in html
+          assert "apple-touch-icon.png" in html
+          print('PASS: PWA assets, preview isolation and offline cache')
+          PY
+      - name: Commit generated icons to preview branch only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app-preview/pwa-icon-192.png app-preview/pwa-icon-512.png app-preview/pwa-maskable-512.png app-preview/apple-touch-icon.png
+          if ! git diff --cached --quiet; then
+            git commit -m "build(preview): generate platform PNG icons"
+            git push
+          fi
