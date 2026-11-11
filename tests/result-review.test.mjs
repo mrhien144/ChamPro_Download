@@ -17,7 +17,7 @@ assert.deepEqual(actual(shortCellMarks('','3')),
 assert.deepEqual(actual(shortCellMarks('4','3')),
  [[0,'4','red'],[0,'3','yellow']], 'A single-digit wrong answer must be left-anchored');
 assert.deepEqual(actual(shortCellMarks('3','3',['','','3',''])),
- [[2,'3','red'],[0,'3','yellow']], 'The answer must never shift to match a wrong scan');
+ [[0,'3','yellow'],[2,'3','red']], 'The answer must never shift to match a wrong scan');
 assert.equal(shortCellMarks('1,5','1,5').length,0);
 assert.deepEqual(actual(shortCellMarks('','134')),[[0,'1','yellow'],[1,'3','yellow'],[2,'4','yellow']]);
 
