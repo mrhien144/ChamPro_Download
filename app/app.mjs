@@ -4,7 +4,7 @@ import {readSheet} from './omr-native.mjs';
 import {readVerifiedWithMarkers} from './omr-verified-paper.mjs';
 import {readPrinted120WithMarkers} from './omr-printed-120.mjs';
 import {preserveSbd,canonicalSbd,validSbd,findStudentForSbd} from './student-identity.mjs';
-import {enqueueSheetPhoto,showSheetPhoto,pruneSheetPhotos} from './sheet-photo-store.mjs';
+import {enqueueSheetPhoto,showSheetPhoto} from './sheet-photo-store.mjs';
 const $=id=>document.getElementById(id);
 // Canvas-only OMR: no heavy OpenCV startup on Samsung browsers.
 
@@ -406,7 +406,7 @@ $('saveReview').onclick=()=>{try{if(!review)return;const student=db.students.fin
  }catch(e){toast('Không lưu được: '+e.message);}};
 $('closeReview').onclick=()=>{$('reviewDialog').close();lastReviewCanvas=null;};
  $('reviewDialog').addEventListener('close',()=>{lastReviewCanvas=null;});
- window.addEventListener('load',()=>{setTimeout(()=>pruneSheetPhotos(365).catch(e=>console.debug('Dọn ảnh:',e)),3000);},{once:true});
+ // Do not auto-delete student sheet photos without a confirmed retention policy.
 // Offline PWA install prompt
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;$('installBtn').hidden=false;});
 $('installBtn').onclick=async()=>{if(installPrompt){await installPrompt.prompt();installPrompt=null;$('installBtn').hidden=true;}};
