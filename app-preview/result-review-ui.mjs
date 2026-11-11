@@ -1,7 +1,5 @@
 /** Accessible manual corrections for historical results. Offline and camera-independent. */
-import {shortDigitColumns} from './result-review.mjs';
 const e=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const digits=Array.from({length:10},(_,i)=>String(i));
 export function renderResultEditor(record,exam,students){
  const opts=(value,options)=>options.map(([v,t])=>'<option value="'+e(v)+'"'+(v===value?' selected':'')+'>'+e(t)+'</option>').join('');
  const answer=record.answers||{},counts=exam.counts;
@@ -22,14 +20,8 @@ export function renderResultEditor(record,exam,students){
  }).join('');
  const rowsIII=Array.from({length:counts.III},(_,i)=>{
   const raw=String(answer.III?.[i]||'');
-  const cols=shortDigitColumns(answer.IIIColumns?.[i]??raw)||['','','',''];
-  return '<fieldset class="cp-edit-question"><legend>Câu '+(i+1)+'</legend>'+
-   '<div class="cp-short-columns">'+cols.map((digit,j)=>
-    '<label>Cột '+(j+1)+'<select data-rc-iii="'+i+'" data-rc-col="'+j+'">'+
-    opts(digit,[['','Trống'],...digits.map(d=>[d,d])])+'</select></label>').join('')+'</div>'+
-   '<label>Đáp án nhận diện / nhập số (hỗ trợ dấu âm, thập phân)'+
-   '<input data-rc-short-text="'+i+'" type="text" inputmode="decimal" maxlength="32" value="'+e(raw)+'"></label>'+
-   '</fieldset>';
+  return '<label class="cp-short-answer-single">Câu '+(i+1)+
+   '<input data-rc-short-text="'+i+'" type="text" inputmode="decimal" maxlength="32" value="'+e(raw)+'" placeholder="Nhập đáp án học sinh tô"></label>';
  }).join('');
  const history=record.scoreHistory?.length?'<details><summary>Lịch sử chỉnh sửa ('+record.scoreHistory.length+')</summary>'+
   record.scoreHistory.map(x=>'<p>'+e(new Date(x.at).toLocaleString('vi-VN'))+': '+e(x.oldScore)+' → '+e(x.newScore)+' ('+e(x.reason)+')</p>').join('')+
@@ -41,7 +33,7 @@ export function renderResultEditor(record,exam,students){
   '<label>Mã đề <input id="rcExamCode" inputmode="numeric" maxlength="'+e(exam.digits)+'" value="'+e(record.examCode)+'"></label></div>'+
   '<details><summary>Phần I — chọn các ô học sinh đã tô ('+counts.I+' câu)</summary><div class="cp-edit-grid">'+rowsI+'</div></details>'+
   (counts.II?'<details><summary>Phần II — từng ý Đúng/Sai ('+counts.II+' câu)</summary><div class="cp-edit-grid">'+rowsII+'</div></details>':'')+
-  (counts.III?'<details><summary>Phần III — từng ô số của bốn cột ('+counts.III+' câu)</summary><p class="hint">Mỗi cột chọn một ô 0–9 hoặc Trống. Với giá trị âm/thập phân, nhập trực tiếp vào ô văn bản và không tô chọn các cột không xác định.</p><div class="cp-edit-grid">'+rowsIII+'</div></details>':'')+
+  (counts.III?'<details><summary>Phần III — nhập đáp án học sinh đã tô ('+counts.III+' câu)</summary><p class="hint">Chỉ nhập một đáp án cho mỗi câu. Sau khi lưu, hệ thống chấm lại và cập nhật vị trí các vòng tròn trên ảnh.</p><div class="cp-edit-grid">'+rowsIII+'</div></details>':'')+
   '<div class="actions"><button type="button" id="rcSave" class="primary">Lưu chỉnh sửa & chấm lại</button>'+
   (record.machineReadOriginal?'<button type="button" id="rcRestore" class="outline">Khôi phục kết quả máy đọc</button>':'')+
   '</div>'+history+'</section>';
@@ -56,19 +48,7 @@ export function bindResultEditor(root,students){
   const selected=students.find(x=>x.id===student.value);
   if(selected&&String(selected.sbd)!==sbd.value)student.value='';
  });
- root.querySelectorAll('select[data-rc-iii]').forEach(el=>el.addEventListener('change',()=>{
-  const q=el.dataset.rcIii;
-  const cols=[...root.querySelectorAll('select[data-rc-iii="'+q+'"]')]
-   .sort((a,b)=>Number(a.dataset.rcCol)-Number(b.dataset.rcCol));
-  const text=root.querySelector('[data-rc-short-text="'+q+'"]');
-  if(text)text.value=cols.map(x=>x.value).join('');
- }));
- root.querySelectorAll('[data-rc-short-text]').forEach(input=>input.addEventListener('input',()=>{
-  const q=input.dataset.rcShortText;
-  const cols=[...root.querySelectorAll('select[data-rc-iii="'+q+'"]')];
-  const value=input.value.trim();
-  if(value!==cols.map(el=>el.value).join(''))for(const c of cols)c.value='';
- }));
+
 }
 export function collectResultEditor(root,exam){
  const get=x=>root.querySelector(x);
@@ -79,8 +59,8 @@ export function collectResultEditor(root,exam){
  const III=[],IIIColumns=[];
  for(let i=0;i<exam.counts.III;i++){
   const raw=get('[data-rc-short-text="'+i+'"]')?.value.trim()||'';
-  const cols=Array.from({length:4},(_,j)=>get('select[data-rc-iii="'+i+'"][data-rc-col="'+j+'"]')?.value||'');
-  III.push(raw);IIIColumns.push(cols.join('')===raw?cols:null);
+  // The user edits one answer string; no per-column controls are required.
+  III.push(raw);IIIColumns.push(null);
  }
  return {sbd:get('#rcSbd').value.trim(),studentId:get('#rcStudent').value,
   examCode:get('#rcExamCode').value.trim(),answers:{I,II,III,IIIColumns}};
