@@ -29,6 +29,13 @@ jobs:
           node --check platform/worker/src/teacher-sync.js
       - name: Build isolated browser-storage preview
         run: node scripts/build-safe-preview.mjs
+      - name: Package isolated preview for controlled staging rollout
+        uses: actions/upload-artifact@v4
+        with:
+          name: champro-app-preview-isolated
+          path: dist/app-preview/
+          if-no-files-found: error
+          retention-days: 7
       - name: Existing grading regression test
         run: node tests/grade.test.mjs
       - name: Staging cloud-sync security regression
