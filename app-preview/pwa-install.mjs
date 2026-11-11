@@ -73,6 +73,7 @@ if(button){
  button.addEventListener('click',showDialog);
 }
 if(closeButton)closeButton.addEventListener('click',()=>dialog.close());
+$('pwaInstallDismiss')?.addEventListener('click',()=>dialog.close());
 if(confirmButton)confirmButton.addEventListener('click',async()=>{
  if(!deferredPrompt)return;
  const prompt=deferredPrompt;deferredPrompt=null;
