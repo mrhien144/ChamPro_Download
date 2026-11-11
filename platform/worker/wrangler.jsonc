@@ -12,6 +12,12 @@
       "migrations_dir": "../migrations"
     }
   ],
+  "r2_buckets": [
+    {
+      "binding": "SHEET_PHOTOS",
+      "bucket_name": "champro-photos-staging"
+    }
+  ],
   "vars": {
     "ALLOWED_ORIGINS": "https://champro.mrhien.com,https://mrhien.com",
     "ADMIN_WP_USER_IDS": "1",
