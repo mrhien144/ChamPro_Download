@@ -44,7 +44,7 @@ assert.equal(score('ĐĐSĐ').points.II,.25,'Phần II: hai ý đúng được 0
 assert.equal(score('SSSĐ').points.II,.1,'Phần II: một ý đúng được 0.1 điểm');
 assert.equal(score('????').points.II,0,'Phần II: bỏ cả bốn ý được 0 điểm');
 assert.equal(score('Đ?ĐS').points.II,.5,'Phần II: ý được chấp nhận Đ/S nhưng bỏ trống không được tính');
-assert.equal(score('Đ SĐS').points.II,.5,'Phần II: ô trống thay vì Đ/S không được tính');
+assert.equal(score('Đ ĐS').points.II,.5,'Phần II: ô trống thay vì Đ/S không được tính');
 assert.equal(serializeChoiceII(parseChoiceII('Đ*ĐS').columns),'Đ*ĐS','Phần II: lưu và mở lại giữ cả Đúng/Sai');
 
 exam.keys['101'].II=['ALL'];
