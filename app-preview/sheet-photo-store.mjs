@@ -1,3 +1,4 @@
+import {shortCellMarks} from './result-review.mjs';
 /**
  * ChấmPro optional photo archive. Independent from grade storage and OMR.
  * No network calls. All failures are non-fatal to grading.
@@ -126,7 +127,10 @@ function centers(form,part,q){
  }
  if(part==='III'){
   const x=[[142,171,199,227],[275,303,331,359],[406,435,463,491],[536,566,595,623],[667,696,725,753],[799,829,857,885]][q-1];
-  return x?.map(v=>[v,[1119,1120,1122,1123,1125,1127][q-1]+22*4])||[];
+  const y=[1119,1120,1122,1123,1125,1127][q-1];
+  // Exact printed bubble centres used by the verified sheet reader: four
+  // columns × ten digits, without approximating a single question centre.
+  return x?.map(v=>Array.from({length:10},(_,digit)=>[v,y+22*digit]))||[];
  }
  return [];
 }
@@ -134,6 +138,12 @@ function mark(ctx,p,color,r=10){
  if(!p||!Number.isFinite(p[0])||!Number.isFinite(p[1]))return;
  ctx.beginPath();ctx.arc(p[0],p[1],r,0,Math.PI*2);
  ctx.lineWidth=Math.max(3,r*.3);ctx.strokeStyle=color;ctx.stroke();
+}
+function fillDigit(ctx,p,color,r=10){
+ if(!p||!Number.isFinite(p[0])||!Number.isFinite(p[1]))return;
+ ctx.beginPath();ctx.arc(p[0],p[1],r,0,Math.PI*2);
+ ctx.fillStyle=color;ctx.globalAlpha=.82;ctx.fill();ctx.globalAlpha=1;
+ ctx.lineWidth=Math.max(2,r*.18);ctx.strokeStyle='#ffffff';ctx.stroke();
 }
 export async function showSheetPhoto(container,record,exam){
  container.replaceChildren();
@@ -178,14 +188,19 @@ export async function showSheetPhoto(container,record,exam){
        if(idx>=0){const right=letter===correctLetter||correctLetter==='*';mark(g,map(...positions[j][idx]),right?'#16a34a':'#e11d48',radius*.8);}
        if(idx>=0&&letter!==correctLetter&&correctLetter!=='*'){const k=alphabet.indexOf(correctLetter);if(k>=0)mark(g,map(...positions[j][k]),'#eab308',radius*.65);}
       }
-     }else{
-      // Numeric grids are complex; outline the question region, never imply
-      // a particular digit is marked unless it was independently mapped.
-      const p=map(...positions[0]);mark(g,p,correct?'#16a34a':'#e11d48',radius*1.2);
+     }else if(d.part==='III'){
+      const savedColumns=record.answers?.IIIColumns?.[d.q-1]??null;
+      const marks=shortCellMarks(d.response,d.key,savedColumns,4);
+      for(const spot of marks){
+       const point=positions[spot.column]?.[Number(spot.digit)];
+       if(!point)continue;
+       const colour=spot.color==='green'?'#166534':spot.color==='red'?'#dc2626':'#eab308';
+       fillDigit(g,map(...point),colour,Math.max(5,radius*.82));
+      }
      }
     }
    }
-   note.textContent=map&&gradeDetails.length?'Xanh: đúng · Đỏ: sai · Vàng: đáp án được chấp nhận. Phần III đánh dấu khu vực câu, chưa khoanh từng ô số.':'Ảnh phiếu gốc. Chưa đủ dữ liệu tọa độ hoặc đáp án để đánh dấu trực tiếp.';
+   note.textContent=map&&gradeDetails.length?'Xanh đậm: ô đúng · Đỏ: ô tô sai · Vàng: ô đáp án đúng tương ứng. Phần III khoanh từng ô số; với bài cũ thiếu vị trí cột, đối chiếu lại ảnh gốc.':'Ảnh phiếu gốc. Chưa đủ dữ liệu tọa độ hoặc đáp án để đánh dấu trực tiếp.';
    c.className='champro-archived-photo';c.style.cssText='display:block;width:100%;height:auto;max-height:70vh;object-fit:contain;margin:10px 0;';
    container.append(c);
   }finally{URL.revokeObjectURL(url);}
