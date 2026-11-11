@@ -1,0 +1,66 @@
+name: ChấmPro compact answers preview checks
+on:
+  push:
+    branches:
+      - feature/preview-compact-answers-points-20261111
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate JavaScript syntax
+        run: |
+          node --check app-preview/app.mjs
+          node --check app-preview/advanced.mjs
+          node --check app-preview/compact-answer-ui.mjs
+          node --check app-preview/compact-points.mjs
+          node --check app-preview/sw.js
+          node --check app-preview/grader.mjs
+          node --check app-preview/answer-flex-editor.mjs
+      - name: Test point allocation and pending-code correction
+        run: |
+          node tests/compact-points-preview.test.mjs
+          node tests/preview-pending-code.test.mjs
+      - name: Assert UI compatibility and offline readiness
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+          import re
+          root=Path('app-preview')
+          html=(root/'index.html').read_text()
+          class Inspector(HTMLParser):
+              def __init__(self):
+                  super().__init__();self.ids=[]
+              def handle_starttag(self,tag,attrs):
+                  self.ids.extend(value for key,value in attrs if key=='id')
+          parser=Inspector();parser.feed(html)
+          assert len(parser.ids)==len(set(parser.ids)), 'Duplicate element IDs'
+          essential=[
+            'examForm','cpExamTotalPreview','cpKeyReview','cpKeyCodeSelect',
+            'cpEditKey','cpSaveKey','cpCancelKey','keyEditor',
+            'keyExam','keyCode','keyI','keyII','keyIII','ruleI','ruleII',
+            'ruleIII','rule120Panel','reset120Points','saveKey','loadKey',
+            'flexAnswers','flexI','flexII','flexIII','keysFile','qrAnswerOpen',
+            'answerMatrixTemplate','exportKeys','scanExam','reviewDialog'
+          ]
+          assert not [key for key in essential if key not in parser.ids]
+          sw=(root/'sw.js').read_text()
+          assets=re.findall(r"'(\./[^']+)'",sw.split('const CORE=')[1].split('];')[0])
+          missing=[path for path in assets if not (root/path).is_file()]
+          assert not missing,missing
+          assert "'./compact-answer-ui.mjs'" in sw
+          assert "'./compact-points.mjs'" in sw
+          assert "20261111-compact-answers-v1" in html
+          assert "20261111-compact-answers-v1" in (root/'advanced.mjs').read_text()
+          assert "20261111-compact-answers-v1" in (root/'compact-answer-ui.mjs').read_text()
+          assert (root/'app.mjs').read_text().count("const storedKey='champro-app-preview-v1'")==1
+          assert 'cpLegacyKeyControls' in parser.ids
+          print('PASS: unique IDs, imported-answer compatibility, preview isolation, offline assets')
+          PY
