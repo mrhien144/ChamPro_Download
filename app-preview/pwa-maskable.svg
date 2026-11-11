@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ChấmPro Test">
+<rect width="512" height="512" fill="#0d2341"/>
+<rect x="116" y="116" width="280" height="280" rx="45" fill="#163e6b" stroke="#76e1c4" stroke-width="8"/>
+<circle cx="170" cy="170" r="15" fill="none" stroke="#76e1c4" stroke-width="9"/>
+<circle cx="342" cy="170" r="15" fill="none" stroke="#76e1c4" stroke-width="9"/>
+<circle cx="170" cy="342" r="15" fill="none" stroke="#76e1c4" stroke-width="9"/>
+<circle cx="342" cy="342" r="15" fill="none" stroke="#76e1c4" stroke-width="9"/>
+<text x="256" y="281" text-anchor="middle" font-family="Arial,sans-serif" font-size="100" font-weight="800" fill="#fff">CP</text>
+<text x="256" y="311" text-anchor="middle" font-family="Arial,sans-serif" font-size="23" font-weight="700" fill="#76e1c4">TEST</text></svg>
