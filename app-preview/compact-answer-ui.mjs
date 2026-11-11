@@ -5,6 +5,7 @@
 import {getDb,save,toast} from './app.mjs?v=20261111-compact-answers-v1';
 import {regradeAffectedResults} from './result-review.mjs';
 import {allocateExamPoints,pointsForExam,displayPoints} from './compact-points.mjs';
+import {parseChoiceI,serializeChoiceI,parseChoiceII,serializeChoiceII,parseChoiceIII,serializeChoiceIII} from './visual-answer-model.mjs';
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const exam=()=>getDb().exams.find(e=>e.id===$('keyExam').value);
@@ -76,15 +77,41 @@ function keyOptions(focus=null){
  else select.value='';
  return {item,codes};
 }
+function chip(part,q,v,label,checked){
+ return '<label class="flex-chip'+(checked?' active':'')+'"><input type="checkbox" data-cp-chip="'+part+'" data-cp-q="'+q+
+  '" data-cp-option="'+esc(v)+'"'+(checked?' checked':'')+(editing?'':' disabled')+'><span>'+esc(label)+'</span></label>';
+}
 function questionRows(part,arr,count){
- return '<section class="cp-key-part"><h3>Phần '+part+' <small>('+count+' câu)</small></h3>'+
- '<div class="cp-key-fields">'+Array.from({length:count},(_,i)=>{
-  const value=String(arr?.[i]??'');
-  return '<label>Câu '+(i+1)+'<input data-cp-part="'+part+'" data-cp-index="'+i+
-   '" type="text" value="'+esc(value)+'"'+(editing?'':' readonly')+
-   ' placeholder="'+(part==='I'?'A / A|C':part==='II'?'ĐSĐS':'1,5 / 1,5|2')+
-   '" autocapitalize="'+(part==='III'?'off':'characters')+'" spellcheck="false"></label>';
- }).join('')+'</div></section>';
+ const names={I:'Chọn một hoặc nhiều phương án đúng',II:'Tick Đúng và/hoặc Sai cho từng ý',III:'Thêm nhiều kết quả được chấp nhận'};
+ return '<details class="cp-visual-key-section" open><summary>Phần '+part+' — '+names[part]+'</summary>'+
+  '<div class="cp-visual-questions">'+Array.from({length:count},(_,q)=>{
+   const raw=arr?.[q]??'';
+   let body;
+   if(part==='I'){
+    const parsed=parseChoiceI(raw);
+    body='<div class="flex-chips">'+['A','B','C','D'].map(c=>chip(part,q,c,c,parsed.choices.includes(c))).join('')+
+     chip(part,q,'ALL','Cho điểm toàn câu',parsed.all)+'</div>';
+   }else if(part==='II'){
+    const parsed=parseChoiceII(raw);
+    body='<div class="cp-visual-ii-grid">'+['a','b','c','d'].map((letter,i)=>
+      '<div class="flex-sub"><b>Ý '+letter+')</b>'+chip(part,q,i+'T','Đúng',parsed.columns[i].trueValue)+
+      chip(part,q,i+'F','Sai',parsed.columns[i].falseValue)+'</div>').join('')+
+      '</div><div class="cp-visual-all">'+chip(part,q,'ALL','Cho điểm toàn câu',parsed.all)+'</div>';
+   }else{
+    const parsed=parseChoiceIII(raw);
+    body='<div class="flex-short" data-cp-short-group="'+q+'">'+
+     parsed.values.map((v,i)=>shortLine(q,i,v,parsed.all)).join('')+
+     '<div class="flex-short-actions"><button type="button" class="outline" data-cp-short-add="'+q+'"'+(!editing||parsed.all?' disabled':'')+
+     '>+ Thêm đáp án</button>'+chip(part,q,'ALL','Cho điểm toàn câu',parsed.all)+'</div></div>';
+   }
+   return '<div class="flex-question cp-visual-question" data-cp-question="'+part+':'+q+'"><strong>Câu '+(q+1)+'</strong>'+body+'</div>';
+  }).join('')+'</div></details>';
+}
+function shortLine(q,i,value,all){
+ return '<div class="flex-shortline"><label>Đáp án '+(i+1)+
+  '<input type="text" data-cp-short="'+q+'" value="'+esc(value)+'"'+(!editing||all?' disabled':'')+
+  ' placeholder="Nhập kết quả được chấp nhận"></label>'+
+  (i?'<button type="button" class="outline" data-cp-short-remove="'+q+'"'+(!editing?' disabled':'')+'>Xóa</button>':'')+'</div>';
 }
 function renderReview(){
  const sel=$('cpKeyCodeSelect'),code=selectedCode(),item=exam(),
@@ -131,28 +158,34 @@ function cancelEdit(){
  if(draftCode&&!exam()?.keys?.[draftCode])draftCode='';
  refresh();
 }
+function checkedValues(part,q){
+ const scope=$('cpKeyGrid').querySelector('[data-cp-question="'+part+':'+q+'"]');
+ return [...scope.querySelectorAll('input[data-cp-chip]:checked')].map(el=>el.dataset.cpOption);
+}
 function parseInputs(item){
  const out={I:[],II:[],III:[]};
  for(const part of ['I','II','III']){
-  const count=item.counts[part]||0;
-  const inputs=[...$('cpKeyGrid').querySelectorAll('[data-cp-part="'+part+'"]')];
-  if(inputs.length!==count)throw Error('Thiếu câu ở phần '+part);
-  for(let i=0;i<inputs.length;i++){
-   let value=inputs[i].value.trim();
-   if(part==='I')value=value.toUpperCase();
-   else if(part==='II')value=value.toUpperCase().replaceAll('D','Đ');
-   if(!value)throw Error('Phần '+part+', câu '+(i+1)+' chưa có đáp án');
+  const count=Number(item.counts[part]||0);
+  const blocks=[...$('cpKeyGrid').querySelectorAll('[data-cp-question^="'+part+':"]')];
+  if(blocks.length!==count)throw Error('Thiếu số câu ở phần '+part);
+  for(let q=0;q<count;q++){
+   const selected=checkedValues(part,q),all=selected.includes('ALL');
+   let value='';
    if(part==='I'){
-    if(value!=='ALL'&&!/^[ABCD](\|[ABCD]){0,3}$/.test(value))
-     throw Error('Phần I câu '+(i+1)+': nhập A–D, A|C hoặc ALL');
-    if(value!=='ALL'&&new Set(value.split('|')).size!==value.split('|').length)
-     throw Error('Phần I câu '+(i+1)+' có đáp án trùng');
+    value=serializeChoiceI(selected.filter(x=>x!=='ALL'),all);
+    if(!value)throw Error('Phần I câu '+(q+1)+' chưa chọn đáp án');
    }else if(part==='II'){
-    if(value!=='ALL'&&!/^[ĐS*]{4}$/.test(value))
-     throw Error('Phần II câu '+(i+1)+': phải có 4 ký tự Đ/S/* hoặc ALL');
-   }else if(value.toUpperCase()!=='ALL'&&
-    (value.length>90||value.split('|').some(x=>!x.trim())))
-    throw Error('Phần III câu '+(i+1)+': kiểm tra đáp án và dấu |');
+    const cols=[0,1,2,3].map(i=>({
+     trueValue:selected.includes(i+'T'),falseValue:selected.includes(i+'F')
+    }));
+    value=serializeChoiceII(cols,all);
+    if(!all&&value.includes('?'))throw Error('Phần II câu '+(q+1)+': hãy chọn Đúng hoặc Sai cho cả bốn ý');
+   }else{
+    const scope=blocks[q];
+    const values=[...scope.querySelectorAll('input[data-cp-short]')].map(el=>el.value);
+    try{value=serializeChoiceIII(values,all);}
+    catch(e){throw Error('Phần III câu '+(q+1)+': '+e.message);}
+   }
    out[part].push(value);
   }
  }
@@ -175,6 +208,51 @@ function saveEdit(){
   toast('Đã lưu đáp án mã '+code+'. Đã cập nhật '+stats.changed+' bài chấm.');
  }catch(error){toast('Chưa lưu: '+error.message);}
 }
+$('cpKeyGrid').addEventListener('change',event=>{
+ const el=event.target;
+ if(!editing||!el.matches('input[data-cp-chip]'))return;
+ const part=el.dataset.cpChip,q=Number(el.dataset.cpQ),option=el.dataset.cpOption;
+ const block=el.closest('[data-cp-question]');
+ if(option==='ALL'&&el.checked){
+  block.querySelectorAll('input[data-cp-chip]').forEach(x=>{if(x!==el){x.checked=false;x.closest('.flex-chip')?.classList.remove('active');}});
+ }else if(option!=='ALL'&&el.checked){
+  const all=block.querySelector('input[data-cp-option="ALL"]');
+  if(all){all.checked=false;all.closest('.flex-chip')?.classList.remove('active');}
+ }
+ block.querySelectorAll('input[data-cp-chip]').forEach(x=>{
+  x.closest('.flex-chip')?.classList.toggle('active',x.checked);
+ });
+ if(part==='III'){
+  const all=block.querySelector('input[data-cp-option="ALL"]')?.checked;
+  block.querySelectorAll('input[data-cp-short]').forEach(x=>x.disabled=!!all);
+  const add=block.querySelector('[data-cp-short-add]');if(add)add.disabled=!!all;
+ }
+ // Intentionally do not rerender while editing: preserve unsaved inputs.
+});
+$('cpKeyGrid').addEventListener('click',event=>{
+ if(!editing)return;
+ const add=event.target.closest('button[data-cp-short-add]');
+ const remove=event.target.closest('button[data-cp-short-remove]');
+ if(add){
+  const group=add.closest('[data-cp-short-group]'),q=Number(add.dataset.cpShortAdd);
+  const lines=[...group.querySelectorAll('.flex-shortline')],line=document.createElement('div');
+  line.className='flex-shortline';
+  const label=document.createElement('label');label.textContent='Đáp án '+(lines.length+1);
+  const input=document.createElement('input');
+  input.type='text';input.dataset.cpShort=String(q);input.placeholder='Đáp án bổ sung';
+  label.append(input);line.append(label);
+  const button=document.createElement('button');button.type='button';button.className='outline';
+  button.dataset.cpShortRemove=String(q);button.textContent='Xóa';line.append(button);
+  group.insertBefore(line,add.parentElement);input.focus();return;
+ }
+ if(remove){
+  const group=remove.closest('[data-cp-short-group]');
+  remove.closest('.flex-shortline')?.remove();
+  [...group.querySelectorAll('.flex-shortline label')].forEach((x,i)=>{
+   x.firstChild.textContent='Đáp án '+(i+1);
+  });
+ }
+});
 $('cpKeyCodeSelect').addEventListener('change',()=>{editing=false;renderReview();});
 $('keyExam').addEventListener('change',()=>{editing=false;draftCode='';refresh();});
 $('cpEditKey').addEventListener('click',enterEdit);
