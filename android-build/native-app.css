@@ -1,0 +1,135 @@
+/* ChấmPro Android-only native-style shell. Never loaded by /app/ or /app-preview/. */
+:root { --cp-native-navy:#102b51; --cp-native-blue:#245fe7; --cp-native-bg:#f4f7fc; }
+html { width:100%; overflow-x:hidden; }
+body.cp-native-app { background:var(--cp-native-bg); color:#172a45; overflow-x:hidden; overscroll-behavior-y:contain; -webkit-tap-highlight-color:transparent; }
+.cp-native-app .top, .cp-native-app .hs-primary-menu, .cp-native-app .side { display:none !important; }
+.cp-native-app .shell { display:block !important; min-height:100dvh; width:100%; }
+.cp-native-app .main {
+  width:100%; max-width:690px; min-width:0; margin:0 auto;
+  padding:calc(78px + env(safe-area-inset-top,0px)) 14px
+          calc(100px + env(safe-area-inset-bottom,0px)) !important;
+  overflow-x:clip;
+}
+.cp-native-topbar {
+  position:fixed; inset:0 0 auto; z-index:35;
+  min-height:calc(64px + env(safe-area-inset-top,0px));
+  padding:calc(8px + env(safe-area-inset-top,0px)) 16px 9px;
+  background:linear-gradient(120deg,#0d2446 0%,#194a89 100%);
+  color:white; display:flex; align-items:center; justify-content:space-between;
+  gap:10px; box-shadow:0 5px 22px #0c2b5440;
+}
+.cp-native-brand { display:flex; align-items:center; gap:10px; min-width:0; }
+.cp-native-brand img { width:43px; height:43px; border-radius:13px; flex:none; }
+.cp-native-brand strong { display:block; font-size:18px; letter-spacing:-.4px; line-height:1.2; }
+.cp-native-brand small { color:#c7e1ff; font-size:11px; line-height:1.2; margin-top:4px; }
+.cp-native-top-actions { display:flex; align-items:center; gap:8px; flex:none; }
+.cp-native-net { display:inline-flex; align-items:center; gap:5px; font-size:10px; font-weight:750; color:#c7f5de; white-space:nowrap; }
+.cp-native-net:before { content:""; width:7px; height:7px; border-radius:50%; background:#60e5b3; }
+.cp-native-net.offline { color:#ffe0a4; }
+.cp-native-net.offline:before { background:#f6bd65; }
+.cp-native-more { display:grid; place-items:center; width:41px; height:41px; padding:0; color:white; background:#ffffff20; border:1px solid #ffffff30; border-radius:14px; font-size:25px; line-height:1; }
+.cp-native-bottom {
+  position:fixed; inset:auto 0 0; z-index:35;
+  height:calc(71px + env(safe-area-inset-bottom,0px));
+  padding:6px 5px calc(6px + env(safe-area-inset-bottom,0px));
+  background:#fff; border-top:1px solid #dbe5f4; box-shadow:0 -7px 24px #12345610;
+  display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); align-items:stretch;
+}
+.cp-native-tab { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; border:0; background:transparent; color:#73849d; padding:3px 0; min-width:0; font-size:10px; font-weight:750; border-radius:12px; }
+.cp-native-tab .cp-native-tab-icon { display:grid; place-items:center; width:50px; max-width:95%; height:31px; border-radius:17px; transition:background .12s; }
+.cp-native-tab svg { width:21px; height:21px; stroke:currentColor; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+.cp-native-tab[aria-current="page"] { color:#1856d3; }
+.cp-native-tab[aria-current="page"] .cp-native-tab-icon { background:#e7efff; }
+.cp-native-tab:focus-visible,.cp-native-more:focus-visible { outline:2px solid #4c93ff; outline-offset:-2px; }
+.cp-native-app .page-heading { margin:5px 1px 14px; gap:10px; }
+.cp-native-app .page-heading .eyebrow { display:none; }
+.cp-native-app .page-heading h1 { font-size:22px; margin-bottom:5px; }
+.cp-native-app .page-heading p.muted { font-size:12px; margin-bottom:0; }
+.cp-native-app .card { border-radius:18px; padding:16px; box-shadow:0 4px 16px #11305b09; }
+.cp-native-app .columns,.cp-native-app .keygrids,.cp-native-app .scan-layout { grid-template-columns:minmax(0,1fr) !important; gap:12px; }
+.cp-native-app .steps { grid-template-columns:1fr; }
+.cp-native-app .statgrid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.cp-native-app .stat { padding:17px; border-radius:17px; }
+.cp-native-app .stat strong { font-size:27px; margin-top:7px; color:#163b76; }
+.cp-native-app .page-heading button,.cp-native-app .actions button,.cp-native-app .inline-file { max-width:100%; white-space:normal; }
+.cp-native-app button { touch-action:manipulation; }
+.cp-native-app #page-home>.page-heading {
+  background:linear-gradient(135deg,#123b74,#2569dc); border-radius:22px;
+  color:white; padding:20px 18px; box-shadow:0 8px 24px #1d54a824;
+}
+.cp-native-app #page-home>.page-heading h1 { color:white; font-size:24px; }
+.cp-native-app #page-home>.page-heading .muted { color:#dce9ff; }
+.cp-native-app #page-home>.page-heading button { background:#fff; color:#1d55b2; box-shadow:none; width:100%; }
+.cp-native-app #page-home .notice { border-radius:14px; font-size:12px; }
+.cp-native-app .tablewrap { overflow-x:auto; -webkit-overflow-scrolling:touch; max-width:100%; }
+.cp-native-app .record { min-width:0; flex-wrap:wrap; }
+.cp-native-app .record .actions { flex-wrap:wrap; }
+.cp-native-app #page-scan>.page-heading { display:none !important; }
+.cp-native-app #page-scan .scan-layout { display:flex; flex-direction:column; }
+.cp-native-app #page-scan .camera-card { width:100%; max-width:none; border-radius:20px; margin:0; box-shadow:0 8px 25px #0c1c3350; overflow:hidden; }
+.cp-native-app #page-scan .camera-top { padding:12px 14px; }
+.cp-native-app #page-scan .camera-top strong { font-size:14px; }
+.cp-native-app #page-scan .camera-top small { font-size:11px; }
+.cp-native-app #page-scan .camera-top .pill { font-size:10px; padding:5px 8px; }
+.cp-native-app #page-scan .cp-native-scan-exam { display:block; margin:12px 13px 8px; color:#b9d5f5; font-size:11px; }
+.cp-native-app #page-scan .cp-native-scan-exam select { background:#fff; color:#173451; padding:9px 12px; margin-top:5px; }
+.cp-native-app #page-scan .cp-native-camera-resize {
+  display:flex; align-items:center; gap:9px; padding:7px 12px 10px; color:#d7e8fb;
+  border-bottom:1px solid #ffffff18; font-size:12px;
+}
+.cp-native-app .cp-native-camera-resize label { color:inherit; white-space:nowrap; font-size:11px; }
+.cp-native-app .cp-native-camera-resize input[type="range"] { width:100%; min-width:60px; padding:0; margin:0; accent-color:#77e5cb; flex:1; }
+.cp-native-app .cp-native-camera-resize button {
+  display:grid; place-items:center; padding:0; width:32px; height:32px; min-width:32px;
+  background:#264a70; color:#fff; border:1px solid #42658c; border-radius:10px; font-size:20px;
+}
+.cp-native-app .cp-native-camera-resize output { font-variant-numeric:tabular-nums; min-width:32px; text-align:right; font-size:11px; }
+.cp-native-app #cameraSurface.camera-surface,
+.cp-native-app.scan-active #cameraSurface.camera-surface {
+  position:relative !important; display:block !important;
+  width:var(--cp-native-camera-width,240px) !important;
+  max-width:calc(100% - 16px) !important;
+  aspect-ratio:3 / 4 !important; height:auto !important;
+  min-height:0 !important; max-height:none !important;
+  margin:8px auto 10px !important; overflow:hidden !important;
+  border-radius:12px; background:#071521;
+}
+.cp-native-app #cameraSurface #video { width:100%; height:100%; object-fit:cover; }
+.cp-native-app.cp-native-contain #cameraSurface #video { object-fit:contain; }
+.cp-native-app #cameraSurface #captureGuide { max-width:96%; max-height:96%; }
+.cp-native-app #page-scan .camera-footer { padding:8px 12px 13px; }
+.cp-native-app #page-scan .camera-footer p { font-size:11px; min-height:0; margin:0 0 5px; }
+.cp-native-app #page-scan .camera-footer .actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin-top:8px; }
+.cp-native-app #page-scan .camera-footer .actions button { padding:9px 6px; font-size:11px; min-width:0; border-radius:10px; white-space:normal; }
+.cp-native-app #page-scan .camera-footer #startCamera { grid-column:span 2; }
+.cp-native-app #page-scan .camera-footer #snap { grid-column:span 1; }
+.cp-native-app #page-scan .camera-footer #stopCamera { grid-column:span 1; }
+.cp-native-app #page-scan .camera-footer #torch { grid-column:span 1; }
+.cp-native-app #page-scan .camera-footer #rotateCamera { grid-column:span 1; }
+.cp-native-app #page-scan .side-panel { margin:12px 0 0; }
+.cp-native-app #page-scan .side-panel .check { align-items:center; }
+.cp-native-app .qr-dialog { width:min(96vw,600px); max-height:calc(100dvh - 24px); padding:16px; }
+.cp-native-app .qr-dialog video { min-height:140px; max-height:34dvh; }
+.cp-native-app dialog { max-width:calc(100vw - 16px); max-height:calc(100dvh - 30px); padding:16px; }
+.cp-native-app dialog .dialog-head strong { font-size:18px; }
+.cp-native-app .cp-native-sheet-backdrop[hidden] { display:none !important; }
+.cp-native-app .cp-native-sheet-backdrop { position:fixed; inset:0; z-index:55; background:#091d3e8c; display:flex; align-items:flex-end; }
+.cp-native-app .cp-native-sheet { background:white; width:100%; padding:12px 18px calc(18px + env(safe-area-inset-bottom,0px)); border-radius:24px 24px 0 0; box-shadow:0 -9px 35px #06172e40; }
+.cp-native-app .cp-native-sheet-handle { width:38px; height:5px; background:#d7e0ef; border-radius:5px; margin:0 auto 15px; }
+.cp-native-app .cp-native-sheet h2 { font-size:18px; margin:0 0 10px; }
+.cp-native-app .cp-native-sheet button { display:flex; align-items:center; width:100%; padding:14px 12px; margin:6px 0; text-align:left; background:#f3f7fd; border:1px solid #e2eaf6; border-radius:13px; color:#1e416b; }
+.cp-native-app .cp-native-sheet p { color:#61748b; font-size:12px; margin:12px 0 0; }
+.cp-native-app.cp-native-sheet-open { overflow:hidden; }
+@media (max-width:380px) {
+ .cp-native-app .main { padding-left:10px; padding-right:10px; }
+ .cp-native-app .cp-native-net { font-size:9px; }
+ .cp-native-app .cp-native-brand strong { font-size:16px; }
+ .cp-native-app .cp-native-brand img { width:37px; height:37px; }
+ .cp-native-app .cp-native-tab { font-size:9px; }
+}
+@media (orientation:landscape) and (max-height:530px) {
+ .cp-native-app .main { padding-top:calc(65px + env(safe-area-inset-top,0px)) !important; }
+ .cp-native-app .cp-native-topbar { min-height:52px; }
+ .cp-native-app .cp-native-bottom { height:calc(58px + env(safe-area-inset-bottom,0px)); }
+ .cp-native-app .cp-native-tab .cp-native-tab-icon { height:24px; }
+}
