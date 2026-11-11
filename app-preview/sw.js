@@ -1,11 +1,62 @@
-const CACHE='champro-app-preview-v1-20261111-short-outline-v2';
-const CORE=['./','./index.html','./styles.css','./app.mjs','./advanced.mjs','./qr-compatible.mjs','./multisubject.mjs','./grader.mjs','./result-review.mjs','./result-review-ui.mjs','./omr-native.mjs','./omr-verified-paper.mjs','./omr-printed-120.mjs','./answer-flex-editor.mjs','./student-identity.mjs','./sheet-photo-store.mjs','./local-data-store.mjs','./account-bridge.mjs','./vendor/xlsx.full.min.js','./vendor/jsQR.js','./layouts.json','./manifest.webmanifest','./icon.svg'];
-self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting())));
-self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(names=>Promise.all(names.filter(n=>n.startsWith('champro-app-preview-')&&n!==CACHE).map(n=>caches.delete(n)))).then(()=>self.clients.claim())));
-self.addEventListener('fetch',e=>{
- const req=e.request,url=new URL(req.url);
- if(req.method!=='GET'||url.origin!==location.origin||!url.pathname.startsWith(new URL('./',self.registration.scope).pathname))return;
- const netFirst=false; // Cache-first for offline operation; versioned asset URLs use ignoreSearch.
- if(netFirst){e.respondWith(fetch(req).then(res=>{if(res.ok){const copy=res.clone();e.waitUntil(caches.open(CACHE).then(c=>c.put(req,copy)));}return res;}).catch(()=>caches.match(req,{ignoreSearch:true})));return;}
- e.respondWith(caches.match(req,{ignoreSearch:true}).then(x=>x||fetch(req).then(res=>{if(res.ok){const copy=res.clone();e.waitUntil(caches.open(CACHE).then(c=>c.put(req,copy)));}return res;})));
+/* ChấmPro Preview: immutable static shell, no student/photo/API caching. */
+const CACHE='champro-app-preview-pwa-v1-20261111';
+const CORE=[
+ './','./index.html','./styles.css','./app.mjs','./pwa-install.mjs',
+ './advanced.mjs','./qr-compatible.mjs','./multisubject.mjs',
+ './grader.mjs','./result-review.mjs','./result-review-ui.mjs',
+ './omr-native.mjs','./omr-verified-paper.mjs','./omr-printed-120.mjs',
+ './answer-flex-editor.mjs','./student-identity.mjs',
+ './sheet-photo-store.mjs','./local-data-store.mjs','./account-bridge.mjs',
+ './vendor/xlsx.full.min.js','./vendor/jsQR.js',
+ './layouts.json','./manifest.webmanifest','./icon.svg',
+ './pwa-icon.svg','./pwa-maskable.svg'
+];
+const scope=new URL('./',self.registration.scope);
+const abs=CORE.map(path=>new URL(path,scope).href);
+self.addEventListener('install',event=>{
+ event.waitUntil((async()=>{
+  const cache=await caches.open(CACHE);
+  // A failed core download rejects install; the previous working SW remains.
+  await cache.addAll(CORE.map(path=>new Request(path,{cache:'reload'})));
+  await self.skipWaiting();
+ })());
+});
+self.addEventListener('activate',event=>{
+ event.waitUntil((async()=>{
+  const keys=await caches.keys();
+  await Promise.all(keys.filter(k=>
+   (k.startsWith('champro-app-preview-'))&&k!==CACHE
+  ).map(k=>caches.delete(k)));
+  await self.clients.claim();
+ })());
+});
+self.addEventListener('message',event=>{
+ if(event.data?.type!=='CHAMPRO_OFFLINE_STATUS')return;
+ event.waitUntil((async()=>{
+  const cache=await caches.open(CACHE);
+  const found=await Promise.all(abs.map(url=>cache.match(url)));
+  const cached=found.filter(Boolean).length;
+  event.ports?.[0]?.postMessage({ready:cached===abs.length,cached,total:abs.length,version:CACHE});
+ })());
+});
+self.addEventListener('fetch',event=>{
+ const req=event.request,url=new URL(req.url);
+ if(req.method!=='GET'||url.origin!==scope.origin||!url.pathname.startsWith(scope.pathname))return;
+ if(req.mode==='navigate'){
+  event.respondWith((async()=>{
+   const cache=await caches.open(CACHE);
+   // Always open the same local app shell; no network needed after install.
+   const local=await cache.match(new URL('./index.html',scope).href);
+   return local||fetch(req);
+  })());
+  return;
+ }
+ // Cache only known static resources; never store account responses,
+ // student data, photo archives or arbitrary URLs.
+ if(!abs.includes(url.origin+url.pathname))return;
+ event.respondWith((async()=>{
+  const cache=await caches.open(CACHE);
+  const match=await cache.match(url.origin+url.pathname);
+  return match||fetch(req);
+ })());
 });
