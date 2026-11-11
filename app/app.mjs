@@ -119,7 +119,7 @@ $('studentsTable').addEventListener('click',ev=>{const btn=ev.target.closest('[d
 $('studentSearch').oninput=renderStudents;$('resultsSearch').oninput=renderResults;$('filterExam').onchange=renderResults;
 $('studentsSample').onclick=()=>sendFile('ChamPro_Mau_Danh_Sach_Hoc_Sinh.csv',toCsv([['SBD','Họ tên','Lớp'],['1234','Nguyễn Văn A','12A10']]),'text/csv;charset=utf-8');
 async function spreadsheetRows(file,sheetName=null){if(/\.csv$/i.test(file.name))return parseRows(await file.text());if(!/\.xlsx?$/i.test(file.name))throw Error('Chỉ hỗ trợ CSV/XLS/XLSX');
- if(!window.XLSX)await loadScript('https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js','XLSX');
+ if(!window.XLSX)await loadScript('./vendor/xlsx.full.min.js','XLSX');
  const data=await file.arrayBuffer(),wb=window.XLSX.read(data,{type:'array',cellText:true});return window.XLSX.utils.sheet_to_json((wb.Sheets[sheetName]||wb.Sheets[wb.SheetNames[0]]),{header:1,defval:'',raw:false});}
 async function loadScript(src,globalName){await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.async=true;s.onload=resolve;s.onerror=()=>reject(Error('Không tải được thư viện. Cần Internet ở lần sử dụng đầu.'));document.head.append(s);});if(globalName&&!window[globalName])throw Error('Thư viện chưa khởi tạo');}
 $('studentsFile').onchange=async ev=>{try{const file=ev.target.files[0];if(!file)return;const rows=await spreadsheetRows(file);const header=(rows[0]||[]).map(x=>String(x).trim().toLowerCase().replace(/\s+/g,''));const idx=(...names)=>header.findIndex(x=>names.includes(x));let i=idx('sbd','sốbáodanh','sob aodanh'.replaceAll(' ',''),'sốbáodanh'.normalize('NFD').replace(/[\u0300-\u036f]/g,'')),j=idx('họtên','hoten','name','fullname'),k=idx('lớp','lop','classroom');if(i<0||j<0)throw Error('Thiếu cột SBD và Họ tên');let added=0;for(const row of rows.slice(1)){const sbd=preserveSbd(row[i]),name=String(row[j]??'').trim();if(!validSbd(sbd)||!name)continue;const classroom=k<0?'':String(row[k]??'').trim(),old=findStudentForSbd(db.students,sbd);
@@ -328,7 +328,7 @@ async function trySheetOrientations(c,layout,cv,exam,manual=false){
 async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;const exam=selectedExam();if(!exam){$('scanStatus').textContent='Chưa chọn môn/kỳ kiểm tra. Hãy tạo đề, nhập đáp án và chọn kỳ kiểm tra trước khi chấm.';if(manual)toast('Hãy tạo và chọn kỳ kiểm tra trước');return;}
  // Roster can be attached after scoring.
  if(!manual&&!Object.keys(exam.keys||{}).length){$('scanStatus').textContent='Chưa có bộ đáp án cho '+(exam.subject||exam.name)+'. Vào Đề & đáp án để nhập mã đề trước khi chấm.';return;}
- captureBusy=true;if(manual)lastReviewImage=c.toDataURL('image/jpeg',.65);const t0=performance.now();$('scanStatus').textContent='Đang phân tích phiếu…';await new Promise(resolve=>requestAnimationFrame(resolve));try{
+ captureBusy=true;if(manual)lastReviewImage='';const t0=performance.now();$('scanStatus').textContent='Đang phân tích phiếu…';await new Promise(resolve=>requestAnimationFrame(resolve));try{
   const geometry=await ensureLayouts(),cv=null;
   const key='ChamPro_Phieu_'+(exam.form==='120'?'120Cau':'3Phan')+'_MaDe'+exam.digits;
   if(!geometry[key])throw Error('Không có tọa độ mẫu phiếu '+key);
@@ -341,6 +341,7 @@ async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;
   if(match.knownCode&&result.codeConfidence===1){$('captureGuide').classList.add('detected');setTimeout(()=>$('captureGuide').classList.remove('detected'),550);}$('scanInfo').textContent=`Đã đọc SBD ${result.sbd||'?'}, mã đề ${result.examCode||'?'}; độ tin cậy ${(result.confidence*100).toFixed(0)}%; ${result.uncertain.length} ô cần xem. ${(performance.now()-t0).toFixed(0)} ms`;
   $('scanStatus').textContent='Đã nhận diện SBD '+(result.sbd||'?')+' · mã đề '+(result.examCode||'?')+' · '+(performance.now()-t0).toFixed(0)+' ms';
   if(manual){
+    lastReviewImage=c.toDataURL('image/jpeg',.65);
     lastReviewCanvas=document.createElement('canvas');lastReviewCanvas.width=c.width;lastReviewCanvas.height=c.height;
     lastReviewCanvas.getContext('2d').drawImage(c,0,0);
     openReview(exam,result,match.deg);return;}
@@ -367,10 +368,10 @@ async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;
   if(lastSaved===fingerprint){$('scanStatus').textContent='Phiếu này vừa chấm, hãy đổi phiếu tiếp theo';return;}
   const done=saveResult(exam,student,result,true);
    // Photo archiving is optional and never awaited by grading or camera.
-   if(done)enqueueSheetPhoto({id:done.id,canvas:c,markers:result.markers,angle:match.deg,form:exam.form,digits:exam.digits,examId:exam.id,examCode:result.examCode});
+   if(done)try{enqueueSheetPhoto({id:done.id,canvas:match.deg?rotatedCanvas(c,match.deg):c,markers:result.markers,angle:0,form:exam.form,digits:exam.digits,examId:exam.id,examCode:result.examCode});}catch(e){console.warn('Lưu ảnh không khả dụng',e);}
    lastSaved=fingerprint;lastAuto=null;lastGoodOrientation=match.deg;
   $('scanStatus').textContent='Đã chấm: '+done.score+'/'+done.max+' điểm'+(student?'':' · Chưa xác định học sinh; gán SBD trong Kết quả');
- }catch(e){if(manual)toast('Không nhận diện được: '+e.message+'; có thể nhập thủ công.');$('scanStatus').textContent='Không nhận diện: '+e.message;$('scanInfo').textContent='Lỗi nhận diện: '+e.message;lastAuto=null;if(manual){openReview(exam,{sbd:'',examCode:'',I:[],II:[],III:[],confidence:0,uncertain:['Chưa đọc được ảnh – nhập tay']});}}
+ }catch(e){if(manual)toast('Không nhận diện được: '+e.message+'; có thể nhập thủ công.');$('scanStatus').textContent='Không nhận diện: '+e.message;$('scanInfo').textContent='Lỗi nhận diện: '+e.message;lastAuto=null;if(manual){lastReviewImage=c.toDataURL('image/jpeg',.65);openReview(exam,{sbd:'',examCode:'',I:[],II:[],III:[],confidence:0,uncertain:['Chưa đọc được ảnh – nhập tay']});}}
  finally{captureBusy=false;}}
 async function autoScanOnce(){if(!stream||captureBusy||$('reviewDialog').open||!$('autoScan').checked)return;try{await readCanvas(captureVideo(),false);}catch(e){$('scanStatus').textContent=e.message;}}
 $('snap').onclick=async()=>{try{await readCanvas(captureVideo(),true);}catch(e){toast(e.message)}};
@@ -400,7 +401,7 @@ $('saveReview').onclick=()=>{try{if(!review)return;const student=db.students.fin
  if(answers.I.some(x=>x&&!/^[ABCD]$/.test(x)))throw Error('Phần I chỉ chọn A/B/C/D');
  if(answers.II.some(x=>x&&!/^[ĐSD? ]{0,4}$/.test(x)))throw Error('Phần II chỉ nhập 4 ký tự Đ/S');
  const done=saveResult(exam,student,answers,false);if(!done)return;
-  if(lastReviewCanvas)enqueueSheetPhoto({id:done.id,canvas:lastReviewCanvas,markers:review.omr.markers,angle:review.angle||0,form:exam.form,digits:exam.digits,examId:exam.id,examCode});
+  if(lastReviewCanvas)try{enqueueSheetPhoto({id:done.id,canvas:review.angle?rotatedCanvas(lastReviewCanvas,review.angle):lastReviewCanvas,markers:review.omr.markers,angle:0,form:exam.form,digits:exam.digits,examId:exam.id,examCode});}catch(e){console.warn('Lưu ảnh không khả dụng',e);}
   lastReviewCanvas=null;$('reviewDialog').close();toast('Đã chấm và lưu: '+done.score+'/'+done.max+' điểm');
  }catch(e){toast('Không lưu được: '+e.message);}};
 $('closeReview').onclick=()=>{$('reviewDialog').close();lastReviewCanvas=null;};
