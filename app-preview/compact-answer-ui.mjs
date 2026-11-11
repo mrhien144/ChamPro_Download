@@ -151,9 +151,10 @@ function enterEdit(){
  editing=true;renderReview();
 }
 function cancelEdit(){
- editing=false;
  if(draftCode&&!exam()?.keys?.[draftCode])draftCode='';
- refresh();
+ editing=true;
+ activeKey='';
+ refresh(); // discard unsaved changes while remaining directly editable
 }
 function checkedValues(part,q){
  const scope=$('cpKeyGrid').querySelector('[data-cp-question="'+part+':'+q+'"]');
@@ -264,7 +265,7 @@ $('cpNewKey').addEventListener('click',()=>{
  draftCode=code.trim();editing=true;refresh({focus:draftCode});
 });
 $('examList').addEventListener('click',event=>{
- if(event.target.closest('[data-editexam]'))queueMicrotask(()=>{editing=false;draftCode='';refresh({focus:$('keyCode').value});});
+ if(event.target.closest('[data-editexam]'))queueMicrotask(()=>{editing=true;draftCode='';refresh({focus:$('keyCode').value});});
 });
 window.addEventListener('champro-db-updated',()=>{
  // Never rebuild the answer-key editor while the camera is scanning.
@@ -273,7 +274,7 @@ window.addEventListener('champro-db-updated',()=>{
  if($('page-exams')?.classList.contains('shown')&&!$('cpKeyGrid').querySelector(':focus'))refresh();
 });
 $('nav')?.addEventListener('click',event=>{
- if(event.target.closest('[data-page="exams"]'))queueMicrotask(()=>{if(!editing)refresh();});
+ if(event.target.closest('[data-page="exams"]'))queueMicrotask(()=>{if(!$('cpKeyGrid').querySelector(':focus'))refresh();});
 });
 window.addEventListener('champro-keys-imported',event=>{
  const detail=event.detail||{};
