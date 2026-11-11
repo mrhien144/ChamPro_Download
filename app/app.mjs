@@ -5,6 +5,8 @@ import {readVerifiedWithMarkers} from './omr-verified-paper.mjs';
 import {readPrinted120WithMarkers} from './omr-printed-120.mjs';
 import {preserveSbd,canonicalSbd,validSbd,findStudentForSbd} from './student-identity.mjs';
 import {enqueueSheetPhoto,showSheetPhoto} from './sheet-photo-store.mjs';
+import {regradeAffectedResults,correctedRecord} from './result-review.mjs';
+import {renderResultEditor,bindResultEditor,collectResultEditor} from './result-review-ui.mjs';
 import {queueLocalMirror,readLocalMirror,isValidSnapshot,getLocalStorageStatus,requestPersistentLocalStorage} from './local-data-store.mjs';
 const $=id=>document.getElementById(id);
 // Canvas-only OMR: no heavy OpenCV startup on Samsung browsers.
@@ -88,7 +90,7 @@ $('saveKey').onclick=()=>{try{const e=selectedExam('keyExam'),code=$('keyCode').
   const partII=[0,...$('ruleII').value.split(',').map(x=>Number(x.trim()))];if(partII.length!==5||partII.some(x=>!Number.isFinite(x)||x<0))throw Error('Điểm phần II phải gồm bốn số không âm');
  e.rules={I:Number($('ruleI').value),II:partII,III:Number($('ruleIII').value)};
  if(!Number.isFinite(e.rules.I)||!Number.isFinite(e.rules.III)||e.rules.I<0||e.rules.III<0)throw Error('Điểm số không hợp lệ');
- e.keys[code]={I,II:II.map(s=>s.toUpperCase().replaceAll('D','Đ')),III};save();refreshFlexibleKeyEditor();toast(`Đã lưu mã đề ${code}.`);
+ e.keys[code]={I,II:II.map(s=>s.toUpperCase().replaceAll('D','Đ')),III};const stats=regradeAffectedResults(db,e,'Tự chấm lại khi sửa đáp án mã '+code,code);save();refreshFlexibleKeyEditor();toast(`Đã lưu mã đề ${code}. Đã tự chấm lại ${stats.changed}/${stats.checked} bài có thay đổi điểm.`);
  }catch(e){toast('Chưa lưu: '+e.message);}};
 $('examList').addEventListener('click',ev=>{const edit=ev.target.closest('[data-editexam]'),del=ev.target.closest('[data-delexam]');if(edit){$('keyExam').value=edit.dataset.editexam;const e=selectedExam('keyExam');$('keyCode').value=Object.keys(e?.keys||{})[0]||''.padStart(e?.digits||3,'0');codeEditor();$('keyEditor').scrollIntoView({behavior:'smooth'});}if(del){const e=db.exams.find(x=>x.id===del.dataset.delexam);if(!confirm(`Xóa kỳ ${e?.name}? Kết quả đã lưu vẫn được giữ.`))return;db.exams=db.exams.filter(x=>x.id!==del.dataset.delexam);save();}});
 $('regradeSaved').onclick=()=>{
@@ -128,37 +130,52 @@ $('studentsFile').onchange=async ev=>{try{const file=ev.target.files[0];if(!file
  db.students.push({id:id(),sbd,name,classroom});added++;}save();toast('Đã nhập '+added+' học sinh mới.');}catch(e){toast('Không nhập được: '+e.message);}ev.target.value='';};
 $('keysFile').onchange=async ev=>{try{const e=selectedExam('keyExam');if(!e)throw Error('Hãy chọn kỳ kiểm tra trước');const file=ev.target.files[0];if(!file)return;const rows=await spreadsheetRows(file),head=rows.shift().map(x=>String(x).toLowerCase().trim().replace(/\s+/g,''));const pos=(...a)=>head.findIndex(x=>a.includes(x));const c=pos('ma_de','mãđề','made'),p=pos('phan','phần'),q=pos('cau','câu'),a=pos('dap_an','đápán','dapan');if([c,p,q,a].some(x=>x<0))throw Error('Cần cột ma_de, phan, cau, dap_an');let changed=0;for(const row of rows){const code=String(row[c]??'').trim().replace(/\.0$/,'');const part=String(row[p]??'').trim().toUpperCase();const number=Number(row[q]);if(!new RegExp('^\\d{'+e.digits+'}$').test(code)||!['I','II','III'].includes(part)||!Number.isInteger(number)||number<1||number>e.counts[part])continue;const k=e.keys[code]||{I:[],II:[],III:[]};k[part][number-1]=String(row[a]??'').trim();e.keys[code]=k;changed++;}save();toast(`Đã nhập ${changed} ô đáp án. Kiểm tra đủ số câu trước khi chấm.`);}catch(e){toast('Không nhập được: '+e.message);}ev.target.value='';};
 $('resultsCSV').onclick=()=>sendFile('ChamPro_Ket_Qua.csv',toCsv([['Thời gian','Kỳ kiểm tra','Môn học','Họ tên','Lớp','SBD','Mã đề','Điểm','Điểm tối đa','Phần I','Phần II','Phần III'],...filteredResults().map(r=>[r.savedAt,db.exams.find(e=>e.id===r.examId)?.name||r.period||'',db.exams.find(e=>e.id===r.examId)?.subject||r.subject||'',r.studentName,r.classroom,r.sbd,r.examCode,r.score,r.max,r.parts.I,r.parts.II,r.parts.III])]),'text/csv;charset=utf-8');
-$('resultsTable').addEventListener('click',ev=>{
- const b=ev.target.closest('[data-result]');if(!b)return;const r=db.results.find(x=>x.id===b.dataset.result);if(!r)return;
+function showSavedResult(resultId,formOverride=null){
+ const r=db.results.find(x=>x.id===resultId);if(!r)return;
  const ex=db.exams.find(x=>x.id===r.examId),dlg=$('reviewDialog');
- const choices='<option value="">-- Chọn học sinh --</option>'+db.students.map(st=>'<option value="'+esc(st.id)+'" '+(r.studentId===st.id?'selected':'')+'>'+esc(st.sbd)+' - '+esc(st.name)+'</option>').join('');
- $('reviewBody').innerHTML='<p><strong>'+esc(r.studentName||'Chưa xác định học sinh')+'</strong> · '+esc(r.sbd||'Chưa gán SBD')+' · Mã đề '+esc(r.examCode)+'</p>'+
-  '<p class="success">Điểm: '+esc(r.score)+' / '+esc(r.max)+'</p>'+
-  '<p>Phần I: '+esc(r.answers.I?.join(', '))+'</p><p>Phần II: '+esc(r.answers.II?.join(' | '))+'</p><p>Phần III: '+esc(r.answers.III?.join(' | '))+'</p>'+
-  '<p class="hint">'+(ex?'Chỉnh SBD không thay đổi điểm số.':'Kỳ kiểm tra gốc đã bị xóa.')+'</p>'+
-   (r.scoreHistory?.length?'<details><summary>Lịch sử điều chỉnh điểm ('+r.scoreHistory.length+')</summary>'+
-    r.scoreHistory.map(h=>'<p>'+esc(new Date(h.at).toLocaleString('vi-VN'))+
-    ': '+esc(h.oldScore)+' / '+esc(h.oldMax)+' → '+esc(h.newScore)+' / '+esc(h.newMax)+
-    ' ('+esc(h.reason||'Chỉnh đáp án')+')</p>').join('')+'</details>':'')+
-  '<div class="review-data"><label>SBD đọc từ phiếu <input value="'+esc(r.rawSbd||r.sbd||'')+'" readonly></label>'+
-  '<label>SBD cần gán <input id="assignSbd" value="'+esc(r.sbd||'')+'" inputmode="numeric" placeholder="Nhập SBD đúng"></label>'+
-  '<label>Chọn học sinh <select id="assignStudent">'+choices+'</select></label></div>'+
-  '<button type="button" class="primary" data-assign-result="'+esc(r.id)+'">Lưu SBD / học sinh (giữ nguyên điểm)</button>';
- const photo=document.createElement('section');photo.className='champro-photo-review';photo.setAttribute('aria-label','Ảnh phiếu đã chấm');
-  $('reviewBody').prepend(photo);void showSheetPhoto(photo,r,ex);
-  $('saveReview').hidden=true;dlg.showModal();
+ const view=formOverride||r,body=$('reviewBody');
+ const line='<p><strong>'+esc(r.studentName||'Chưa xác định học sinh')+
+  '</strong> · '+esc(r.sbd||'Chưa gán SBD')+' · Mã đề '+esc(r.examCode)+'</p>'+
+  '<p class="success">Điểm hiện tại: '+esc(r.score)+' / '+esc(r.max)+'</p>';
+ body.innerHTML=line+(ex?renderResultEditor(view,ex,db.students):
+  '<p class="warning">Kỳ kiểm tra gốc đã bị xóa; không thể chỉnh đáp án hoặc chấm lại.</p>');
+ const photo=document.createElement('section');photo.className='champro-photo-review';
+ photo.setAttribute('aria-label','Ảnh phiếu đã chấm');body.prepend(photo);
+ void showSheetPhoto(photo,r,ex);
+ if(ex)bindResultEditor(body,db.students);
+ dlg.dataset.savedResult=resultId;$('saveReview').hidden=true;
+ if(!dlg.open)dlg.showModal();
+}
+$('resultsTable').addEventListener('click',ev=>{
+ const button=ev.target.closest('[data-result]');
+ if(button)showSavedResult(button.dataset.result);
 });
 $('reviewBody').addEventListener('click',ev=>{
- const btn=ev.target.closest('[data-assign-result]');if(!btn)return;
+ const saveButton=ev.target.closest('#rcSave'),restoreButton=ev.target.closest('#rcRestore');
+ if(!saveButton&&!restoreButton)return;
+ const resultId=$('reviewDialog').dataset.savedResult,previous=db.results.find(x=>x.id===resultId);
+ if(!previous)return;
+ const exam=db.exams.find(x=>x.id===previous.examId);
  try{
-  const record=db.results.find(x=>x.id===btn.dataset.assignResult);if(!record)throw Error('Không tìm thấy bài');
-  const entered=preserveSbd($('assignSbd').value),selected=db.students.find(st=>st.id===$('assignStudent').value),student=selected||findStudentForSbd(db.students,entered);
-  if(!student)throw Error('SBD chưa có trong danh sách; nhập học sinh hoặc chọn đúng học sinh');
-  if(entered&&canonicalSbd(entered)!==canonicalSbd(student.sbd))throw Error('SBD nhập không khớp học sinh đã chọn');
-  if(db.results.some(x=>x.id!==record.id&&x.examId===record.examId&&x.studentId===student.id))throw Error('Học sinh này đã có bài cùng môn/kỳ, tránh lưu trùng');
-  record.studentId=student.id;record.studentName=student.name;record.classroom=student.classroom;record.sbd=student.sbd;record.pendingStudent=false;
-  save();$('reviewDialog').close();toast('Đã gán '+student.sbd+' - '+student.name+'; giữ nguyên điểm');
- }catch(e){toast('Không gán được SBD: '+e.message);}
+  if(!exam)throw Error('Không tìm thấy kỳ kiểm tra gốc');
+  let changes;
+  if(restoreButton){
+   if(!previous.machineReadOriginal)throw Error('Không có bản đọc máy ban đầu');
+   if(!confirm('Khôi phục SBD, mã đề và các đáp án được máy nhận diện ban đầu rồi chấm lại? Ảnh phiếu gốc được giữ nguyên.'))return;
+   const first=previous.machineReadOriginal;
+   changes={sbd:first.sbd||'',studentId:first.studentId||'',examCode:first.examCode,
+    answers:{I:[...(first.answers?.I||[])],II:[...(first.answers?.II||[])],
+     III:[...(first.answers?.III||[])],IIIColumns:first.answers?.IIIColumns||[]},
+    reason:'Khôi phục bản đọc máy ban đầu'};
+  }else changes=collectResultEditor($('reviewBody'),exam);
+  const changed=correctedRecord(db,exam,previous,changes);
+  if(!changed.changed){toast('Không có thay đổi nào cần lưu');return;}
+  const index=db.results.findIndex(r=>r.id===resultId);
+  if(index<0)throw Error('Không tìm thấy kết quả cần cập nhật');
+  db.results[index]=changed.record;
+  save();showSavedResult(resultId);
+  toast('Đã lưu chỉnh sửa và chấm lại: '+changed.record.score+'/'+changed.record.max+' điểm');
+ }catch(error){toast('Không thể lưu chỉnh sửa: '+error.message);}
 });
 $('backupBtn').onclick=()=>sendFile('ChamPro_SaoLuu_'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(db,null,2),'application/json');
 $('restoreFile').onchange=async ev=>{try{const f=ev.target.files[0];if(!f)return;const data=JSON.parse(await f.text());if(!Array.isArray(data.exams)||!Array.isArray(data.students)||!Array.isArray(data.results)||data.schema!==1)throw Error('Không phải tệp sao lưu đúng định dạng');if(!confirm(`Khôi phục ${data.exams.length} kỳ kiểm tra, ${data.students.length} học sinh, ${data.results.length} bài? Dữ liệu hiện tại sẽ bị thay thế.`))return;db=data;save();toast('Đã khôi phục dữ liệu');}catch(e){toast(e.message)}ev.target.value='';};
@@ -378,7 +395,7 @@ async function autoScanOnce(){if(!stream||captureBusy||$('reviewDialog').open||!
 $('snap').onclick=async()=>{try{await readCanvas(captureVideo(),true);}catch(e){toast(e.message)}};
 $('openPhoto').onclick=async()=>{const file=$('photoFile').files[0];if(!file)return toast('Hãy chọn ảnh phiếu trước');const url=URL.createObjectURL(file),img=new Image();img.onload=async()=>{try{await readCanvas(imageCanvas(img),true,'photo');}catch(e){toast(e.message);}finally{URL.revokeObjectURL(url);}};img.onerror=()=>{URL.revokeObjectURL(url);toast('Không mở được ảnh')};img.src=url;};
 $('testEngine').onclick=async()=>{try{const geometry=await ensureLayouts();if(Object.keys(geometry).length<4)throw Error('Thiếu mẫu phiếu');toast('Bộ đọc ảnh nhẹ và 4 mẫu phiếu đã sẵn sàng');}catch(e){toast(e.message);}};
-function openReview(exam,omr,angle=0){review={exam,omr,angle};const student=findStudentForSbd(db.students,omr.sbd);const info=omr.uncertain?.length?`<p class="warning">Có ${omr.uncertain.length} ô chưa rõ. Hãy kiểm tra với ảnh phiếu trước khi lưu.</p>`:'<p class="success">Đã nhận dạng. Kiểm tra SBD, mã đề và đáp án trước khi lưu.</p>';
+function openReview(exam,omr,angle=0){delete $('reviewDialog').dataset.savedResult;review={exam,omr,angle};const student=findStudentForSbd(db.students,omr.sbd);const info=omr.uncertain?.length?`<p class="warning">Có ${omr.uncertain.length} ô chưa rõ. Hãy kiểm tra với ảnh phiếu trước khi lưu.</p>`:'<p class="success">Đã nhận dạng. Kiểm tra SBD, mã đề và đáp án trước khi lưu.</p>';
  const field=(p,num,val,opts)=>`<label>${p} ${num}<input data-p="${p}" data-q="${num-1}" ${opts||''} value="${esc(val)}"></label>`;
  $('reviewBody').innerHTML=info+(lastReviewImage?`<details><summary>Ảnh phiếu đang kiểm tra (không lưu vào kết quả)</summary><img src="${lastReviewImage}" alt="Ảnh phiếu để đối chiếu" style="display:block;width:100%;max-height:460px;object-fit:contain;background:#0b1724;margin:8px 0 15px"></details>`:'')+`<div class="review-data"><label>Học sinh<select id="reviewStudent"><option value="">-- Chọn học sinh --</option>${db.students.map(s=>`<option value="${esc(s.id)}" ${student?.id===s.id?'selected':''}>${esc(s.sbd)} - ${esc(s.name)}</option>`).join('')}</select></label><label>SBD đọc từ phiếu<input id="reviewSbd" value="${esc(omr.sbd)}" maxlength="12" inputmode="numeric"></label><label>Mã đề<input id="reviewCode" value="${esc(omr.examCode)}" maxlength="4" inputmode="numeric"></label></div><h3>Phần I</h3><div class="answeredit">${Array.from({length:exam.counts.I},(_,i)=>field('I',i+1,omr.I?.[i]||'', 'maxlength="3"')).join('')}</div>${exam.counts.II?'<h3>Phần II (Đ/S, 4 ý)</h3><div class="answeredit">'+Array.from({length:exam.counts.II},(_,i)=>field('II',i+1,omr.II?.[i]||'', 'maxlength="4"')).join('')+'</div>':''}${exam.counts.III?'<h3>Phần III</h3><div class="answeredit">'+Array.from({length:exam.counts.III},(_,i)=>field('III',i+1,omr.III?.[i]||'', '')).join('')+'</div>':''}`;
  $('saveReview').hidden=false;$('reviewDialog').showModal();}
@@ -389,7 +406,7 @@ function saveResult(exam,student,ans,fromAuto=false){
  if(exists&&fromAuto)throw Error('Bài đã có trong lịch sử, không chấm trùng');
  const record={id:exists?.id||id(),examId:exam.id,gradeClass:exam.gradeClass||student?.classroom||'',subject:exam.subject||'',period:exam.name,
   studentId:student?.id||null,studentName:student?.name||'Chưa xác định học sinh',classroom:student?.classroom||'',sbd:student?.sbd||'',rawSbd:preserveSbd(ans.sbd),
-  pendingStudent:!student,examCode:ans.examCode,answers:{I:ans.I,II:ans.II,III:ans.III},score:value.total,max:value.max,parts:value.points,savedAt:new Date().toISOString()};
+  pendingStudent:!student,examCode:ans.examCode,answers:{I:ans.I,II:ans.II,III:ans.III,IIIColumns:ans.IIIColumns||[]},score:value.total,max:value.max,parts:value.points,savedAt:new Date().toISOString()};
  db.results=db.results.filter(x=>x.id!==record.id);db.results.push(record);save();
  $('scanPerson').textContent=record.studentName;$('scanScore').textContent=(student?'SBD '+record.sbd:'Chưa gán SBD')+' · '+record.score+'/'+record.max+' điểm';$('scanMode').textContent='Đã chấm';
  const flash=$('resultFlash');$('flashName').textContent=record.studentName;$('flashScore').textContent=record.score+'/'+record.max+' điểm';
@@ -405,7 +422,7 @@ $('saveReview').onclick=()=>{try{if(!review)return;const student=db.students.fin
   if(lastReviewCanvas)try{enqueueSheetPhoto({id:done.id,canvas:review.angle?rotatedCanvas(lastReviewCanvas,review.angle):lastReviewCanvas,markers:review.omr.markers,angle:0,form:exam.form,digits:exam.digits,examId:exam.id,examCode});}catch(e){console.warn('Lưu ảnh không khả dụng',e);}
   lastReviewCanvas=null;$('reviewDialog').close();toast('Đã chấm và lưu: '+done.score+'/'+done.max+' điểm');
  }catch(e){toast('Không lưu được: '+e.message);}};
-$('closeReview').onclick=()=>{$('reviewDialog').close();lastReviewCanvas=null;};
+$('closeReview').onclick=()=>{$('reviewDialog').close();lastReviewCanvas=null;delete $('reviewDialog').dataset.savedResult;};
  $('reviewDialog').addEventListener('close',()=>{lastReviewCanvas=null;});
  // Do not auto-delete student sheet photos without a confirmed retention policy.
  const mirrorStatus=$('localStorageStatus');
