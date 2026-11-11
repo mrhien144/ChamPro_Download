@@ -37,6 +37,9 @@ jobs:
           node --check app-preview/sheet-photo-store.mjs
           node --check android-build/native-app.js
           node --check android-build/photo-review-apk.mjs
+          node --check app-preview/compact-answer-ui.mjs
+          node --check app-preview/compact-points.mjs
+          node tests/compact-points-preview.test.mjs
           node --test tests/preview-pending-code.test.mjs
       - name: Assemble complete offline preview web bundle
         run: |
