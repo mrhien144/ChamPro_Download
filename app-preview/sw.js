@@ -9,7 +9,8 @@ const CORE=[
  './sheet-photo-store.mjs','./local-data-store.mjs','./account-bridge.mjs',
  './vendor/xlsx.full.min.js','./vendor/jsQR.js',
  './layouts.json','./manifest.webmanifest','./icon.svg',
- './pwa-icon.svg','./pwa-maskable.svg'
+ './pwa-icon.svg','./pwa-maskable.svg',
+ './pwa-icon-192.png','./pwa-icon-512.png','./pwa-maskable-512.png','./apple-touch-icon.png'
 ];
 const scope=new URL('./',self.registration.scope);
 const abs=CORE.map(path=>new URL(path,scope).href);
