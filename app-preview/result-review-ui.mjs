@@ -27,7 +27,7 @@ export function renderResultEditor(record,exam,students){
   record.scoreHistory.map(x=>'<p>'+e(new Date(x.at).toLocaleString('vi-VN'))+': '+e(x.oldScore)+' → '+e(x.newScore)+' ('+e(x.reason)+')</p>').join('')+
   '</details>':'';
  return '<section class="cp-manual-editor"><h3>Chỉnh sửa bài đã chấm</h3>'+
-  '<p class="hint">Đối chiếu ảnh gốc rồi sửa phương án máy nhận diện sai. Điểm được tính lại khi bấm Lưu chỉnh sửa. Có lưu lịch sử để kiểm tra.</p>'+
+  '<p class="hint">Đối chiếu ảnh gốc rồi sửa phương án máy nhận diện sai. Điểm được tính lại khi bấm Lưu chỉnh sửa. Có lưu lịch sử để kiểm tra.</p>'+ (record.pendingCode?'<p class="warning">Phiếu này đang chờ sửa mã đề. Hãy nhập mã đề đã có đáp án để chấm lần đầu.</p>':'')+
   '<div class="review-data"><label>SBD <input id="rcSbd" inputmode="numeric" maxlength="12" value="'+e(record.sbd||'')+'"></label>'+
   '<label>Chọn học sinh <select id="rcStudent">'+opts(record.studentId||'',studentOptions)+'</select></label>'+
   '<label>Mã đề <input id="rcExamCode" inputmode="numeric" maxlength="'+e(exam.digits)+'" value="'+e(record.examCode)+'"></label></div>'+
