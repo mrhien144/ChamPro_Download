@@ -1,5 +1,5 @@
 const CACHE='champro-web-v2-20261111-account-bridge-preview';
-const CORE=['./','./index.html','./styles.css','./app.mjs','./advanced.mjs','./qr-compatible.mjs','./multisubject.mjs','./grader.mjs','./omr-native.mjs','./omr-verified-paper.mjs','./omr-printed-120.mjs','./answer-flex-editor.mjs','./student-identity.mjs','./sheet-photo-store.mjs','./local-data-store.mjs','./account-bridge.mjs','./vendor/xlsx.full.min.js','./vendor/jsQR.js','./layouts.json','./manifest.webmanifest','./icon.svg'];
+const CORE=['./','./index.html','./styles.css','./app.mjs','./advanced.mjs','./qr-compatible.mjs','./multisubject.mjs','./grader.mjs','./result-review.mjs','./result-review-ui.mjs','./omr-native.mjs','./omr-verified-paper.mjs','./omr-printed-120.mjs','./answer-flex-editor.mjs','./student-identity.mjs','./sheet-photo-store.mjs','./local-data-store.mjs','./account-bridge.mjs','./vendor/xlsx.full.min.js','./vendor/jsQR.js','./layouts.json','./manifest.webmanifest','./icon.svg'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(names=>Promise.all(names.filter(n=>n.startsWith('champro-web-')&&n!==CACHE).map(n=>caches.delete(n)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{
