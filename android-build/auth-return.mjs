@@ -5,7 +5,7 @@ export function parseAuthReturn(raw,expectedState){
    typeof expectedState!=='string'||!/^[a-f0-9]{32}$/.test(expectedState))return null;
  try{
   const u=new URL(raw);
-  if(u.protocol!=='champrotest144:'||u.hostname!=='auth'||u.pathname!=='/complete'||
+  if(u.protocol!=='champrotest145:'||u.hostname!=='auth'||u.pathname!=='/complete'||
     u.username||u.password||u.hash)return null;
   const keys=[...u.searchParams.keys()];
   if(keys.length!==2||!keys.includes('ticket')||!keys.includes('state'))return null;

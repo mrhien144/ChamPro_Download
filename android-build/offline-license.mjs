@@ -5,9 +5,10 @@
 const $=id=>document.getElementById(id);
 const INSTALL_KEY='cp-v14-install-id';
 const LICENSE_KEY='cp-v14-signed-license';
+const PUBLIC_KEY_KEY='cp-v145-pinned-verification-key';
 const CLOCK_KEY='cp-v14-last-verified-time';
 const ISSUER='champro-platform';
-const AUDIENCE='com.champro.nativepreview.v144';
+const AUDIENCE='com.champro.nativepreview.v145';
 const enc=new TextEncoder();
 function decode64(s){
  if(!/^[A-Za-z0-9_-]+$/.test(s))throw Error('Mã kích hoạt có ký tự không hợp lệ');
@@ -29,12 +30,10 @@ async function verifyLicense(s,now=Math.floor(Date.now()/1000)){
  if(t.length!==3||s.length>8192)throw Error('Mã kích hoạt không đúng định dạng');
  const header=parse(t[0]),body=parse(t[1]);
  if(header.alg!=='ES256'||header.typ!=='JWT')throw Error('Thuật toán ký không được chấp nhận');
- const publicKey=await crypto.subtle.importKey('jwk',{
-  kty:'EC',crv:'P-256',
-  x:'DpOMFr1G8KrwXx9Ds5uXXGMVSQfa89i8JoIVrfoesDQ',
-  y:'0tzdqqri0Zn5VjlXPrets7c5cr4vY3jZzJyLo-MNjuY',
-  key_ops:['verify'],ext:true
- },{name:'ECDSA',namedCurve:'P-256'},false,['verify']);
+ const pinned=localStorage.getItem(PUBLIC_KEY_KEY);
+ if(!pinned)throw Error('Chưa có khóa xác minh từ mrhien.com. Vui lòng đăng nhập lần đầu khi có Internet.');
+ const jwk=JSON.parse(pinned);
+ const publicKey=await crypto.subtle.importKey('jwk',jwk,{name:'ECDSA',namedCurve:'P-256'},false,['verify']);
  const valid=await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},publicKey,decode64(t[2]),enc.encode(t[0]+'.'+t[1]));
  if(!valid)throw Error('Chữ ký bản quyền không hợp lệ');
  if(body.iss!==ISSUER||body.aud!==AUDIENCE||typeof body.sub!=='string'||
@@ -79,4 +78,22 @@ function boot(){
  }catch(e){showMsg(e.message);}
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
-export {verifyLicense};
+function validatePublicKey(jwk){
+ if(!jwk||jwk.kty!=='EC'||jwk.crv!=='P-256'||
+   typeof jwk.x!=='string'||typeof jwk.y!=='string'||
+   !/^[A-Za-z0-9_-]{43}$/.test(jwk.x)||!/^[A-Za-z0-9_-]{43}$/.test(jwk.y))
+  throw Error('Khóa công khai WordPress không hợp lệ.');
+ return {kty:'EC',crv:'P-256',x:jwk.x,y:jwk.y,key_ops:['verify'],ext:true};
+}
+async function pinPublicKey(jwk){
+ const clean=validatePublicKey(jwk);
+ // Verify that the received key is a real EC-P256 point before persisting.
+ await crypto.subtle.importKey('jwk',clean,{name:'ECDSA',namedCurve:'P-256'},false,['verify']);
+ const stored=localStorage.getItem(PUBLIC_KEY_KEY);
+ if(stored){
+  const current=JSON.parse(stored);
+  if(current.x!==clean.x||current.y!==clean.y)throw Error('Khóa máy chủ đã thay đổi. Liên hệ quản trị ChấmPro; không tự thay khóa để tránh mất an toàn.');
+ }else localStorage.setItem(PUBLIC_KEY_KEY,JSON.stringify(clean));
+ return clean;
+}
+export {verifyLicense,pinPublicKey};

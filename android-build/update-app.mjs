@@ -3,10 +3,10 @@
  * Never downloads/installs without a user tap. Android itself validates package signature
  * and asks for installation confirmation. No developer signing key is bundled here.
  */
-export const CURRENT_VERSION_CODE=14400;
-export const PACKAGE_ID='com.champro.nativepreview.v144';
+export const CURRENT_VERSION_CODE=14500;
+export const PACKAGE_ID='com.champro.nativepreview.v145';
 export const MANIFEST_URL='https://champro.mrhien.com/updates/champro-android-preview.json';
-const LAST_CHECK_KEY='cp-v144-updates-last-checked';
+const LAST_CHECK_KEY='cp-v145-updates-last-checked';
 const INTERVAL_MS=24*60*60*1000;
 const $=id=>document.getElementById(id);
 let nextUpdate=null;

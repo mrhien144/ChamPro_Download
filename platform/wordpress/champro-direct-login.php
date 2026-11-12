@@ -1,14 +1,14 @@
 <?php
 /**
- * Plugin Name: ChấmPro Direct Login (v14.4 STAGING)
+ * Plugin Name: ChấmPro Direct Login (v14.5 STAGING)
  * Description: WordPress account -> one-time PKCE ticket -> signed offline device license. No Cloudflare Worker required for LOGIN.
- * Version: 0.4.0
+ * Version: 0.5.1
  * Requires PHP: 7.4
  */
 defined('ABSPATH') || exit;
 const CPD_LOGIN_PATH='/champro-login-app/';
 const CPD_ISSUER='champro-platform';
-const CPD_AUDIENCE='com.champro.nativepreview.v144';
+const CPD_AUDIENCE='com.champro.nativepreview.v145';
 const CPD_TRIAL_DAYS=7; // staging only; configure policy before public release
 function cpd_fail($reason,$status=400){return new WP_Error('cpd_auth', $reason,array('status'=>$status));}
 function cpd_b64e($s){return rtrim(strtr(base64_encode($s),'+/','-_'),'=');}
@@ -23,10 +23,34 @@ function cpd_context($args) {
     if(!cpd_hex($state)||strlen($state)!==32||!preg_match('/^[A-Za-z0-9_-]{43}$/D',$challenge)||!cpd_device($device))return false;
     return compact('state','challenge','device');
 }
-function cpd_key_available(){return defined('CHAMPRO_LICENSE_PRIVATE_JWK') && is_string(CHAMPRO_LICENSE_PRIVATE_JWK) && strlen(CHAMPRO_LICENSE_PRIVATE_JWK)>120;}
+function cpd_auto_key_option(){return 'cpd_offline_es256_key_v1';}
+/**
+ * Private key is NEVER sent to the app or the public API.
+ * On first admin visit, create a stable key and store it as a non-autoload WordPress option.
+ * Prefer CHAMPRO_LICENSE_PRIVATE_JWK in wp-config.php when explicitly configured.
+ */
+function cpd_generate_key_if_missing(){
+    if(defined('CHAMPRO_LICENSE_PRIVATE_JWK'))return;
+    if(get_option(cpd_auto_key_option(),false))return;
+    if(!function_exists('openssl_pkey_new')||!defined('OPENSSL_KEYTYPE_EC'))return;
+    $key=openssl_pkey_new(array('private_key_type'=>OPENSSL_KEYTYPE_EC,'curve_name'=>'prime256v1'));
+    if(!$key)return;
+    $pem='';
+    if(!openssl_pkey_export($key,$pem)||strpos($pem,'PRIVATE KEY')===false)return;
+    // This is the only key for this installation. Never regenerate if present.
+    add_option(cpd_auto_key_option(),$pem,'','no');
+}
+add_action('admin_init',function(){
+    if(current_user_can('manage_options'))cpd_generate_key_if_missing();
+});
+function cpd_key_available(){
+    if(defined('CHAMPRO_LICENSE_PRIVATE_JWK')&&is_string(CHAMPRO_LICENSE_PRIVATE_JWK)&&strlen(CHAMPRO_LICENSE_PRIVATE_JWK)>120)return true;
+    return is_string(get_option(cpd_auto_key_option(),false))&&strlen(get_option(cpd_auto_key_option(),false))>100;
+}
 /* DER ECPrivateKey: nist P-256. Private key provided only through wp-config.php, NEVER in this repository. */
 function cpd_private_pem(){
     if(!cpd_key_available())return false;
+    if(!defined('CHAMPRO_LICENSE_PRIVATE_JWK'))return get_option(cpd_auto_key_option(),false);
     $j=json_decode(CHAMPRO_LICENSE_PRIVATE_JWK,true);
     if(!is_array($j)||($j['kty']??'')!=='EC'||($j['crv']??'')!=='P-256')return false;
     $d=cpd_b64d($j['d']??'');$x=cpd_b64d($j['x']??'');$y=cpd_b64d($j['y']??'');
@@ -105,7 +129,7 @@ add_shortcode('champro_direct_login',function(){
         return '<section style="max-width:480px;margin:30px auto"><h2>Đăng nhập ChấmPro</h2><p>Đăng nhập tài khoản mrhien.com. Bạn sẽ được đưa về ChấmPro tự động.</p><a href="'.
          esc_url($login).'">Đăng nhập / Đăng ký</a><script>location.replace('.wp_json_encode($login).');</script></section>';
     }
-    if(!cpd_key_available())return '<p>ChấmPro chưa hoàn tất cấu hình máy chủ xác thực. Không thể cấp giấy phép.</p>';
+    if(!cpd_key_available())return '<p>ChấmPro chưa có khóa bảo mật. Quản trị viên hãy mở wp-admin một lần để hệ thống khởi tạo khóa, sau đó tải lại trang.</p>';
     ob_start();?>
     <section style="max-width:480px;margin:30px auto;padding:20px;font:16px system-ui">
       <h2>Đang kết nối ChấmPro…</h2><p>Đang xác thực tài khoản và quay lại ứng dụng.</p>
@@ -127,7 +151,7 @@ add_action('admin_post_cpd_authorize',function(){
     $record=array('user_id'=>get_current_user_id(),'device'=>$ctx['device'],
       'challenge'=>$ctx['challenge'],'state'=>$ctx['state']);
     set_transient('cpd_ticket_'.$ticket,$record,180);
-    $target='champrotest144://auth/complete?ticket='.$ticket.'&state='.$ctx['state'];
+    $target='champrotest145://auth/complete?ticket='.$ticket.'&state='.$ctx['state'];
     nocache_headers();
     header('Content-Type: text/html; charset=utf-8');
     header('Referrer-Policy: no-referrer');
@@ -135,12 +159,27 @@ add_action('admin_post_cpd_authorize',function(){
     echo '<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">';
     echo '<title>Trở về ChấmPro</title><main style="font:16px system-ui;max-width:520px;margin:40px auto;padding:16px">';
     echo '<h2>Đăng nhập thành công</h2><p>Đang quay lại ứng dụng ChấmPro…</p>';
-    echo '<a href="'.esc_url($target,array('champrotest144')).'" style="display:inline-block;padding:14px;background:#1463ca;color:white;border-radius:10px">Mở ChấmPro</a>';
+    echo '<a href="'.esc_url($target,array('champrotest145')).'" style="display:inline-block;padding:14px;background:#1463ca;color:white;border-radius:10px">Mở ChấmPro</a>';
     echo '<p>Nếu trình duyệt hỏi, hãy xác nhận mở ứng dụng.</p>';
     echo '</main><script>location.replace('.wp_json_encode($target).');</script></html>';
     exit;
 });
+function cpd_public_jwk(){
+    $pem=cpd_private_pem();
+    if(!$pem)return false;
+    $details=openssl_pkey_get_details(openssl_pkey_get_private($pem));
+    if(!is_array($details)||empty($details['ec'])||empty($details['ec']['x'])||empty($details['ec']['y']))return false;
+    if(strlen($details['ec']['x'])!==32||strlen($details['ec']['y'])!==32)return false;
+    return array('kty'=>'EC','crv'=>'P-256','x'=>cpd_b64e($details['ec']['x']),
+        'y'=>cpd_b64e($details['ec']['y']),'key_ops'=>array('verify'),'ext'=>true);
+}
 add_action('rest_api_init',function(){
+    register_rest_route('champro/v2','/public-key',array('methods'=>'GET',
+        'permission_callback'=>'__return_true','callback'=>function(){
+            $key=cpd_public_jwk();
+            if(!$key)return cpd_fail('ChấmPro chưa có khóa ký hợp lệ, quản trị viên cần mở wp-admin để cấu hình',503);
+            return rest_ensure_response(array('ok'=>true,'publicKey'=>$key,'issuer'=>CPD_ISSUER,'audience'=>CPD_AUDIENCE));
+        }));
     register_rest_route('champro/v2','/exchange',array('methods'=>'POST','permission_callback'=>'__return_true',
        'callback'=>function(WP_REST_Request $req){
           $b=$req->get_json_params();
@@ -165,7 +204,7 @@ add_action('rest_api_init',function(){
        }));
 });
 add_filter('rest_pre_serve_request',function($served,$result,$request){
-    if($request->get_route()==='/champro/v2/exchange'){
+    if(in_array($request->get_route(),array('/champro/v2/exchange','/champro/v2/public-key'),true)){
         $origin=$_SERVER['HTTP_ORIGIN']??'';
         if($origin==='https://localhost'){
             header('Access-Control-Allow-Origin: https://localhost');

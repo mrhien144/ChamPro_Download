@@ -1,11 +1,12 @@
-/* ChấmPro v14.4 - direct WordPress PKCE login, no Cloudflare Worker for sign-in.
+/* ChấmPro v14.5 - direct WordPress PKCE login, no Cloudflare Worker for sign-in.
    Camera, OMR, scoring, photo review and offline data unchanged.
    After one successful sign-in, validate signed ES256 license locally on each launch. */
-import {verifyLicense} from './offline-license.mjs';
+import {verifyLicense,pinPublicKey} from './offline-license.mjs';
 import {parseAuthReturn} from './auth-return.mjs';
 const LOGIN='https://mrhien.com/champro-login-app/';
 const SHOP='https://mrhien.com/champro-connect-app/';
 const EXCHANGE='https://mrhien.com/wp-json/champro/v2/exchange';
+const PUBLIC_KEY='https://mrhien.com/wp-json/champro/v2/public-key';
 const INSTALL_KEY='cp-v14-install-id';
 const LICENSE_KEY='cp-v14-signed-license';
 const PENDING_KEY='cp-v144-pkce-pending';
@@ -92,6 +93,15 @@ async function exchange(ticket,state){
  if(!navigator.onLine)return stamp('Cần Internet để hoàn tất xác thực lần đầu.');
  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),15000);
  try{
+  stamp('Đang nhận và xác minh khóa bảo mật của mrhien.com…');
+  const kr=await fetch(PUBLIC_KEY,{method:'GET',cache:'no-store',credentials:'omit',signal:ctrl.signal,
+    headers:{Accept:'application/json'}});
+  const keyResponse=await kr.json().catch(()=>({}));
+  if(!kr.ok||!keyResponse.ok||!keyResponse.publicKey)
+    throw Error(keyResponse.message||'Máy chủ mrhien.com chưa cấu hình khóa công khai (HTTP '+kr.status+').');
+  if(keyResponse.issuer!=='champro-platform'||keyResponse.audience!=='com.champro.nativepreview.v145')
+    throw Error('Máy chủ cấp khóa chưa đúng phiên bản ứng dụng.');
+  await pinPublicKey(keyResponse.publicKey);
   stamp('Đang xác thực tài khoản và nhận quyền sử dụng ChấmPro…');
   const res=await fetch(EXCHANGE,{method:'POST',headers:{'Content-Type':'application/json'},
     credentials:'omit',cache:'no-store',signal:ctrl.signal,
