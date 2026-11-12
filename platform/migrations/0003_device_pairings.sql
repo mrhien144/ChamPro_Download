@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS device_pairings (
  created_at INTEGER NOT NULL,
  expires_at INTEGER NOT NULL,
  approved_at INTEGER,
- claimed_at INTEGER
+ claimed_at INTEGER,
+ claimed_tag TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_device_pairings_code ON device_pairings(code,expires_at);
 CREATE INDEX IF NOT EXISTS idx_device_pairings_device ON device_pairings(device_id,created_at);
