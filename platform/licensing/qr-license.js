@@ -22,12 +22,17 @@ async function call(path,data){
 async function refresh(){
  const p=await call("/api/me");
  const a=p.account;
+ const loginButton=e("licenseLogin");
+ loginButton.textContent=a.name||a.email||"Tài khoản";
+ loginButton.classList.add("hs-auth-connected");
+ loginButton.title="Đã kết nối tài khoản · Bấm để cập nhật lượt sử dụng";
  const remaining=p.left.qr===null?"không giới hạn":String(p.left.qr);
  message("Đã đăng nhập: "+(a.name||a.email)+" · Gói: "+a.plan+
  " · QR còn "+remaining+" lượt · Tặng thêm "+p.bonus.qr+" · Đã dùng "+p.used.qr);
  return p;
 }
 e("licenseLogin").onclick=function(){
+ if(state.token){refresh().catch(err=>message("Không đọc được quyền sử dụng: "+err.message));return;}
  state.popup=window.open("https://mrhien.com/champro-connect/","champro-qr-login","popup=yes,width=620,height=760");
  if(!state.popup)message("Trình duyệt chặn cửa sổ đăng nhập, hãy cho phép pop-up.");
  else message("Đăng nhập hoặc đăng ký trên mrhien.com. Sau khi thành công, hệ thống tự kết nối ChấmPro.");
@@ -46,6 +51,9 @@ e("licenseRefresh").onclick=async function(){
 };
 e("licenseLogout").onclick=function(){
  state.token=null;
+ e("licenseLogin").textContent="Đăng ký và đăng nhập";
+ e("licenseLogin").classList.remove("hs-auth-connected");
+ e("licenseLogin").removeAttribute("title");
  e("licenseRefresh").disabled=true;e("licenseLogout").disabled=true;
  message("Đã đăng xuất. Cần đăng nhập để tạo QR. Nếu vừa mất kết nối khi trừ lượt, đăng nhập lại cùng tài khoản để xác nhận lại.");
 };
