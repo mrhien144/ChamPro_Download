@@ -8,12 +8,12 @@ on:
       - 'app-preview/**'
       - 'platform/worker/src/**'
       - 'tests/**'
-      - '.github/workflows/champro-v14-auto-payment-apk.yml'
+      - '.github/workflows/champro-v14-2-apk.yml'
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  build-v14-auto:
+  build-v14-2:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -45,7 +45,7 @@ jobs:
           node tests/visual-answer-ii.test.mjs
           node --test tests/preview-pending-code.test.mjs
           php -l platform/wordpress/champro-app-account.php
-      - name: Bundle unchanged v13 camera with isolated v14.1 account UI
+      - name: Bundle unchanged v13 camera with isolated v14.2 login and update UI
         run: |
           mkdir -p _champro_android/app
           cp -a app-preview/. _champro_android/app/
