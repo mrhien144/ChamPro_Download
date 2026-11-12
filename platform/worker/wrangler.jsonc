@@ -2,7 +2,8 @@
   // STAGING ONLY. Do not reuse the production website domain for this Worker.
   "name": "champro-platform-staging",
   "main": "src/index.js",
-  "compatibility_date": "2026-11-01",
+  "compatibility_date": "2026-11-10",
+  "preview_urls": false,
   "workers_dev": true,
   "d1_databases": [
     {
@@ -12,6 +13,16 @@
       "migrations_dir": "../migrations"
     }
   ],
+  "r2_buckets": [
+    {
+      "binding": "SHEET_PHOTOS",
+      "bucket_name": "champro-photos-staging"
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true }
+  },
   "vars": {
     "ALLOWED_ORIGINS": "https://champro.mrhien.com,https://mrhien.com",
     "ADMIN_WP_USER_IDS": "1",

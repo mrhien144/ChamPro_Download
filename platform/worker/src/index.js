@@ -1,4 +1,5 @@
 /* ChấmPro platform, isolated Worker. Not active until explicitly deployed. */
+import {handleTeacherSync} from './teacher-sync.js';
 const LIMITS={scan:100,mix:5,qr:5},PRICES={annual:99000,lifetime:299000};
 const txt=new TextEncoder();
 const send=(v,status=200)=>new Response(JSON.stringify(v),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
@@ -202,6 +203,7 @@ export default {
     const who=await session(req,env);
     if(path==='/api/me'&&req.method==='GET')res=await profile(env,who);
     else if(path.startsWith('/api/admin/'))res=await admin(env,who,path,req);
+    else if(path.startsWith('/api/sync/'))res=await handleTeacherSync(req,env,who,path,new URL(req.url));
     else if(path.startsWith('/api/usage/')&&req.method==='POST')res=await useCredit(env,who,path.slice(11),await body(req));
     else res=error('Không tìm thấy API',404);
    }

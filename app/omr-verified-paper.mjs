@@ -144,7 +144,7 @@ export function readVerifiedWithMarkers(canvas,markers,counts={I:18,II:4,III:6})
  }
  if(sbdUnclear||!started)sbd='';
  const readCount=(k,max)=>Math.max(0,Math.min(max,Number(counts[k]??(k==='I'?18:k==='II'?4:6))));
- const I=[],II=[],III=[];
+ const I=[],II=[],III=[],IIIColumns=[];
  for(let i=0;i<readCount('I',40);i++){
   const b=Math.floor(i/10),y=PART_I_Y[b]+21.8*(i%10);
   const value=choice(f,map,rowCoords(PART_I_X[b],y),'ABCD');
@@ -170,6 +170,8 @@ export function readVerifiedWithMarkers(canvas,markers,counts={I:18,II:4,III:6})
    if(value.status==='unclear')uncertain.push('Phần III câu '+(i+1)+', cột '+(j+1));
    digits.push(value.value);
   }
+  // Preserve exact physical columns solely for later review; grading is unchanged.
+  IIIColumns.push(digits.map(v=>/^[0-9]$/.test(String(v))?String(v):''));
   let value=digits.join('').trim();
   // Signs (- / decimal comma) are kept for review if potentially marked.
   // Do not create a negative or decimal number without a verified sign.
@@ -179,7 +181,7 @@ export function readVerifiedWithMarkers(canvas,markers,counts={I:18,II:4,III:6})
   else if(sign.some(x=>x<110))uncertain.push('Phần III câu '+(i+1)+', kiểm tra dấu âm/phẩy');
   III.push(value);
  }
- return {sbd,examCode:code,I,II,III,codeConfidence,
+ return {sbd,examCode:code,I,II,III,IIIColumns,codeConfidence,
    confidence:codeConfidence&&!uncertain.length?1:.7,uncertain,sbdUnclear,
    engine:'ChấmPro calibrated printed-sheet v1',markers,form:'three',
    photoWidth:canvas.width,photoHeight:canvas.height};

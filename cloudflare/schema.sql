@@ -1,0 +1,6 @@
+-- IMPORTANT: This design file is superseded by the additive migration
+-- platform/migrations/0003_teacher_storage.sql.
+-- ChấmPro staging ALREADY has accounts, payments, bonus_credits,
+-- usage_events and admin_audit. DO NOT create a duplicate cp_users table.
+-- The new cp_* tables reference existing accounts(id).
+-- No SQL in this design file should be executed.
