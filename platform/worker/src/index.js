@@ -210,6 +210,14 @@ export default {
    const path=new URL(req.url).pathname;
    let res;
    if(path==='/health'&&req.method==='GET')res=send({ok:true,service:'champro-platform'});
+   // Temporary, READ-ONLY staging diagnostic: validates D1 binding and all required tables.
+   // No account data, secret, order information, or row counts are exposed.
+   else if(path==='/health/db'&&req.method==='GET'){
+    for(const table of ['accounts','payments','usage_events','admin_audit','bonus_credits']){
+     await env.DB.prepare('SELECT 1 FROM '+table+' LIMIT 0').all();
+    }
+    res=send({ok:true,service:'champro-payment-test',database:'connected',tablesChecked:5});
+   }
    else if(path==='/api/internal'&&req.method==='POST')res=await internal(req,env);
    else{
     const who=await session(req,env);
