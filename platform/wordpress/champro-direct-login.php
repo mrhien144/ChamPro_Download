@@ -151,7 +151,7 @@ add_action('admin_post_cpd_authorize',function(){
     $record=array('user_id'=>get_current_user_id(),'device'=>$ctx['device'],
       'challenge'=>$ctx['challenge'],'state'=>$ctx['state']);
     set_transient('cpd_ticket_'.$ticket,$record,180);
-    $target='champrotest144://auth/complete?ticket='.$ticket.'&state='.$ctx['state'];
+    $target='champrotest145://auth/complete?ticket='.$ticket.'&state='.$ctx['state'];
     nocache_headers();
     header('Content-Type: text/html; charset=utf-8');
     header('Referrer-Policy: no-referrer');
@@ -159,7 +159,7 @@ add_action('admin_post_cpd_authorize',function(){
     echo '<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">';
     echo '<title>Trở về ChấmPro</title><main style="font:16px system-ui;max-width:520px;margin:40px auto;padding:16px">';
     echo '<h2>Đăng nhập thành công</h2><p>Đang quay lại ứng dụng ChấmPro…</p>';
-    echo '<a href="'.esc_url($target,array('champrotest144')).'" style="display:inline-block;padding:14px;background:#1463ca;color:white;border-radius:10px">Mở ChấmPro</a>';
+    echo '<a href="'.esc_url($target,array('champrotest145')).'" style="display:inline-block;padding:14px;background:#1463ca;color:white;border-radius:10px">Mở ChấmPro</a>';
     echo '<p>Nếu trình duyệt hỏi, hãy xác nhận mở ứng dụng.</p>';
     echo '</main><script>location.replace('.wp_json_encode($target).');</script></html>';
     exit;
