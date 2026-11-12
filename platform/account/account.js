@@ -1,7 +1,8 @@
 /* User quota panel; tokens stay in memory, never localStorage or URLs. */
 const API='https://champro-platform-staging.luckylove1404.workers.dev';
 const el=id=>document.getElementById(id);
-const state={token:null,popup:null};
+const session=window.champroAuthSession;
+const state={token:session?.getToken()||null,popup:null};
 const tell=s=>{el('notice').textContent=s};
 const fmt=n=>Number(n||0).toLocaleString('vi-VN');
 const plans={free:'Miễn phí',annual:'Gói 1 năm',lifetime:'Trọn đời',suspended:'Tạm khóa'};
@@ -9,10 +10,14 @@ const funcs=[['scan','Chấm bài'],['mix','Trộn đề'],['qr','Tạo QR']];
 async function apiMe(){
  const r=await fetch(API+'/api/me',{headers:{'Authorization':'Bearer '+state.token},cache:'no-store'});
  const o=await r.json().catch(()=>({}));
- if(!r.ok||!o.ok)throw Error(o.error||'Không lấy được quyền sử dụng');
+ if(!r.ok||!o.ok){
+  if(r.status===401||r.status===403){session?.clear();state.token=null;}
+  throw Error(o.error||'Không lấy được quyền sử dụng');
+ }
  return o;
 }
 function reset(){
+ session?.clear();
  state.token=null;
  el('private').hidden=true;el('refresh').disabled=true;el('logout').disabled=true;
  el('login').textContent='Đăng nhập / Kết nối tài khoản';
@@ -71,8 +76,21 @@ window.addEventListener('message',async event=>{
  if(event.origin!=='https://mrhien.com'||event.source!==state.popup||
   event.data?.type!=='champro-session'||typeof event.data.token!=='string'||event.data.token.length>4096)return;
  state.token=event.data.token;
+ session?.save(event.data.token);
  state.popup?.close();
  await refresh();
 });
 el('refresh').onclick=refresh;
 el('logout').onclick=reset;
+window.addEventListener('champro-auth-logout',()=>{
+ state.token=null;
+ el('private').hidden=true;
+ el('refresh').disabled=true;el('logout').disabled=true;
+ el('login').textContent='Đăng nhập / Kết nối tài khoản';
+ el('login').classList.remove('connected');el('login').removeAttribute('title');
+ el('upgradeAccountAction').hidden=false;
+ el('upgradeCurrent').textContent='Bạn chưa đăng nhập. Hãy kết nối tài khoản để xem gói đang dùng.';
+ tell('Đã đăng xuất khỏi tài khoản ChấmPro.');
+});
+if(state.token)refresh();
+window.addEventListener('focus',()=>{if(state.token)refresh();});
