@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ChấmPro Bridge (Staging)
  * Description: Connects verified WordPress customers and completed WooCommerce orders to the isolated ChấmPro licensing API.
- * Version: 0.1.2
+ * Version: 0.1.3-staging
  * Requires PHP: 7.4
  *
  * Do not activate until wp-config.php defines:
@@ -168,36 +168,43 @@ add_shortcode('champro_connect', function () {
       '<p><a href="https://champro.mrhien.com/">Quay về ChấmPro</a></p>' .
       '</div><script>' . $script . '</script>';
 });
-// Only confirmed WooCommerce orders containing a single recognized ChấmPro
-// license product are eligible for an activation. Never trust browser claims.
-add_action('woocommerce_order_status_completed', function ($order_id) {
-    if (!champro_bridge_ready() || !function_exists('wc_get_order')) {
-        return;
-    }
+// IMPORTANT: grant only after the payment gateway calls WooCommerce payment_complete.
+// Merely moving an order to Processing / Completed is NOT proof of payment:
+// staff can do that manually, and WooCommerce may set date_paid automatically.
+// SePay must call payment_complete() in the installed gateway version.
+// If it only changes status, adapt to its verified callback instead (after audit).
+function champro_bridge_paid_order($order_id) {
+    if (!champro_bridge_ready() || !function_exists('wc_get_order')) return;
     $order = wc_get_order($order_id);
-    if (!$order || !$order->get_user_id()) {
-        return; // Guest orders must link/verify an account first.
-    }
-    $items = $order->get_items();
-    if (count($items) !== 1) {
-        return; // Avoid ambiguous bundled/mixed purchases.
-    }
-    $item = reset($items);
-    if (intval($item->get_quantity()) !== 1) {
+    if (!$order || !$order->get_user_id() || !$order->is_paid() || !$order->get_date_paid()) return;
+    if (!in_array($order->get_status(), array('processing','completed'), true)) return;
+
+    // Fail closed until the administrator verifies the gateway identifier in
+    // WooCommerce > Settings > Payments (e.g. the installed SePay gateway ID).
+    // Add to wp-config.php: define('CHAMPRO_ALLOWED_GATEWAY_IDS', 'the_verified_id');
+    if (!defined('CHAMPRO_ALLOWED_GATEWAY_IDS')) {
+        $order->add_order_note('ChấmPro: Chưa cấp quyền. Cần xác nhận CHAMPRO_ALLOWED_GATEWAY_IDS trong wp-config.php.');
         return;
     }
+    $allowed = array_filter(array_map('trim', explode(',', (string) CHAMPRO_ALLOWED_GATEWAY_IDS)));
+    if (!in_array((string) $order->get_payment_method(), $allowed, true)) return;
+
+    $items = $order->get_items();
+    if (count($items) !== 1) return; // Exclude mixed or bundled orders.
+    $item = reset($items);
+    if (intval($item->get_quantity()) !== 1) return;
     $pid = intval($item->get_product_id());
     $plan = $pid === intval(CHAMPRO_ANNUAL_PRODUCT_ID) ? 'annual' :
         ($pid === intval(CHAMPRO_LIFETIME_PRODUCT_ID) ? 'lifetime' : '');
-    if (!$plan) {
-        return;
-    }
+    if (!$plan || $order->get_currency() !== 'VND') return;
     $price = $plan === 'annual' ? 99000 : 299000;
-    if ($order->get_currency() !== 'VND' || abs(floatval($order->get_total()) - $price) > 0.001) {
-        return;
-    }
+    if (abs(floatval($order->get_total()) - $price) > 0.001) return;
+
     $user = get_user_by('id', $order->get_user_id());
-    if (!$user || is_wp_error(champro_bridge_account($user))) {
+    if (!$user) return;
+    $account = champro_bridge_account($user);
+    if (is_wp_error($account)) {
+        $order->add_order_note('ChấmPro: Không đồng bộ được tài khoản. Kiểm tra Worker trước khi thử lại.');
         return;
     }
     $result = champro_bridge_request(array(
@@ -207,11 +214,14 @@ add_action('woocommerce_order_status_completed', function ($order_id) {
         'productId' => $pid,
         'plan' => $plan,
         'amountVnd' => $price,
-        'orderStatus' => 'completed',
+        'orderStatus' => 'completed', // Represents verified gateway payment, not Woo order status.
     ));
     if (is_wp_error($result)) {
-        $order->add_order_note('ChấmPro: Chưa cấp được quyền tự động. Kiểm tra kết nối Worker và xử lý lại.');
+        $order->add_order_note('ChấmPro: Chưa đồng bộ quyền. Cần thử lại sự kiện thanh toán, không kích hoạt thủ công.');
     } else {
-        $order->add_order_note('ChấmPro: Đã đồng bộ gói ' . $plan . ' cho tài khoản #' . $user->ID);
+        $order->add_order_note('ChấmPro: Đã xác nhận cấp quyền ' . $plan . ' cho tài khoản #' . $user->ID);
     }
-}, 15, 1);
+}
+// Hook emitted by a verified WooCommerce gateway payment completion.
+// WooCommerce normally leaves digital orders at Processing, not Completed.
+add_action('woocommerce_payment_complete', 'champro_bridge_paid_order', 15, 1);
