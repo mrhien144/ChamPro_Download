@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ChấmPro Bridge (Staging)
  * Description: Connects verified WordPress customers and completed WooCommerce orders to the isolated ChấmPro licensing API.
- * Version: 0.1.1
+ * Version: 0.1.2
  * Requires PHP: 7.4
  *
  * Do not activate until wp-config.php defines:
