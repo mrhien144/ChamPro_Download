@@ -18,6 +18,7 @@ function reset(){
  el('login').textContent='Đăng nhập / Kết nối tài khoản';
  el('login').classList.remove('connected');
  el('login').removeAttribute('title');
+ el('upgradeAccountAction').hidden=false;
  el('upgradeCurrent').textContent='Chưa kết nối tài khoản ChấmPro. Hãy đăng nhập để xem gói đang dùng.';
  tell('Đã đăng xuất khỏi tài khoản ChấmPro.');
 }
@@ -26,6 +27,7 @@ function setInfo(o){
  el('login').textContent=a.name||a.email||'Tài khoản';
  el('login').classList.add('connected');
  el('login').title='Đã kết nối tài khoản · Nhấn để làm mới số lượt';
+ el('upgradeAccountAction').hidden=true;
  el('name').textContent=a.name||'Giáo viên';
  el('email').textContent=a.email||'';
  el('plan').textContent=plans[plan]||plan;
