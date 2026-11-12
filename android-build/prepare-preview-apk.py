@@ -67,21 +67,21 @@ html.cp-license-pending body > :not(#cpAccountGate){display:none!important}
 </style><script>document.documentElement.classList.add('cp-license-pending')</script></head>""", 1)
 s = s.replace("</body>", """<section id="cpAccountGate" role="dialog" aria-modal="true" aria-label="Tài khoản ChấmPro">
 <div class="cp-account-card">
-<h1>ChấmPro Test v14.2</h1>
+<h1>ChấmPro Test v14.3</h1>
 <p><strong>Đăng ký và đăng nhập</strong> để chấm bài hoàn toàn offline sau khi kích hoạt. Không cần nhập giấy phép thủ công.</p>
 <p class="cp-tag" id="cpCurrentPlan" role="status">Chưa kích hoạt</p>
 <div id="cpViewLogin">
 <h2>Tài khoản mrhien.com</h2>
 <p>Một tài khoản dùng chung với website. Chỉ cần Internet khi đăng nhập và nâng cấp gói.</p>
-<button type="button" id="cpSignIn">Đăng ký và đăng nhập trên mrhien.com</button>
-<button type="button" class="secondary" id="cpLinkAccount">Kết nối tài khoản với ChấmPro</button>
+<button type="button" id="cpSignIn">Đăng ký / Đăng nhập</button>
+<button type="button" class="secondary" id="cpLinkAccount" hidden>Kết nối tài khoản thủ công (dự phòng)</button>
 </div>
 <div id="cpViewWaiting" hidden>
 <h2>Kết nối tài khoản</h2>
 <p>Mã ghép nối có hiệu lực 10 phút và chỉ dùng một lần:</p>
 <div class="cp-pair-code" id="cpPairCode">---------</div>
 <button type="button" id="cpOpenWeb">Tiếp tục đăng nhập trên mrhien.com</button>
-<button type="button" class="secondary" id="cpPairCheck">Tôi đã kết nối – kiểm tra</button>
+<button type="button" class="secondary" id="cpPairCheck">Thử kiểm tra kết nối</button>
 <button type="button" class="secondary" id="cpPairRetry">Tạo mã kết nối mới</button>
 </div>
 <div id="cpViewPlans" hidden>
