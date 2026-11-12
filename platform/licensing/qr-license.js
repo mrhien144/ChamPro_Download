@@ -5,7 +5,8 @@
 (function(){
 "use strict";
 const API="https://champro-platform-staging.luckylove1404.workers.dev";
-const state={token:null,popup:null,pending:null};
+const session=window.champroAuthSession;
+const state={token:session?.getToken()||null,popup:null,pending:null};
 const e=id=>document.getElementById(id);
 function message(s){e("licenseStatus").textContent=s;}
 async function call(path,data){
@@ -16,13 +17,17 @@ async function call(path,data){
    ...(data?{body:JSON.stringify(data)}:{}),cache:"no-store"
  });
  const obj=await response.json().catch(()=>({}));
- if(!response.ok||!obj.ok)throw Error(obj.error||"Máy chủ không trả kết quả hợp lệ ("+response.status+").");
+ if(!response.ok||!obj.ok){
+  if(response.status===401||response.status===403){state.token=null;session?.clear();}
+  throw Error(obj.error||"Máy chủ không trả kết quả hợp lệ ("+response.status+").");
+ }
  return obj;
 }
 async function refresh(){
  const p=await call("/api/me");
  const a=p.account;
  const loginButton=e("licenseLogin");
+ e("licenseLogout").disabled=false;
  loginButton.textContent=a.name||a.email||"Tài khoản";
  loginButton.classList.add("hs-auth-connected");
  loginButton.title="Đã kết nối tài khoản · Bấm để cập nhật lượt sử dụng";
@@ -43,18 +48,30 @@ window.addEventListener("message",async ev=>{
   ev.data.token.length>4096)return;
  state.token=ev.data.token;
  state.popup?.close();
- e("licenseRefresh").disabled=false;e("licenseLogout").disabled=false;
+ session?.save(ev.data.token);
+ e("licenseLogout").disabled=false;
  try{await refresh();}catch(err){message("Không xác thực được: "+err.message);}
 });
-e("licenseRefresh").onclick=async function(){
- try{await refresh();}catch(err){message("Không đọc được số lượt: "+err.message);}
-};
-e("licenseLogout").onclick=function(){
+// Display quota automatically; manual refresh control is no longer needed.
+window.addEventListener("focus",()=>{
+ if(state.token)refresh().catch(err=>message("Không cập nhật được số lượt: "+err.message));
+});
+window.addEventListener("champro-auth-logout",()=>{
  state.token=null;
  e("licenseLogin").textContent="Đăng ký và đăng nhập";
  e("licenseLogin").classList.remove("hs-auth-connected");
  e("licenseLogin").removeAttribute("title");
- e("licenseRefresh").disabled=true;e("licenseLogout").disabled=true;
+ e("licenseLogout").disabled=true;
+ message("Đã đăng xuất. Đăng nhập lại để sử dụng.");
+});
+if(state.token)refresh().catch(err=>message("Phiên trước chưa thể xác thực: "+err.message));
+e("licenseLogout").onclick=function(){
+ session?.clear();
+ state.token=null;
+ e("licenseLogin").textContent="Đăng ký và đăng nhập";
+ e("licenseLogin").classList.remove("hs-auth-connected");
+ e("licenseLogin").removeAttribute("title");
+ e("licenseLogout").disabled=true;
  message("Đã đăng xuất. Cần đăng nhập để tạo QR. Nếu vừa mất kết nối khi trừ lượt, đăng nhập lại cùng tài khoản để xác nhận lại.");
 };
 window.champroQRLicense={
