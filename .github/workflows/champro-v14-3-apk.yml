@@ -30,6 +30,7 @@ jobs:
       - name: Verify account security, offline signing, and grading regression
         run: |
           node --check android-build/account-app.mjs
+          node --check android-build/auth-return.mjs
           node --test tests/champro-auto-login.test.mjs
           node --check android-build/update-app.mjs
           node --test tests/champro-updater.test.mjs
@@ -51,7 +52,7 @@ jobs:
         run: |
           mkdir -p _champro_android/app
           cp -a app-preview/. _champro_android/app/
-          cp android-build/native-app.css android-build/native-app.js android-build/photo-review-apk.mjs android-build/account-app.mjs android-build/offline-license.mjs android-build/update-app.mjs _champro_android/app/
+          cp android-build/native-app.css android-build/native-app.js android-build/photo-review-apk.mjs android-build/account-app.mjs android-build/offline-license.mjs android-build/update-app.mjs android-build/auth-return.mjs _champro_android/app/
           cp android-build/package.json _champro_android/package.json
           cp android-build/preview-capacitor.config.json _champro_android/capacitor.config.json
           python3 android-build/prepare-preview-apk.py _champro_android/app
