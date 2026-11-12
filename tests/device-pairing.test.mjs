@@ -5,6 +5,7 @@ const DEVICE='cp-12345678-1234-4234-8234-123456789abc';
 const account={id:'wp:42',wp_user_id:42,plan:'lifetime',status:'active',email:'teacher@example.test',display_name:'Test'};
 class DB{
  constructor(){this.pairs=new Map();this.grants=new Map();}
+ async batch(operations){const res=[];for(const op of operations)res.push(await op.run());return res;}
  prepare(sql){
   const db=this;
   return {bind(...args){
@@ -30,12 +31,13 @@ class DB{
       row.account_id=aid;row.approved_at=approvedAt;return {meta:{changes:1}};
      }
      if(sql.includes('UPDATE device_pairings SET claimed_at=')){
-      const [timestamp,id]=args,row=db.pairs.get(id);
+      const [timestamp,tag,id]=args,row=db.pairs.get(id);
       if(!row||row.claimed_at!==null||row.expires_at<=timestamp)return {meta:{changes:0}};
-      row.claimed_at=timestamp;return {meta:{changes:1}};
+      row.claimed_at=timestamp;row.claimed_tag=tag;return {meta:{changes:1}};
      }
      if(sql.includes('INSERT INTO device_grants')){
-      const [device_id,account_id,refresh_hash,created_at,updated_at]=args;
+      const [device_id,account_id,refresh_hash,created_at,updated_at,pairId,claimTag]=args;
+      if(db.pairs.get(pairId)?.claimed_tag!==claimTag)return {meta:{changes:0}};
       db.grants.set(device_id,{device_id,account_id,refresh_hash,created_at,updated_at});
       return {meta:{changes:1}};
      }
