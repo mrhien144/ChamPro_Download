@@ -13,12 +13,19 @@ async function apiMe(){
  return o;
 }
 function reset(){
- state.token=null;el('private').hidden=true;el('refresh').disabled=true;el('logout').disabled=true;
+ state.token=null;
+ el('private').hidden=true;el('refresh').disabled=true;el('logout').disabled=true;
+ el('login').textContent='Đăng nhập / Kết nối tài khoản';
+ el('login').classList.remove('connected');
+ el('login').removeAttribute('title');
  el('upgradeCurrent').textContent='Chưa kết nối tài khoản ChấmPro. Hãy đăng nhập để xem gói đang dùng.';
  tell('Đã đăng xuất khỏi tài khoản ChấmPro.');
 }
 function setInfo(o){
  const a=o.account,plan=a.plan;
+ el('login').textContent=a.name||a.email||'Tài khoản';
+ el('login').classList.add('connected');
+ el('login').title='Đã kết nối tài khoản · Nhấn để làm mới số lượt';
  el('name').textContent=a.name||'Giáo viên';
  el('email').textContent=a.email||'';
  el('plan').textContent=plans[plan]||plan;
@@ -54,6 +61,7 @@ async function refresh(){
  catch(e){tell('Không đọc được dữ liệu: '+e.message);if(/hết hạn|phiên|đăng nhập/i.test(e.message))reset();}
 }
 el('login').onclick=()=>{
+ if(state.token){refresh();return;}
  state.popup=window.open('https://mrhien.com/champro-connect/','champro-account-login','popup=yes,width=620,height=760');
  tell(state.popup?'Đăng nhập hoặc đăng ký trên mrhien.com, hệ thống sẽ tự kết nối ChấmPro.':'Trình duyệt chặn cửa sổ. Hãy cho phép pop-up từ champro.mrhien.com.');
 };
