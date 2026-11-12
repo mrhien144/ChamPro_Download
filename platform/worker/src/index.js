@@ -189,7 +189,7 @@ async function admin(env,who,path,req){
 export default {
  async fetch(req,env){
   const origin=req.headers.get('Origin')||'';
-  const whitelist=String(env.ALLOWED_ORIGINS||'https://champro.mrhien.com,https://mrhien.com').split(',').map(x=>x.trim());
+  const whitelist=String(env.ALLOWED_ORIGINS||'https://champro.mrhien.com,https://mrhien.com,https://localhost').split(',').map(x=>x.trim());
   if(origin&&!whitelist.includes(origin))return error('Nguồn bị từ chối',403);
   const cors={'Access-Control-Allow-Origin':origin||'https://champro.mrhien.com',
    'Access-Control-Allow-Headers':'Authorization,Content-Type,X-Bridge-Secret',
