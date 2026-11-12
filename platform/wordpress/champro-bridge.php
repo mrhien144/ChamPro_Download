@@ -124,6 +124,16 @@ add_action('template_redirect', function () {
     wp_safe_redirect($account_url);
     exit;
 }, 1);
+// Clear the transient intent before rendering authenticated bridge output.
+add_action('template_redirect', function () {
+    if (!is_page('champro-connect') || !is_user_logged_in() || !champro_bridge_wants_return()) return;
+    if (!headers_sent()) {
+        setcookie('champro_auth_return', '', array(
+            'expires' => time() - 3600, 'path' => '/', 'secure' => is_ssl(),
+            'httponly' => true, 'samesite' => 'Lax',
+        ));
+    }
+}, 2);
 add_shortcode('champro_connect', function () {
     if (!champro_bridge_ready()) {
         return '<p>ChấmPro chưa được cấu hình.</p>';
@@ -140,12 +150,6 @@ add_shortcode('champro_connect', function () {
           '<p>Đang mở trang tài khoản chính thức trên mrhien.com…</p>' .
           '<a href="' . $url . '" style="display:inline-block;background:#0969c3;color:#fff;padding:12px 19px;border-radius:9px;text-decoration:none">Đăng nhập / Đăng ký</a>' .
           '<script>window.location.replace(' . wp_json_encode(esc_url_raw($account_url)) . ');</script></div>';
-    }
-    if (champro_bridge_wants_return() && !headers_sent()) {
-        setcookie('champro_auth_return', '', array(
-            'expires' => time() - 3600, 'path' => '/', 'secure' => is_ssl(),
-            'httponly' => true, 'samesite' => 'Lax',
-        ));
     }
     $nonce = wp_create_nonce('wp_rest');
     $endpoint = rest_url('champro/v1/session');
