@@ -64,12 +64,16 @@ async function pollPair(req,env){
  const wpId=Number(row.account_id?.slice(3));
  if(!Number.isSafeInteger(wpId)||wpId<=0)return fail('Tài khoản không hợp lệ',403);
  const entitlementData=await entitlement(env,wpId,b.deviceId);
- const refreshSecret=random(32),refreshHash=await digest(refreshSecret),timestamp=now();
- const claim=await env.DB.prepare('UPDATE device_pairings SET claimed_at=? WHERE id=? AND claimed_at IS NULL AND expires_at>?')
-  .bind(timestamp,row.id,timestamp).run();
- if(claim.meta?.changes!==1)return fail('Phiên kết nối đã được xác nhận',409);
- await env.DB.prepare('INSERT INTO device_grants(device_id,account_id,refresh_hash,created_at,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(device_id) DO UPDATE SET account_id=excluded.account_id,refresh_hash=excluded.refresh_hash,updated_at=excluded.updated_at')
-  .bind(b.deviceId,row.account_id,refreshHash,timestamp,timestamp).run();
+ const refreshSecret=random(32),refreshHash=await digest(refreshSecret),timestamp=now(),claimTag=random(16);
+ // D1 batch is atomic; only the winning claimant's random tag may write the refresh credential.
+ const operations=await env.DB.batch([
+  env.DB.prepare('UPDATE device_pairings SET claimed_at=?,claimed_tag=? WHERE id=? AND claimed_at IS NULL AND expires_at>?')
+   .bind(timestamp,claimTag,row.id,timestamp),
+  env.DB.prepare('INSERT INTO device_grants(device_id,account_id,refresh_hash,created_at,updated_at) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM device_pairings WHERE id=? AND claimed_tag=?) ON CONFLICT(device_id) DO UPDATE SET account_id=excluded.account_id,refresh_hash=excluded.refresh_hash,updated_at=excluded.updated_at')
+   .bind(b.deviceId,row.account_id,refreshHash,timestamp,timestamp,row.id,claimTag)
+ ]);
+ if(operations[0]?.meta?.changes!==1||operations[1]?.meta?.changes!==1)
+  return fail('Phiên kết nối đã được nhận; hãy tạo mã mới nếu cần.',409);
  return send({ok:true,status:'linked',refreshSecret,accountId:row.account_id,...entitlementData});
 }
 async function refresh(req,env){
