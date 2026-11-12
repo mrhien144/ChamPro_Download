@@ -15,7 +15,7 @@
   "vars": {
     "ALLOWED_ORIGINS": "https://champro.mrhien.com,https://mrhien.com",
     "ADMIN_WP_USER_IDS": "1",
-    "PRODUCT_ANNUAL_ID": "8919",
-    "PRODUCT_LIFETIME_ID": "8920"
+    "PRODUCT_ANNUAL_ID": "7726",
+    "PRODUCT_LIFETIME_ID": "7727"
   }
 }
