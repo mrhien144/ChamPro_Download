@@ -108,7 +108,7 @@ async function exchange(ticket,state){
  finally{clearTimeout(timer);}
 }
 async function acceptLink(url){
- const flow=pending||loadPending()&&pending;
+ const flow=pending||(loadPending()?pending:null);
  if(!flow)return;
  const result=parseAuthReturn(url,flow.state);
  if(!result)return;
@@ -152,7 +152,6 @@ function boot(){
  $('cpSignIn').onclick=()=>void startLogin();
  $('cpPairRetry').onclick=()=>void startLogin();
  $('cpReLogin').onclick=()=>void startLogin();
- $('cpLinkAccount').onclick=()=>void startLogin();
  $('cpOpenWeb').onclick=()=>{if(pending)void startLogin();};
  $('cpPairCheck').onclick=()=>stamp('Chờ trang mrhien.com xác thực. Trình duyệt sẽ tự quay về ChấmPro.');
  $('cpBuyAnnual').onclick=()=>buy('annual');
