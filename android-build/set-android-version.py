@@ -13,7 +13,7 @@ def replace_once(pattern, replacement, value):
     out,count=re.subn(pattern,replacement,value,count=1,flags=re.M)
     if count!=1: raise RuntimeError("Android Gradle version anchor not found: "+pattern)
     return out
-source=replace_once(r'^(\s*)versionCode\s+\d+\s*$',r'\g<1>versionCode 14200',source)
-source=replace_once(r'^(\s*)versionName\s+"[^"]+"\s*$',r'\g<1>versionName "14.2-test"',source)
+source=replace_once(r'^(\s*)versionCode\s+\d+\s*$',r'\g<1>versionCode 14300',source)
+source=replace_once(r'^(\s*)versionName\s+"[^"]+"\s*$',r'\g<1>versionName "14.3-test"',source)
 gradle.write_text(source,encoding="utf-8")
-print("PASS: APK versionCode 14200, versionName 14.2-test")
+print("PASS: APK versionCode 14300, versionName 14.3-test")
