@@ -2,13 +2,13 @@
 /**
  * Plugin Name: ChấmPro Direct Login (v14.5 STAGING)
  * Description: WordPress account -> one-time PKCE ticket -> signed offline device license. No Cloudflare Worker required for LOGIN.
- * Version: 0.5.0
+ * Version: 0.5.1
  * Requires PHP: 7.4
  */
 defined('ABSPATH') || exit;
 const CPD_LOGIN_PATH='/champro-login-app/';
 const CPD_ISSUER='champro-platform';
-const CPD_AUDIENCE='com.champro.nativepreview.v144';
+const CPD_AUDIENCE='com.champro.nativepreview.v145';
 const CPD_TRIAL_DAYS=7; // staging only; configure policy before public release
 function cpd_fail($reason,$status=400){return new WP_Error('cpd_auth', $reason,array('status'=>$status));}
 function cpd_b64e($s){return rtrim(strtr(base64_encode($s),'+/','-_'),'=');}
