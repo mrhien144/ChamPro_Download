@@ -97,7 +97,7 @@ s = s.replace("</body>", """<section id="cpAccountGate" role="dialog" aria-modal
 <p id="cpAuthStatus" role="status">Đang kiểm tra quyền offline…</p>
 <button id="cpAccountClose" type="button">Quay lại ChấmPro</button>
 <button class="secondary" id="cpAccountLogout" type="button">Đăng xuất khỏi thiết bị</button>
-<div id="cpUpdaterPanel" class="cp-plan"><h2>Cập nhật ChấmPro</h2><p id="cpUpdateStatus" role="status">Phiên bản thử nghiệm hiện tại v14.2. Ứng dụng vẫn chấm hoàn toàn offline.</p><button class="secondary" id="cpUpdateCheck" type="button">Kiểm tra phiên bản mới</button><button id="cpUpdateDownload" type="button" hidden>Tải bản cập nhật chính thức</button><p id="cpUpdateDetails" hidden></p></div>
+<div id="cpUpdaterPanel" class="cp-plan"><h2>Cập nhật ChấmPro</h2><p id="cpUpdateStatus" role="status">Phiên bản thử nghiệm hiện tại v14.4. Ứng dụng vẫn chấm hoàn toàn offline.</p><button class="secondary" id="cpUpdateCheck" type="button">Kiểm tra phiên bản mới</button><button id="cpUpdateDownload" type="button" hidden>Tải bản cập nhật chính thức</button><p id="cpUpdateDetails" hidden></p></div>
 <small>Chỉ tính điểm trên thiết bị. Không truyền ảnh phiếu và dữ liệu học sinh lên máy chủ để chấm bài.</small>
 </div></section>
 <script type="module" src="./account-direct.mjs"></script><script type="module" src="./update-app.mjs"></script></body>""",1)
