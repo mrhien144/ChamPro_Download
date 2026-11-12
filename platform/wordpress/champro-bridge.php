@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ChấmPro Bridge (Staging)
  * Description: Connects verified WordPress customers and completed WooCommerce orders to the isolated ChấmPro licensing API.
- * Version: 0.1.3-staging
+ * Version: 0.1.4-staging
  * Requires PHP: 7.4
  *
  * Do not activate until wp-config.php defines:
@@ -168,29 +168,35 @@ add_shortcode('champro_connect', function () {
       '<p><a href="https://champro.mrhien.com/">Quay về ChấmPro</a></p>' .
       '</div><script>' . $script . '</script>';
 });
-// IMPORTANT: grant only after the payment gateway calls WooCommerce payment_complete.
-// Merely moving an order to Processing / Completed is NOT proof of payment:
-// staff can do that manually, and WooCommerce may set date_paid automatically.
-// SePay must call payment_complete() in the installed gateway version.
-// If it only changes status, adapt to its verified callback instead (after audit).
-function champro_bridge_paid_order($order_id) {
-    if (!champro_bridge_ready() || !function_exists('wc_get_order')) return;
-    $order = wc_get_order($order_id);
-    if (!$order || !$order->get_user_id() || !$order->is_paid() || !$order->get_date_paid()) return;
-    if (!in_array($order->get_status(), array('processing','completed'), true)) return;
-
-    // Fail closed until the administrator verifies the gateway identifier in
-    // WooCommerce > Settings > Payments (e.g. the installed SePay gateway ID).
-    // Add to wp-config.php: define('CHAMPRO_ALLOWED_GATEWAY_IDS', 'the_verified_id');
-    if (!defined('CHAMPRO_ALLOWED_GATEWAY_IDS')) {
-        $order->add_order_note('ChấmPro: Chưa cấp quyền. Cần xác nhận CHAMPRO_ALLOWED_GATEWAY_IDS trong wp-config.php.');
-        return;
+// SePay Gateway 1.1.23 is audited from its official ZIP:
+// gateway ID 'sepay', webhook handler sepay_api(), route v2/add-payment.
+// When the configured paid status is Processing, it invokes update_status()
+// after validating the webhook API key and exact order total.
+// It does NOT invoke payment_complete() on that path.
+//
+// A manual change to Processing can also set date_paid in WooCommerce; therefore
+// neither order status nor is_paid/date_paid is sufficient proof of a bank payment.
+function champro_bridge_verified_sepay_context() {
+    if (!function_exists('sepay_api')) return false;
+    foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 32) as $frame) {
+        if (isset($frame['function']) && $frame['function'] === 'sepay_api'
+            && empty($frame['class'])) return true;
     }
-    $allowed = array_filter(array_map('trim', explode(',', (string) CHAMPRO_ALLOWED_GATEWAY_IDS)));
-    if (!in_array((string) $order->get_payment_method(), $allowed, true)) return;
+    return false;
+}
+
+function champro_bridge_paid_order($order_id, $order = null) {
+    if (!champro_bridge_ready() || !function_exists('wc_get_order')) return;
+    // Fail closed: only a synchronous event inside SePay's authenticated webhook
+    // handler may grant ChấmPro rights. Never grant for manual status changes.
+    if (!champro_bridge_verified_sepay_context()) return;
+    if (!$order) $order = wc_get_order($order_id);
+    if (!$order || !$order->get_user_id()) return;
+    if (!in_array($order->get_status(), array('processing','completed'), true)) return;
+    if ((string) $order->get_payment_method() !== 'sepay') return;
 
     $items = $order->get_items();
-    if (count($items) !== 1) return; // Exclude mixed or bundled orders.
+    if (count($items) !== 1) return;
     $item = reset($items);
     if (intval($item->get_quantity()) !== 1) return;
     $pid = intval($item->get_product_id());
@@ -204,7 +210,7 @@ function champro_bridge_paid_order($order_id) {
     if (!$user) return;
     $account = champro_bridge_account($user);
     if (is_wp_error($account)) {
-        $order->add_order_note('ChấmPro: Không đồng bộ được tài khoản. Kiểm tra Worker trước khi thử lại.');
+        $order->add_order_note('ChấmPro: SePay đã xác nhận thanh toán, nhưng chưa đồng bộ được tài khoản. Cần đối soát và thử lại an toàn.');
         return;
     }
     $result = champro_bridge_request(array(
@@ -214,14 +220,19 @@ function champro_bridge_paid_order($order_id) {
         'productId' => $pid,
         'plan' => $plan,
         'amountVnd' => $price,
-        'orderStatus' => 'paid', // Verified payment_complete event, independent of Woo order state.
+        'orderStatus' => 'paid', // Authenticated SePay 1.1.23 payment callback only.
     ));
     if (is_wp_error($result)) {
-        $order->add_order_note('ChấmPro: Chưa đồng bộ quyền. Cần thử lại sự kiện thanh toán, không kích hoạt thủ công.');
+        $order->add_order_note('ChấmPro: Đã nhận thanh toán nhưng chưa đồng bộ quyền. Kiểm tra Worker và đối soát trước khi cấp.');
     } else {
-        $order->add_order_note('ChấmPro: Đã xác nhận cấp quyền ' . $plan . ' cho tài khoản #' . $user->ID);
+        $order->add_order_note('ChấmPro: Đã cấp quyền ' . $plan . ' cho tài khoản #' . $user->ID);
     }
 }
-// Hook emitted by a verified WooCommerce gateway payment completion.
-// WooCommerce normally leaves digital orders at Processing, not Completed.
-add_action('woocommerce_payment_complete', 'champro_bridge_paid_order', 15, 1);
+function champro_bridge_sepay_status_changed($order_id, $old_status, $new_status, $order = null) {
+    if (!in_array($new_status, array('processing','completed'), true)) return;
+    if (in_array($old_status, array('processing','completed'), true)) return;
+    champro_bridge_paid_order($order_id, $order);
+}
+// WooCommerce fires this synchronously during SePay's update_status() call.
+// The stack-origin guard above rejects a manual admin status update.
+add_action('woocommerce_order_status_changed', 'champro_bridge_sepay_status_changed', 20, 4);
