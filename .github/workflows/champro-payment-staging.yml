@@ -1,0 +1,34 @@
+name: ChấmPro payment bridge staging checks
+on:
+  push:
+    branches:
+      - staging/champro-payment-8919-8920-20261112
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'platform/worker/**'
+      - 'platform/wordpress/**'
+      - 'platform/tests/**'
+      - '.github/workflows/champro-payment-staging.yml'
+permissions:
+  contents: read
+jobs:
+  payment-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: PHP syntax
+        run: php -l platform/wordpress/champro-bridge.php && php -l platform/tests/payment-bridge-test.php
+      - name: Worker syntax
+        run: node --check platform/worker/src/index.js
+      - name: Payment bridge rejection and acceptance tests (fake WooCommerce)
+        run: php platform/tests/payment-bridge-test.php
+      - name: D1 payment SQL transaction tests (in-memory SQLite)
+        run: python platform/tests/payment-worker-sql-test.py
