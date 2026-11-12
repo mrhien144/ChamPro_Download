@@ -29,16 +29,28 @@ header.hs-sitebar .hs-brand-copy small{display:block;font-size:11px;line-height:
   header.hs-sitebar .hs-brand-copy small{font-size:10px}
 }
 </style>
-</head>
+<style id="hs-auth-compact-qr">
+header.hs-sitebar .hs-links .hs-auth-nav-button{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;max-width:220px;min-height:36px;padding:7px 12px;border:1px solid #b7d2ed;border-radius:9px;background:#eaf4ff;color:#13529b;font:750 12px/1.2 system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+header.hs-sitebar .hs-links .hs-auth-nav-button:hover{background:#d8eaff}
+header.hs-sitebar .hs-links .hs-auth-nav-button.hs-auth-connected{background:#edf8f1;color:#176340;border-color:#a4dcb9}
+.qr-leftcol>.panel:first-child{padding:16px 18px!important}
+.qr-leftcol>.panel:first-child h2{font-size:17px;margin-bottom:4px}
+.qr-leftcol .hs-qr-license-help{font-size:12px;color:#60718a;margin:4px 0 8px;line-height:1.5}
+.qr-leftcol>.panel:first-child .actions{margin-top:8px;gap:7px}
+.qr-leftcol>.panel:first-child .actions button{padding:8px 10px;font-size:12px}
+.qr-leftcol>.panel:first-child #licenseStatus{font-size:12px;line-height:1.5;margin:8px 0}
+.qr-leftcol>.panel:first-child>p:last-child{font-size:12px;margin:5px 0 0}
+@media(max-width:600px){header.hs-sitebar .hs-links .hs-auth-nav-button{font-size:12px;min-height:34px}}
+</style></head>
 <body><div class="top"></div>
-<header class="hs-sitebar"><nav class="hs-navwrap" aria-label="Điều hướng chính"><a class="hs-brand" href="https://mrhien.com/" aria-label="HienSoft - về mrhien.com"><img class="hs-brand-icon" src="/app/icon.svg" alt="Logo HienSoft" width="75" height="60" decoding="async"><span class="hs-brand-copy"><strong>Tạo mã QR</strong><small>https://mrhien.com/</small></span></a><div class="hs-links"><a href="https://mrhien.com/">Trang chủ</a><a href="/app/">Chấm Pro</a><a href="/tron-de/">Trộn đề</a><a href="/qr-excel.html" aria-current="page">Tạo QR</a><a href="/ho-tro.html">Hỗ trợ</a></div></nav></header>
+<header class="hs-sitebar"><nav class="hs-navwrap" aria-label="Điều hướng chính"><a class="hs-brand" href="https://mrhien.com/" aria-label="HienSoft - về mrhien.com"><img class="hs-brand-icon" src="/app/icon.svg" alt="Logo HienSoft" width="75" height="60" decoding="async"><span class="hs-brand-copy"><strong>Tạo mã QR</strong><small>https://mrhien.com/</small></span></a><div class="hs-links"><a href="https://mrhien.com/">Trang chủ</a><a href="/app/">Chấm Pro</a><a href="/tron-de/">Trộn đề</a><a href="/qr-excel.html" aria-current="page">Tạo QR</a><a href="/ho-tro.html">Hỗ trợ</a><button id="licenseLogin" class="hs-auth-nav-button" type="button">Đăng ký và đăng nhập</button></div></nav></header>
 <section class="hero"><div class="wrap"><span class="kicker">Công cụ dành cho giáo viên</span><h1>Tạo mã QR từ Excel</h1><p>Chọn đúng file mẫu ChấmPro, kiểm tra dữ liệu và tạo một hoặc nhiều mã QR để nhập vào ứng dụng bằng camera.</p></div></section>
 <main class="wrap main">
 <div class="qr-leftcol">
 <section class="panel" style="border:2px solid #efc87b;background:#fffaf2" aria-label="Cấp phép Tạo QR thử nghiệm">
 <h2>Quyền sử dụng Tạo QR</h2>
-<p>Dùng tài khoản mrhien.com để tạo mã QR. Gói miễn phí có 5 lượt ban đầu và được cộng thêm lượt do quản trị viên cấp. Gói năm hoặc trọn đời sử dụng không giới hạn. Nội dung Excel vẫn xử lý ngay trên thiết bị; chỉ thông tin xác nhận sử dụng lượt được gửi tới Cloudflare.</p>
-<div class="actions"><button id="licenseLogin" class="primary" type="button">Đăng ký và đăng nhập</button><button id="licenseRefresh" class="secondary" type="button" disabled>Xem lượt còn lại</button><button id="licenseLogout" class="secondary" type="button" disabled>Đăng xuất</button></div>
+<p class="hs-qr-license-help">Miễn phí 5 lượt; gói năm và trọn đời không giới hạn. File Excel được xử lý trên thiết bị.</p>
+<div class="actions"><button id="licenseRefresh" class="secondary" type="button" disabled>Xem lượt còn lại</button><button id="licenseLogout" class="secondary" type="button" disabled>Đăng xuất</button></div>
 <p id="licenseStatus" role="status" aria-live="polite">Chưa đăng nhập. Chưa trừ lượt.</p>
 <p><a href="/platform/account/" style="color:#174cae;text-decoration:underline">Xem tài khoản và hạn mức</a></p>
 </section>
