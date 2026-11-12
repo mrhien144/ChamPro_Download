@@ -37,41 +37,68 @@ app_js.write_text(app_code, encoding="utf-8")
 # This app is already bundled in the APK. Never register a browser service worker
 # that could pin an obsolete web layout or delay the native presentation.
 s = re.sub(r'<script type="module" src="\./pwa-install\.mjs\?v=[^"]+"></script>', '', s)
-# APK-only signed-license gate. HTML/CSS and license module never touch
-# existing camera, OMR, grading, photo storage or keyboard handlers.
+# APK-only WordPress sign-in and in-app packages. Keep unchanged OMR, camera,
+# grading, QR import, result editor, photo archive and local offline storage.
+account_module = root / "account-app.mjs"
 license_module = root / "offline-license.mjs"
-assert license_module.is_file(), "Offline license verifier is required for v14"
+assert account_module.is_file() and license_module.is_file()
 s = s.replace("</head>", """<style>
-html.cp-license-pending body > :not(#cpLicenseGate){display:none!important}
-#cpLicenseGate[hidden]{display:none!important}
-#cpLicenseGate{position:fixed;inset:0;z-index:2147483646;background:#f4f7fc;overflow-y:auto;
- color:#152d50;display:flex;align-items:center;justify-content:center;padding:18px;font-family:system-ui,sans-serif}
-#cpLicenseGate .cp-license-card{background:white;border-radius:22px;max-width:480px;width:100%;box-sizing:border-box;
- box-shadow:0 12px 48px #20365d28;padding:28px 22px}
-#cpLicenseGate h1{font-size:25px;margin:4px 0 6px;color:#153960}
-#cpLicenseGate p{line-height:1.5;font-size:14px}
-#cpLicenseGate label{display:block;font-weight:700;font-size:14px;margin:18px 0 7px}
-#cpLicenseGate input,#cpLicenseGate textarea{width:100%;box-sizing:border-box;padding:12px;border:1px solid #b8c9db;border-radius:10px;font:14px monospace}
-#cpLicenseGate textarea{min-height:115px;resize:vertical}
-#cpLicenseGate button{background:#155fc8;border:0;border-radius:10px;color:white;padding:12px 15px;
- font-weight:700;margin:8px 8px 2px 0;cursor:pointer}
-#cpLicenseGate .cp-secondary{background:#e4edf9;color:#18457f}
-#cpLicenseMessage{min-height:24px;font-size:13px;color:#a13e27}
-</style><script>document.documentElement.classList.add('cp-license-pending')</script></head>""",1)
-s = s.replace("</body>", """<section id="cpLicenseGate" role="dialog" aria-modal="true" aria-label="Kích hoạt ChấmPro">
-<div class="cp-license-card"><h1>ChấmPro Test v14</h1>
-<p><strong>Kích hoạt một lần — chấm bài hoàn toàn offline.</strong> Giữ nguyên tốc độ camera, đáp án và dữ liệu trên thiết bị.</p>
-<label for="cpLicenseDevice">1. Mã thiết bị này</label>
-<input id="cpLicenseDevice" readonly><button type="button" class="cp-secondary" id="cpLicenseCopy">Sao chép mã thiết bị</button>
-<label>2. Đăng nhập mrhien.com và tạo giấy phép</label>
-<button type="button" id="cpLicenseSite">Mở trang đăng nhập / kích hoạt</button>
-<p>Trang kích hoạt: <b>mrhien.com/champro-activate/</b>. Cần Internet khi kích hoạt lần đầu, không cần khi chấm bài.</p>
-<label for="cpLicenseCode">3. Dán giấy phép đã nhận</label>
-<textarea id="cpLicenseCode" placeholder="Dán toàn bộ mã giấy phép vào đây" spellcheck="false"></textarea>
-<button type="button" id="cpLicenseActivate">Kích hoạt ứng dụng</button>
-<p id="cpLicenseMessage" role="status">Đang kiểm tra giấy phép lưu trên thiết bị…</p>
-<small>Không gửi ảnh phiếu, họ tên hay điểm số lên máy chủ để chấm bài.</small>
-</div></section><script type="module" src="./offline-license.mjs"></script></body>""",1)
+html.cp-license-pending body > :not(#cpAccountGate){display:none!important}
+#cpAccountGate[hidden]{display:none!important}
+#cpAccountGate{position:fixed;inset:0;z-index:2147483646;display:flex;
+ align-items:center;justify-content:center;overflow-y:auto;padding:18px;
+ background:#f4f7fc;color:#163456;font-family:system-ui,Arial,sans-serif}
+.cp-account-card{max-width:480px;width:100%;max-height:96vh;overflow:auto;box-sizing:border-box;
+ background:white;border-radius:22px;padding:24px 20px;box-shadow:0 16px 45px #1e385726}
+.cp-account-card h1{font-size:26px;margin:0 0 4px;color:#16395f}
+.cp-account-card h2{font-size:19px;margin:12px 0}
+.cp-account-card p{font-size:14px;line-height:1.6}
+.cp-account-card button{width:100%;border:0;border-radius:11px;background:#1664ce;color:white;
+ padding:13px 10px;font-size:15px;font-weight:700;margin:7px 0;cursor:pointer;min-height:46px}
+.cp-account-card button.secondary{color:#164676;background:#eaf1fb;border:1px solid #bdd1ed}
+.cp-account-card button:disabled{opacity:.6}
+.cp-account-card .cp-pair-code{font-size:29px;letter-spacing:3px;font-weight:800;
+ border:1px dashed #a7c2e2;border-radius:12px;padding:14px;text-align:center}
+.cp-account-card .cp-plan{border:1px solid #d9e4f0;padding:14px;border-radius:13px;margin:10px 0}
+.cp-account-card .cp-tag{background:#e7f2ff;padding:8px 10px;border-radius:8px;font-size:13px}
+.cp-account-card [hidden]{display:none!important}
+#cpAuthStatus{color:#aa452b;min-height:20px;font-size:13px;overflow-wrap:anywhere}
+#cpAccountClose{background:#edf2f9;color:#26476d}
+</style><script>document.documentElement.classList.add('cp-license-pending')</script></head>""", 1)
+s = s.replace("</body>", """<section id="cpAccountGate" role="dialog" aria-modal="true" aria-label="Tài khoản ChấmPro">
+<div class="cp-account-card">
+<h1>ChấmPro Test v14.1</h1>
+<p><strong>Đăng ký và đăng nhập</strong> để chấm bài hoàn toàn offline sau khi kích hoạt. Không cần nhập giấy phép thủ công.</p>
+<p class="cp-tag" id="cpCurrentPlan" role="status">Chưa kích hoạt</p>
+<div id="cpViewLogin">
+<h2>Tài khoản mrhien.com</h2>
+<p>Một tài khoản dùng chung với website. Chỉ cần Internet khi đăng nhập và nâng cấp gói.</p>
+<button type="button" id="cpSignIn">Đăng ký và đăng nhập</button>
+</div>
+<div id="cpViewWaiting" hidden>
+<h2>Kết nối tài khoản</h2>
+<p>Mã ghép nối có hiệu lực 10 phút và chỉ dùng một lần:</p>
+<div class="cp-pair-code" id="cpPairCode">---------</div>
+<button type="button" id="cpOpenWeb">Tiếp tục đăng nhập trên mrhien.com</button>
+<button type="button" class="secondary" id="cpPairCheck">Tôi đã kết nối – kiểm tra</button>
+<button type="button" class="secondary" id="cpPairRetry">Tạo mã kết nối mới</button>
+</div>
+<div id="cpViewPlans" hidden>
+<h2>Gói sử dụng</h2>
+<p>Thanh toán QR ngân hàng qua WooCommerce và SePay. Sau khi thanh toán được xác nhận, ứng dụng tự nhận quyền khi có Internet.</p>
+<div class="cp-plan"><strong>Gói 1 năm</strong><p>Giá hiển thị và xác nhận tại mrhien.com trước khi thanh toán.</p>
+<button id="cpBuyAnnual" type="button">Chọn gói 1 năm · Thanh toán QR</button></div>
+<div class="cp-plan"><strong>Gói trọn đời</strong><p>Chỉ thanh toán một lần theo chính sách gói.</p>
+<button id="cpBuyLifetime" type="button">Chọn gói trọn đời · Thanh toán QR</button></div>
+<button class="secondary" type="button" id="cpRefreshPlan">Kiểm tra thanh toán / Cập nhật gói</button>
+<button class="secondary" type="button" id="cpReLogin">Đăng nhập tài khoản khác</button>
+</div>
+<p id="cpAuthStatus" role="status">Đang kiểm tra quyền offline…</p>
+<button id="cpAccountClose" type="button">Quay lại ChấmPro</button>
+<button class="secondary" id="cpAccountLogout" type="button">Đăng xuất khỏi thiết bị</button>
+<small>Chỉ tính điểm trên thiết bị. Không truyền ảnh phiếu và dữ liệu học sinh lên máy chủ để chấm bài.</small>
+</div></section>
+<script type="module" src="./account-app.mjs"></script></body>""",1)
 
 html.write_text(s, encoding="utf-8")
 # Ensure the bundled libraries needed for offline QR and Excel are present.
