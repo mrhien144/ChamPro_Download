@@ -14,6 +14,7 @@ async function apiMe(){
 }
 function reset(){
  state.token=null;el('private').hidden=true;el('refresh').disabled=true;el('logout').disabled=true;
+ el('upgradeCurrent').textContent='Chưa kết nối tài khoản ChấmPro. Hãy đăng nhập để xem gói đang dùng.';
  tell('Đã đăng xuất khỏi tài khoản ChấmPro.');
 }
 function setInfo(o){
@@ -21,6 +22,7 @@ function setInfo(o){
  el('name').textContent=a.name||'Giáo viên';
  el('email').textContent=a.email||'';
  el('plan').textContent=plans[plan]||plan;
+ el('upgradeCurrent').textContent=plan==='lifetime'?'Tài khoản đã có gói Trọn đời: không cần mua thêm.':plan==='annual'?'Tài khoản đang dùng gói 1 năm. Vui lòng kiểm tra hạn dùng bên trên trước khi gia hạn.':plan==='suspended'?'Tài khoản tạm khóa; liên hệ hỗ trợ trước khi mua gói.':'Tài khoản đang dùng gói Miễn phí. Hiện trang nâng cấp chưa mở thanh toán.';
  el('expiration').textContent=plan==='annual'
   ?'Hết hạn: '+(a.expiresAt||'chưa xác định')
   :plan==='lifetime'?'Quyền trọn đời, không giới hạn số lần sử dụng'
