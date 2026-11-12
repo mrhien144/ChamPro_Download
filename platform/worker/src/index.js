@@ -1,4 +1,5 @@
 import {issueOfflineLicense} from './offline-license.js';
+import {approvePair,handlePairing} from './device-pairing.js';
 /* ChấmPro platform, isolated Worker. Not active until explicitly deployed. */
 const LIMITS={scan:100,mix:5,qr:5},PRICES={annual:99000,lifetime:299000};
 const txt=new TextEncoder();
@@ -59,6 +60,7 @@ async function internal(req,env){
  if(!Number.isSafeInteger(uid)||uid<1)return error('Tài khoản không hợp lệ');
  const aid='wp:'+uid;
  if(b.action==='offline-license')return issueOfflineLicense(env,uid,b.deviceId);
+ if(b.action==='approve-pair')return approvePair(env,uid,b);
  if(b.action==='account'){
   const email=String(b.email||'').toLowerCase().trim(),name=String(b.name||'').trim().slice(0,120);
   if(email.length>250||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return error('Email không hợp lệ');
@@ -187,7 +189,7 @@ async function admin(env,who,path,req){
 export default {
  async fetch(req,env){
   const origin=req.headers.get('Origin')||'';
-  const whitelist=String(env.ALLOWED_ORIGINS||'https://champro.mrhien.com,https://mrhien.com').split(',').map(x=>x.trim());
+  const whitelist=String(env.ALLOWED_ORIGINS||'https://champro.mrhien.com,https://mrhien.com,https://localhost').split(',').map(x=>x.trim());
   if(origin&&!whitelist.includes(origin))return error('Nguồn bị từ chối',403);
   const cors={'Access-Control-Allow-Origin':origin||'https://champro.mrhien.com',
    'Access-Control-Allow-Headers':'Authorization,Content-Type,X-Bridge-Secret',
@@ -200,6 +202,7 @@ export default {
    let res;
    if(path==='/health'&&req.method==='GET')res=send({ok:true,service:'champro-platform'});
    else if(path==='/api/internal'&&req.method==='POST')res=await internal(req,env);
+   else if(path.startsWith('/api/device/'))res=await handlePairing(req,env,path);
    else{
     const who=await session(req,env);
     if(path==='/api/me'&&req.method==='GET')res=await profile(env,who);
