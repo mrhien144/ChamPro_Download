@@ -94,27 +94,66 @@ add_action('rest_api_init', function () {
 });
 // Render this shortcode on a PRIVATE first-party WordPress page at
 // https://mrhien.com/champro-connect/ and open in a popup from ChấmPro.
+// Temporary, first-party return intent so WooCommerce login AND registration
+// take the user back to the bridge without ever exposing tokens in URLs.
+function champro_bridge_mark_return() {
+    if (headers_sent()) return;
+    setcookie('champro_auth_return', '1', array(
+        'expires' => time() + 900, 'path' => '/', 'secure' => is_ssl(),
+        'httponly' => true, 'samesite' => 'Lax',
+    ));
+}
+function champro_bridge_wants_return() {
+    return isset($_COOKIE['champro_auth_return']) && $_COOKIE['champro_auth_return'] === '1';
+}
+function champro_bridge_return_url() {
+    return home_url('/champro-connect/');
+}
+add_filter('woocommerce_login_redirect', function ($redirect, $user) {
+    return champro_bridge_wants_return() ? champro_bridge_return_url() : $redirect;
+}, 20, 2);
+add_filter('woocommerce_registration_redirect', function ($redirect) {
+    return champro_bridge_wants_return() ? champro_bridge_return_url() : $redirect;
+}, 20, 1);
 add_shortcode('champro_connect', function () {
     if (!champro_bridge_ready()) {
         return '<p>ChấmPro chưa được cấu hình.</p>';
     }
+    $account_url = function_exists('wc_get_page_permalink') ? wc_get_page_permalink('myaccount') : '';
+    if (!$account_url) $account_url = wp_login_url(champro_bridge_return_url());
     if (!is_user_logged_in()) {
-        return '<p>Hãy <a href="' . esc_url(wp_login_url(get_permalink())) . '">đăng nhập mrhien.com</a> rồi quay lại trang này.</p>';
+        champro_bridge_mark_return();
+        // mrhien.com account page owns registration/login UI, not wp-login.php.
+        $url = esc_url($account_url);
+        return '<div style="max-width:600px;margin:32px auto;padding:28px;border:1px solid #dae5f2;border-radius:18px;background:#fff">' .
+          '<h2 style="margin-top:0">Đăng nhập hoặc đăng ký tài khoản HienSoft</h2>' .
+          '<p>Đăng nhập bằng tài khoản mrhien.com để sử dụng ChấmPro. Chưa có tài khoản? Bạn có thể đăng ký miễn phí.</p>' .
+          '<p>Đang mở trang tài khoản chính thức trên mrhien.com…</p>' .
+          '<a href="' . $url . '" style="display:inline-block;background:#0969c3;color:#fff;padding:12px 19px;border-radius:9px;text-decoration:none">Đăng nhập / Đăng ký</a>' .
+          '<script>window.location.replace(' . wp_json_encode(esc_url_raw($account_url)) . ');</script></div>';
+    }
+    if (champro_bridge_wants_return() && !headers_sent()) {
+        setcookie('champro_auth_return', '', array(
+            'expires' => time() - 3600, 'path' => '/', 'secure' => is_ssl(),
+            'httponly' => true, 'samesite' => 'Lax',
+        ));
     }
     $nonce = wp_create_nonce('wp_rest');
     $endpoint = rest_url('champro/v1/session');
-    $script = 'async function champroConnectNow(btn){btn.disabled=true;try{' .
-        'const res=await fetch(' . wp_json_encode($endpoint) . ',{method:"POST",credentials:"same-origin",headers:{"X-WP-Nonce":' .
-        wp_json_encode($nonce) . '}});const data=await res.json();' .
-        'if(!res.ok||!data.token)throw Error("Không thể xác thực tài khoản.");' .
-        'if(!window.opener)throw Error("Mở trang này từ nút đăng nhập ChấmPro.");' .
-        'window.opener.postMessage({type:"champro-session",token:data.token},"https://champro.mrhien.com");' .
-        'document.getElementById("cp-status").textContent="Đã gửi thông tin đăng nhập cho ChấmPro. Bạn có thể đóng cửa sổ này.";' .
-        '}catch(e){document.getElementById("cp-status").textContent=e.message;}finally{btn.disabled=false;}}';
-    return '<div style="max-width:600px;margin:3rem auto;padding:2rem;border:1px solid #dce4ed;border-radius:16px">' .
-        '<h2>Kết nối tài khoản ChấmPro</h2><p>Chỉ cấp quyền tài khoản, không gửi dữ liệu học sinh từ trình duyệt.</p>' .
-        '<button type="button" onclick="champroConnectNow(this)">Kết nối ChấmPro</button>' .
-        '<p id="cp-status" role="status"></p></div><script>' . $script . '</script>';
+    $script = '(async function(){var status=document.getElementById("cp-status");try{' .
+      'if(!window.opener||window.opener.closed){status.textContent="Hãy quay lại ChấmPro và bấm Đăng nhập để kết nối tài khoản.";return;}' .
+      'const res=await fetch(' . wp_json_encode($endpoint) . ',{method:"POST",credentials:"same-origin",headers:{"X-WP-Nonce":' .
+      wp_json_encode($nonce) . '}});const data=await res.json();' .
+      'if(!res.ok||!data.token)throw Error("Không thể xác thực tài khoản.");' .
+      'window.opener.postMessage({type:"champro-session",token:data.token},"https://champro.mrhien.com");' .
+      'status.textContent="Đã kết nối tài khoản. Đang trở về ChấmPro…";' .
+      'setTimeout(function(){window.close();},850);' .
+      '}catch(e){status.textContent="Kết nối chưa thành công: "+e.message;}})();';
+    return '<div style="max-width:600px;margin:32px auto;padding:28px;border:1px solid #dae5f2;border-radius:18px;background:#fff;text-align:center">' .
+      '<h2>Kết nối tài khoản ChấmPro</h2><p id="cp-status" role="status" aria-live="polite">Đang xác thực và trở về ChấmPro…</p>' .
+      '<p>Chỉ xác nhận quyền sử dụng, không gửi dữ liệu học sinh.</p>' .
+      '<p><a href="https://champro.mrhien.com/">Quay về ChấmPro</a></p>' .
+      '</div><script>' . $script . '</script>';
 });
 // Only confirmed WooCommerce orders containing a single recognized ChấmPro
 // license product are eligible for an activation. Never trust browser claims.
