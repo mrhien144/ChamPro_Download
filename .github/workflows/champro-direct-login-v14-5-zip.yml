@@ -1,0 +1,31 @@
+name: ChấmPro v14.5 Direct WordPress Login Plugin
+on:
+  push:
+    branches:
+      - feature/champro-v14-5-auto-signing-key-20261112
+    paths:
+      - platform/wordpress/champro-direct-login.php
+      - .github/workflows/champro-direct-login-v14-5-zip.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package-direct-login:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate PHP syntax
+        run: php -l platform/wordpress/champro-direct-login.php
+      - name: Package WordPress direct login plugin
+        run: |
+          mkdir -p dist/champro-direct-login
+          cp platform/wordpress/champro-direct-login.php dist/champro-direct-login/champro-direct-login.php
+          cd dist
+          zip -qr ChamPro_Direct_Login_v14_5_STAGING.zip champro-direct-login
+          unzip -t ChamPro_Direct_Login_v14_5_STAGING.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChamPro-v14_5-Direct-WordPress-Plugin
+          path: dist/ChamPro_Direct_Login_v14_5_STAGING.zip
+          if-no-files-found: error
+          retention-days: 14
