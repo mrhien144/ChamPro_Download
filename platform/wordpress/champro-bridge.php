@@ -191,7 +191,7 @@ function champro_bridge_paid_order($order_id, $order = null) {
     // handler may grant ChấmPro rights. Never grant for manual status changes.
     if (!champro_bridge_verified_sepay_context()) return;
     if (!$order) $order = wc_get_order($order_id);
-    if (!$order || !$order->get_user_id()) return;
+    if (!$order || !$order->get_user_id() || !$order->is_paid()) return;
     if (!in_array($order->get_status(), array('processing','completed'), true)) return;
     if ((string) $order->get_payment_method() !== 'sepay') return;
 
