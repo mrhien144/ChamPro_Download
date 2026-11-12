@@ -13,7 +13,7 @@
     }
   ],
   "vars": {
-    "ALLOWED_ORIGINS": "https://champro.mrhien.com,https://mrhien.com",
+    "ALLOWED_ORIGINS": "https://champro.mrhien.com,https://mrhien.com,https://localhost",
     "ADMIN_WP_USER_IDS": "1",
     "PRODUCT_ANNUAL_ID": "8919",
     "PRODUCT_LIFETIME_ID": "8920"
