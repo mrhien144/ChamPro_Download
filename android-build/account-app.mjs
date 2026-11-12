@@ -7,6 +7,7 @@ const WEB='https://mrhien.com/champro-connect-app/';
 const LICENSE_KEY='cp-v14-signed-license';
 const ID_KEY='cp-v14-install-id';
 const REFRESH_KEY='cp-v14-device-refresh';
+const PENDING_KEY='cp-v14-payment-pending';
 let linked=false,activePair=null,pairTimer=null,refreshTimer=null,view='login';
 let currentPlan='free',expiresAt=null;
 const $=id=>document.getElementById(id);
@@ -61,6 +62,7 @@ async function accept(data,hasRefresh=false){
   // Persist only after cryptographic signature verification and account/device match.
   localStorage.setItem(LICENSE_KEY,next);
   currentPlan=verified.plan;expiresAt=new Date(verified.exp*1000).toISOString();
+  if(currentPlan==='annual'||currentPlan==='lifetime')localStorage.removeItem(PENDING_KEY);
   displayPlan();
   unlock();
   status('Đã xác minh quyền sử dụng. Chấm bài offline được bật.');
@@ -114,6 +116,7 @@ function buy(plan){
  if(!['annual','lifetime'].includes(plan))return;
  if(!navigator.onLine){status('Cần Internet để tạo đơn hàng và thanh toán QR ngân hàng.');return;}
  // WooCommerce handles real QR and payment. No client-side claims of payment success.
+ localStorage.setItem(PENDING_KEY,plan);
  window.open(WEB+'#plan='+encodeURIComponent(plan),'_blank','noopener');
  setView('plans');
  status('Đã mở trang thanh toán WooCommerce/SePay. Sau khi chuyển khoản thành công, quay lại ChấmPro để tự cập nhật gói.');
@@ -159,9 +162,11 @@ async function boot(){
   $('cpAccountGate').hidden=true;lock();status('Đã đăng xuất. Dữ liệu chấm bài trên máy không bị xóa.');
  };
  window.addEventListener('online',()=>{if(activeAccountPanel()&&refreshSecret())void checkRights().catch(()=>{});});
+ function shouldRefreshAfterPayment(){return navigator.onLine&&!!refreshSecret()&&!!localStorage.getItem(PENDING_KEY)&&!
+  document.querySelector('#page-scan.page.shown');}
  document.addEventListener('visibilitychange',()=>{
   if(!document.hidden&&activePair)void pollPair();
-  if(!document.hidden&&activeAccountPanel()&&navigator.onLine&&refreshSecret())void checkRights().catch(()=>{});
+  if(!document.hidden&&(shouldRefreshAfterPayment()||(activeAccountPanel()&&navigator.onLine&&refreshSecret())))void checkRights().catch(()=>{});
  });
  setTimeout(addAccountMenu,150);
  // On boot, signed licenses are verified locally; no network, no delay in camera processing.
@@ -170,6 +175,7 @@ async function boot(){
   if(!saved)throw Error('Chưa kích hoạt');
   const claim=await verifyLicense(saved);
   currentPlan=claim.plan;expiresAt=new Date(claim.exp*1000).toISOString();displayPlan();unlock();
+  if(shouldRefreshAfterPayment())setTimeout(()=>void checkRights().catch(()=>{}),600);
  }catch{
   lock();
   if(refreshSecret()&&navigator.onLine){
