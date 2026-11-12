@@ -19,6 +19,13 @@ function getId(){
  return id;
 }
 function refreshSecret(){return localStorage.getItem(REFRESH_KEY)||'';}
+async function openCheckout(url){
+ // Android: Capacitor Browser opens a secure Custom Tab inside the app experience.
+ // It hosts the real mrhien.com WooCommerce/SePay QR, not a fake in-app bank QR.
+ const nativeBrowser=window.Capacitor?.Plugins?.Browser;
+ if(nativeBrowser?.open){await nativeBrowser.open({url});return;}
+ window.open(url,'_blank','noopener'); // web preview fallback
+}
 function activeAccountPanel(){return document.documentElement.classList.contains('cp-license-pending')||!$('cpAccountGate')?.hidden;}
 function status(s){text('cpAuthStatus',s);}
 function setView(next){
@@ -117,7 +124,7 @@ function buy(plan){
  if(!navigator.onLine){status('Cần Internet để tạo đơn hàng và thanh toán QR ngân hàng.');return;}
  // WooCommerce handles real QR and payment. No client-side claims of payment success.
  localStorage.setItem(PENDING_KEY,plan);
- window.open(WEB+'#plan='+encodeURIComponent(plan),'_blank','noopener');
+ void openCheckout(WEB+'#plan='+encodeURIComponent(plan)).catch(e=>status(e.message));
  setView('plans');
  status('Đã mở trang thanh toán WooCommerce/SePay. Sau khi chuyển khoản thành công, quay lại ChấmPro để tự cập nhật gói.');
 }
@@ -148,7 +155,7 @@ async function boot(){
  $('cpSignIn').onclick=startLogin;
  $('cpPairRetry').onclick=startLogin;
  $('cpReLogin').onclick=startLogin;
- $('cpOpenWeb').onclick=()=>{if(!activePair)return;window.open(WEB+'#pair='+encodeURIComponent(activePair.pairCode),'_blank','noopener');};
+ $('cpOpenWeb').onclick=()=>{if(!activePair)return;void openCheckout(WEB+'#pair='+encodeURIComponent(activePair.pairCode)).catch(e=>status(e.message));};
  $('cpPairCheck').onclick=pollPair;
  $('cpBuyAnnual').onclick=()=>buy('annual');
  $('cpBuyLifetime').onclick=()=>buy('lifetime');
