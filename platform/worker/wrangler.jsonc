@@ -1,14 +1,14 @@
 {
-  // STAGING ONLY. Do not reuse the production website domain for this Worker.
-  "name": "champro-platform-staging",
+  // PAYMENT TEST ONLY. This branch MUST NOT target the live champro-platform-staging Worker/D1.
+  "name": "champro-payment-test",
   "main": "src/index.js",
   "compatibility_date": "2026-11-01",
   "workers_dev": true,
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "champro-platform-staging",
-      "database_id": "e4dc2b7c-8737-4dc2-8c6c-b34ffdd6de6c",
+      "database_name": "champro-payment-test-db",
+      "database_id": "e4273b82-a55f-45d5-9c93-5800f0db4f0c",
       "migrations_dir": "../migrations"
     }
   ],
