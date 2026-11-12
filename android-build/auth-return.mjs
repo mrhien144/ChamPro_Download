@@ -1,13 +1,16 @@
-/* Parse a ChấmPro login callback without trusting any URL-provided credential.
- * Only the short-lived pair code is returned; secret stays inside app session. */
-export function acceptedAuthPair(raw,expected){
- if(typeof raw!=='string'||raw.length>512)return false;
- if(typeof expected!=='string'||!/^[A-HJ-NP-Z2-9]{9}$/.test(expected))return false;
+/* Strictly validate Android login callback. The deep link contains a one-use
+   short-lived ticket, never an account token or PKCE verifier. */
+export function parseAuthReturn(raw,expectedState){
+ if(typeof raw!=='string'||raw.length>512||
+   typeof expectedState!=='string'||!/^[a-f0-9]{32}$/.test(expectedState))return null;
  try{
-  const url=new URL(raw);
-  return url.protocol==='champrotest:'&&url.hostname==='auth'&&
-   url.pathname==='/complete'&&!url.username&&!url.password&&
-   url.searchParams.get('pair')===expected&&
-   [...url.searchParams.keys()].length===1&&!url.hash;
- }catch{return false;}
+  const u=new URL(raw);
+  if(u.protocol!=='champrotest:'||u.hostname!=='auth'||u.pathname!=='/complete'||
+    u.username||u.password||u.hash)return null;
+  const keys=[...u.searchParams.keys()];
+  if(keys.length!==2||!keys.includes('ticket')||!keys.includes('state'))return null;
+  const ticket=u.searchParams.get('ticket'),state=u.searchParams.get('state');
+  if(!/^[a-f0-9]{48}$/.test(ticket||'')||state!==expectedState)return null;
+  return {ticket,state};
+ }catch{return null;}
 }
