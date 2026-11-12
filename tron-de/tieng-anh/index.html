@@ -15,7 +15,7 @@
 @media(max-width:1100px){.sitehead .hs-english-nav{flex-wrap:wrap;justify-content:center;gap:3px 12px;padding-top:7px;padding-bottom:7px}.hs-english-nav .brand{width:100%;justify-content:center}.hs-navlinks{width:100%;justify-content:center}}
 @media(max-width:600px){.sitehead .hs-english-nav{width:calc(100% - 16px)}.hs-english-nav .brand{gap:8px}.hs-english-nav .hs-brand-logo{width:58px;height:48px;flex-basis:58px}.hs-english-nav .hs-brand-title strong{font-size:15px}.hs-english-nav .hs-brand-title small{font-size:10px}.hs-navlinks{justify-content:flex-start;gap:4px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:2px 2px 5px}.hs-navlinks::-webkit-scrollbar{display:none}.hs-navlinks a{font-size:12px;padding:8px 10px;min-height:36px}}
 #downloadBundle{min-height:56px;padding:14px 25px;font-size:16px;font-weight:850;max-width:100%}.export-hint{font-size:13px;line-height:1.65;color:var(--muted);margin:13px 0 18px}.export-hint strong{color:var(--ink)}
-</style><script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script><script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script><script defer src="/platform/licensing/mix-license.js"></script><script type="module">const EngEngine=(()=>{
+</style><script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script><script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script><script defer src="/platform/licensing/auth-session.js"></script><script defer src="/platform/licensing/mix-license.js"></script><script type="module">const EngEngine=(()=>{
 /** English Exam Mixer: pure linked-group shuffle and validation. No DOM required. */
 const LETTERS=['A','B','C','D'];
 const KINDS={cloze:'Điền từ/đục lỗ',reading:'Đọc hiểu',arrangement:'Sắp xếp câu/hội thoại',independent:'Câu độc lập'};
@@ -758,7 +758,7 @@ try{const c=JSON.parse(localStorage.getItem('hienSoftEnglishMixerSettings')||'nu
 <p class="hs-license-help">Miễn phí 5 lượt trộn chung với Trộn đề các môn; gói trả phí không giới hạn. Xem trước không trừ lượt.</p>
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
 
-<button type="button" class="button secondary" id="mixLicenseRefresh" disabled>Xem lượt còn lại</button>
+
 <button type="button" class="button secondary" id="mixLicenseLogout" disabled>Đăng xuất</button>
 </div><p id="mixLicenseStatus" role="status" aria-live="polite">Chưa đăng nhập.</p>
 </section>
