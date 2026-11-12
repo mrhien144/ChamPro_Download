@@ -53,7 +53,7 @@ async function refresh(){
 }
 el('login').onclick=()=>{
  state.popup=window.open('https://mrhien.com/champro-connect/','champro-account-login','popup=yes,width=620,height=760');
- tell(state.popup?'Trên cửa sổ mrhien.com vừa mở, bấm “KẾT NỐI TÀI KHOẢN”.':'Trình duyệt chặn cửa sổ. Hãy cho phép pop-up từ champro.mrhien.com.');
+ tell(state.popup?'Đăng nhập hoặc đăng ký trên mrhien.com, hệ thống sẽ tự kết nối ChấmPro.':'Trình duyệt chặn cửa sổ. Hãy cho phép pop-up từ champro.mrhien.com.');
 };
 window.addEventListener('message',async event=>{
  if(event.origin!=='https://mrhien.com'||event.source!==state.popup||
