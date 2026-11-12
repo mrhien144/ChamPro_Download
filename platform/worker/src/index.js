@@ -1,3 +1,4 @@
+import {issueOfflineLicense} from './offline-license.js';
 /* ChấmPro platform, isolated Worker. Not active until explicitly deployed. */
 const LIMITS={scan:100,mix:5,qr:5},PRICES={annual:99000,lifetime:299000};
 const txt=new TextEncoder();
@@ -57,6 +58,7 @@ async function internal(req,env){
  const uid=Number(b.wpUserId);
  if(!Number.isSafeInteger(uid)||uid<1)return error('Tài khoản không hợp lệ');
  const aid='wp:'+uid;
+ if(b.action==='offline-license')return issueOfflineLicense(env,uid,b.deviceId);
  if(b.action==='account'){
   const email=String(b.email||'').toLowerCase().trim(),name=String(b.name||'').trim().slice(0,120);
   if(email.length>250||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return error('Email không hợp lệ');
