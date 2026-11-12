@@ -32,6 +32,7 @@ jobs:
           node --check android-build/account-direct.mjs
           ! grep -q 'champro-platform-staging' android-build/account-direct.mjs
           php -l platform/wordpress/champro-direct-login.php
+          node --test tests/champro-direct-php-sign.test.mjs
           node --check android-build/auth-return.mjs
           node --test tests/champro-auto-login.test.mjs
           node --check android-build/update-app.mjs
