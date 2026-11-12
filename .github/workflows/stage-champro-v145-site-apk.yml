@@ -1,0 +1,40 @@
+name: Stage ChấmPro Test v14.5 APK website download
+on:
+  push:
+    branches:
+      - feature/site-download-champro-v145-20261112
+    paths:
+      - '.github/workflows/stage-champro-v145-site-apk.yml'
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: write
+jobs:
+  stage-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout isolated website change branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/site-download-champro-v145-20261112
+      - name: Download exact successful v14.5 debug APK artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p _apk_artifact downloads/champro
+          gh run download 43174745055 --repo mrhien144/ChamPro_Download \
+            --name ChamPro-Test-v14_5-Login-Fix-Updater-APK \
+            --dir _apk_artifact
+          test -s _apk_artifact/app-debug.apk
+          echo '558d4ac967921330d91594f3348ea1309ab3ecf0503c132ffe416e7b1d097901  _apk_artifact/app-debug.apk' | sha256sum --check --strict
+          cp _apk_artifact/app-debug.apk downloads/champro/ChamPro_Test_v14_5.apk
+          test $(stat -c '%s' downloads/champro/ChamPro_Test_v14_5.apk) -eq 9007373
+          echo 'Verified APK hash, expected size, source run and fixed destination.'
+      - name: Commit the exact APK only to isolated branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add downloads/champro/ChamPro_Test_v14_5.apk
+          git diff --cached --quiet && exit 0
+          git commit -m "assets(site): stage verified ChấmPro Test v14.5 APK for direct HTTPS download"
+          git push origin HEAD:refs/heads/feature/site-download-champro-v145-20261112
