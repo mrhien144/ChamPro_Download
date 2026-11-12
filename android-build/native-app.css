@@ -448,3 +448,40 @@ body.cp-native-app {
   background:#eef5ff;
   border-radius:10px;
 }
+
+/* APK v12: keep the original graded-paper list and review controls below
+   the scan settings. The score report tab remains independent. */
+.cp-native-app #page-scan .cp-native-scan-history-heading{
+ margin:20px 12px 10px;
+ padding:0 2px;
+}
+.cp-native-app #page-scan .cp-native-scan-history-heading h2{
+ font-size:18px;font-weight:850;color:#173c71;margin:0 0 5px;
+}
+.cp-native-app #page-scan .cp-native-scan-history-heading p{
+ color:#596f8c;font-size:12px;line-height:1.5;margin:0;
+}
+.cp-native-app #page-scan .cp-native-scan-history{
+ margin:0 10px 15px;
+ border-radius:17px !important;
+ min-width:0;
+}
+.cp-native-app #page-scan .cp-native-scan-history .toolbar{
+ display:flex;flex-wrap:wrap;gap:10px;min-width:0;
+}
+.cp-native-app #page-scan .cp-native-scan-history .toolbar label{
+ min-width:min(100%,180px);
+ flex:1 1 185px;
+}
+.cp-native-app #page-scan .cp-native-scan-history #resultsSearch{
+ min-width:0;flex:1 1 180px;
+}
+.cp-native-app #page-scan .cp-native-scan-history .tablewrap{
+ max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;
+}
+.cp-native-app #page-scan .cp-native-scan-history table{
+ min-width:650px;
+}
+.cp-native-app #page-results .page-heading{
+ margin-bottom:12px;
+}
