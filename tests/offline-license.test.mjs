@@ -1,8 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {webcrypto} from 'node:crypto';
 import {issueOfflineLicense} from '../platform/worker/src/offline-license.js';
-globalThis.crypto=webcrypto;
 const DEVICE='cp-12345678-1234-4234-8234-123456789abc';
 const from64=s=>Uint8Array.from(Buffer.from(s.replace(/-/g,'+').replace(/_/g,'/'),'base64'));
 const parsed=s=>JSON.parse(Buffer.from(s,'base64url').toString('utf8'));
