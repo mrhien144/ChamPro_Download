@@ -50,7 +50,7 @@ header.hs-sitebar .hs-links .hs-auth-nav-button.hs-auth-connected{background:#ed
 <section class="panel" style="border:2px solid #efc87b;background:#fffaf2" aria-label="Cấp phép Tạo QR thử nghiệm">
 <h2>Quyền sử dụng Tạo QR</h2>
 <p class="hs-qr-license-help">Miễn phí 5 lượt; gói năm và trọn đời không giới hạn. File Excel được xử lý trên thiết bị.</p>
-<div class="actions"><button id="licenseRefresh" class="secondary" type="button" disabled>Xem lượt còn lại</button><button id="licenseLogout" class="secondary" type="button" disabled>Đăng xuất</button></div>
+<div class="actions"><button id="licenseLogout" class="secondary" type="button" disabled>Đăng xuất</button></div>
 <p id="licenseStatus" role="status" aria-live="polite">Chưa đăng nhập. Chưa trừ lượt.</p>
 <p><a href="/platform/account/" style="color:#174cae;text-decoration:underline">Xem tài khoản và hạn mức</a></p>
 </section>
@@ -89,7 +89,7 @@ header.hs-sitebar .hs-links .hs-auth-nav-button.hs-auth-connected{background:#ed
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="/platform/licensing/qr-license.js"></script>
+<script src="/platform/licensing/auth-session.js"></script><script src="/platform/licensing/qr-license.js"></script>
 <script>
 (function(){
 "use strict";
