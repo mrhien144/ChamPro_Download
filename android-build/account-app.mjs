@@ -99,14 +99,14 @@ async function checkRights(){
 }
 function resetPair(){
  if(pairTimer){clearInterval(pairTimer);pairTimer=null;}
- activePair=null;sessionStorage.removeItem(ACTIVE_PAIR_KEY);
+ activePair=null;localStorage.removeItem(ACTIVE_PAIR_KEY);
 }
 function restorePair(){
  try{
-  const pair=JSON.parse(sessionStorage.getItem(ACTIVE_PAIR_KEY)||'null');
+  const pair=JSON.parse(localStorage.getItem(ACTIVE_PAIR_KEY)||'null');
   if(pair&&typeof pair.pairCode==='string'&&Date.now()<pair.deadline){activePair=pair;return true;}
  }catch{}
- sessionStorage.removeItem(ACTIVE_PAIR_KEY);return false;
+ localStorage.removeItem(ACTIVE_PAIR_KEY);return false;
 }
 async function pollPair(){
  if(!activePair||!navigator.onLine)return;
@@ -153,7 +153,7 @@ async function startLogin(){
   resetPair();
   const pair=await api('/api/device/start',{deviceId:getId()});
   activePair={...pair,deadline:Date.now()+Math.max(1,Number(pair.expiresIn)||600)*1000};
-  sessionStorage.setItem(ACTIVE_PAIR_KEY,JSON.stringify(activePair));
+  localStorage.setItem(ACTIVE_PAIR_KEY,JSON.stringify(activePair));
   text('cpPairCode',pair.pairCode);
   setView('waiting');
   status('Đang chờ xác nhận tài khoản trên mrhien.com…');
