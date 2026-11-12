@@ -30,7 +30,7 @@ async function refresh(){
 e("mixLicenseLogin").onclick=function(){
  state.popup=window.open("https://mrhien.com/champro-connect/","champro-mix-login","popup=yes,width=620,height=760");
  if(!state.popup)message("Trình duyệt chặn cửa sổ đăng nhập, hãy cho phép pop-up.");
- else message("Trong cửa sổ WordPress vừa mở, bấm KẾT NỐI TÀI KHOẢN.");
+ else message("Đăng nhập hoặc đăng ký trên mrhien.com. Sau khi thành công, hệ thống tự kết nối ChấmPro.");
 };
 window.addEventListener("message",async ev=>{
  if(ev.origin!=="https://mrhien.com"||ev.source!==state.popup||
