@@ -10,6 +10,7 @@ const LICENSE_KEY='cp-v14-signed-license';
 const ID_KEY='cp-v14-install-id';
 const REFRESH_KEY='cp-v14-device-refresh';
 const PENDING_KEY='cp-v14-payment-pending';
+const ACTIVE_PAIR_KEY='cp-v143-auth-pair';
 let linked=false,activePair=null,pairTimer=null,refreshTimer=null,view='login';
 let currentPlan='free',expiresAt=null;
 const $=id=>document.getElementById(id);
@@ -98,7 +99,14 @@ async function checkRights(){
 }
 function resetPair(){
  if(pairTimer){clearInterval(pairTimer);pairTimer=null;}
- activePair=null;
+ activePair=null;sessionStorage.removeItem(ACTIVE_PAIR_KEY);
+}
+function restorePair(){
+ try{
+  const pair=JSON.parse(sessionStorage.getItem(ACTIVE_PAIR_KEY)||'null');
+  if(pair&&typeof pair.pairCode==='string'&&Date.now()<pair.deadline){activePair=pair;return true;}
+ }catch{}
+ sessionStorage.removeItem(ACTIVE_PAIR_KEY);return false;
 }
 async function pollPair(){
  if(!activePair||!navigator.onLine)return;
@@ -126,6 +134,7 @@ async function receiveAuthLink(raw){
   if(url.protocol!=='champrotest:'||url.hostname!=='auth'||url.pathname!=='/complete')return;
   const code=url.searchParams.get('pair')||'';
   // Browser callback contains only the public short code, NEVER the polling credential.
+  if(!activePair)restorePair();
   if(!activePair||code!==activePair.pairCode)return status('Liên kết đăng nhập đã hết hạn. Hãy đăng nhập lại.');
   try{await window.Capacitor?.Plugins?.Browser?.close?.();}catch{}
   status('Đang xác minh tài khoản và kích hoạt ChấmPro…');
@@ -145,7 +154,8 @@ async function startLogin(){
   if(!navigator.onLine)throw Error('Cần Internet để đăng ký và đăng nhập lần đầu.');
   resetPair();
   const pair=await api('/api/device/start',{deviceId:getId()});
-  activePair=pair;
+  activePair={...pair,deadline:Date.now()+Math.max(1,Number(pair.expiresIn)||600)*1000};
+  sessionStorage.setItem(ACTIVE_PAIR_KEY,JSON.stringify(activePair));
   text('cpPairCode',pair.pairCode);
   setView('waiting');
   status('Đang chờ xác nhận tài khoản trên mrhien.com…');
@@ -189,6 +199,10 @@ function startRefresh(){
 }
 async function boot(){
  getId();
+ if(restorePair()){
+  text('cpPairCode',activePair.pairCode);
+  pairTimer=setInterval(()=>{if(activeAccountPanel())void pollPair();},4000);
+ }
  $('cpSignIn').onclick=openWordPressLogin;
  void registerAuthCallback().catch(e=>status('Không mở được liên kết đăng nhập Android: '+explainNetworkError(e)));
  $('cpLinkAccount').onclick=startLogin;
