@@ -2,10 +2,27 @@
 /**
  * Plugin Name: ChấmPro App Login & Checkout (Staging)
  * Description: One-time pairing with ChấmPro APK and WooCommerce/SePay checkout; no client-side entitlement granting.
- * Version: 0.2.0
+ * Version: 0.3.0
  * Requires Plugins: woocommerce
  */
 defined('ABSPATH') || exit;
+
+// Install the first-party return page without overwriting an existing page.
+// Plugin activation does not deploy any Cloudflare service or modify other ChấmPro pages.
+register_activation_hook(__FILE__, function () {
+    $existing = get_page_by_path('champro-connect-app');
+    if ($existing) return;
+    wp_insert_post(array(
+        'post_title'=>'Kết nối tài khoản ChấmPro',
+        'post_name'=>'champro-connect-app',
+        'post_type'=>'page',
+        'post_status'=>'publish',
+        'post_content'=>'[champro_app_connect]',
+        'comment_status'=>'closed',
+        'ping_status'=>'closed'
+    ));
+});
+
 
 /** Requires the existing isolated ChấmPro Bridge plugin; no secrets in this source. */
 function cpapp_ready() {
