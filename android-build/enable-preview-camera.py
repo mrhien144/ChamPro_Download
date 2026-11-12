@@ -19,9 +19,9 @@ if 'android:scheme="champrotest144"' not in s:
     s = s.replace('</activity>', deep_link + '\n        </activity>', 1)
 manifest.write_text(s, encoding="utf-8")
 # Capacitor WebView requires explicit permission for getUserMedia camera.
-activity = android / "app/src/main/java/com/champro/nativepreview/v144/MainActivity.java"
+activity = android / "app/src/main/java/com/champro/nativepreview/v145/MainActivity.java"
 assert activity.exists(), activity
-activity.write_text("""package com.champro.nativepreview.v144;
+activity.write_text("""package com.champro.nativepreview.v145;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
