@@ -2,6 +2,7 @@
    HTTPS is used only when linking, upgrading, or explicitly checking a plan.
    No background polling while camera or grading screen is active. */
 import {verifyLicense} from './offline-license.mjs';
+import {acceptedAuthPair} from './auth-return.mjs';
 const API='https://champro-platform-staging.luckylove1404.workers.dev';
 const WEB='https://mrhien.com/champro-connect-app/';
 const LOGIN='https://mrhien.com/my-account/';
@@ -129,12 +130,10 @@ function openWordPressLogin(){
 }
 async function receiveAuthLink(raw){
  try{
-  const url=new URL(raw);
-  if(url.protocol!=='champrotest:'||url.hostname!=='auth'||url.pathname!=='/complete')return;
-  const code=url.searchParams.get('pair')||'';
-  // Browser callback contains only the public short code, NEVER the polling credential.
   if(!activePair)restorePair();
-  if(!activePair||code!==activePair.pairCode)return status('Liên kết đăng nhập đã hết hạn. Hãy đăng nhập lại.');
+  const code=activePair?.pairCode||'';
+  if(!acceptedAuthPair(raw,code))return;
+  if(activePair.deadline<Date.now()){resetPair();return status('Liên kết đăng nhập đã hết hạn. Vui lòng thử lại.');}
   try{await window.Capacitor?.Plugins?.Browser?.close?.();}catch{}
   status('Đang xác minh tài khoản và kích hoạt ChấmPro…');
   await pollPair();
