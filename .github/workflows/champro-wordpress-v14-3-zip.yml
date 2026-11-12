@@ -1,0 +1,35 @@
+name: ChấmPro v14.3 WordPress Auto-Login Staging Plugins
+on:
+  push:
+    branches:
+      - feature/champro-v14-3-auto-login-return-20261112
+    paths:
+      - 'platform/wordpress/**'
+      - '.github/workflows/champro-wordpress-staging-zip.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  plugins:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax-check both plugins
+        run: |
+          php -l platform/wordpress/champro-bridge.php
+          php -l platform/wordpress/champro-app-account.php
+      - name: Package isolated WordPress plugins
+        run: |
+          mkdir -p dist/champro-bridge dist/champro-app-account
+          cp platform/wordpress/champro-bridge.php dist/champro-bridge/champro-bridge.php
+          cp platform/wordpress/champro-app-account.php dist/champro-app-account/champro-app-account.php
+          cd dist
+          zip -qr ChamPro_Bridge_STAGING.zip champro-bridge
+          zip -qr ChamPro_Auto_Login_QR_STAGING.zip champro-app-account
+          sha256sum *.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChamPro-WordPress-v14_3-Auto-Login-Staging-Plugins
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 14
