@@ -138,9 +138,21 @@ function cpapp_activate_paid_order($id) {
     $saved=champro_bridge_request(array('action'=>'paid-order',
         'wpUserId'=>(int)$user->ID,'orderId'=>(int)$order->get_id(),
         'productId'=>$pid,'plan'=>$plan,'amountVnd'=>$amount,'orderStatus'=>'completed'));
-    if(is_wp_error($saved))$order->add_order_note('ChấmPro v14: Ghi nhận gói thất bại; cần thử đồng bộ lại.');
-    else $order->add_order_note('ChấmPro v14: Đã đồng bộ gói '.$plan.' lên hệ thống bản quyền.');
+    if(is_wp_error($saved)) {
+        $order->add_order_note('ChấmPro v14: Chưa đồng bộ quyền; tự động thử lại sau 5 phút.');
+        if (!wp_next_scheduled('cpapp_retry_paid_order', array((int)$order->get_id()))) {
+            wp_schedule_single_event(time()+300,'cpapp_retry_paid_order',array((int)$order->get_id()));
+        }
+    } else {
+        if (!$order->get_meta('_cpapp_license_synced')) {
+            $order->update_meta_data('_cpapp_license_synced',1);
+            $order->save();
+            $order->add_order_note('ChấmPro v14: Đã xác minh và đồng bộ quyền sử dụng.');
+        }
+    }
 }
 add_action('woocommerce_payment_complete','cpapp_activate_paid_order',25,1);
 add_action('woocommerce_order_status_processing','cpapp_activate_paid_order',25,1);
 add_action('woocommerce_order_status_completed','cpapp_activate_paid_order',25,1);
+
+add_action('cpapp_retry_paid_order','cpapp_activate_paid_order',25,1);
