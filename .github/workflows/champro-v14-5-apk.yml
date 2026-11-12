@@ -80,7 +80,7 @@ jobs:
       - name: Set actual Android package versionCode
         run: python3 android-build/set-android-version.py _champro_android/android
       - name: Verify Android deep-link intent filter
-        run: grep -q 'android:scheme="champrotest144"' _champro_android/android/app/src/main/AndroidManifest.xml
+        run: grep -q 'android:scheme="champrotest145"' _champro_android/android/app/src/main/AndroidManifest.xml
       - name: Build APK (debug signed, for isolated testing only)
         working-directory: _champro_android/android
         run: |
