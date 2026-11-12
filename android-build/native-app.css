@@ -485,3 +485,20 @@ body.cp-native-app {
 .cp-native-app #page-results .page-heading{
  margin-bottom:12px;
 }
+
+/* APK v13: scanning progress and video-format diagnostics remain readable by
+   the JS grading pipeline but are not rendered in the camera footer. The
+   controls have a stable position while status strings update frequently.
+   This rule is APK-only; browser preview and production remain unchanged. */
+.cp-native-app #page-scan .camera-footer #scanStatus,
+.cp-native-app #page-scan .camera-footer #videoFormatNote {
+  display:none !important;
+}
+.cp-native-app #page-scan .camera-footer {
+  padding:10px 9px 12px !important;
+  min-height:0 !important;
+}
+.cp-native-app #page-scan .camera-footer .actions {
+  margin-top:0 !important;
+  margin-bottom:0 !important;
+}
