@@ -45,11 +45,15 @@ function displayPlan(){
  text('cpCurrentPlan',(names[currentPlan]||'Chưa xác định')+fmt);
 }
 function unlock(){
+ $('cpAccountClose').disabled=false;
+ $('cpAccountLogout').hidden=false;
  document.documentElement.classList.remove('cp-license-pending');
  $('cpAccountGate').hidden=true;
  setTimeout(addAccountMenu,0);
 }
 function lock(){
+ $('cpAccountClose').disabled=true;
+ $('cpAccountLogout').hidden=!refreshSecret();
  document.documentElement.classList.add('cp-license-pending');
  $('cpAccountGate').hidden=false;
  setView(refreshSecret()?'plans':'login');
