@@ -9,9 +9,9 @@ if 'android.permission.CAMERA' not in s:
     s = s.replace('<application', '<uses-permission android:name="android.permission.CAMERA" />\n    <application', 1)
 manifest.write_text(s, encoding="utf-8")
 # Capacitor WebView requires explicit permission for getUserMedia camera.
-activity = android / "app/src/main/java/com/champro/nativepreview/v11/MainActivity.java"
+activity = android / "app/src/main/java/com/champro/nativepreview/v12/MainActivity.java"
 assert activity.exists(), activity
-activity.write_text("""package com.champro.nativepreview.v11;
+activity.write_text("""package com.champro.nativepreview.v12;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
