@@ -115,6 +115,15 @@ add_filter('woocommerce_login_redirect', function ($redirect, $user) {
 add_filter('woocommerce_registration_redirect', function ($redirect) {
     return champro_bridge_wants_return() ? champro_bridge_return_url() : $redirect;
 }, 20, 1);
+// Redirect before the theme prints HTML so the return-intent cookie is reliable.
+add_action('template_redirect', function () {
+    if (!is_page('champro-connect') || is_user_logged_in() || !champro_bridge_ready()) return;
+    champro_bridge_mark_return();
+    $account_url = function_exists('wc_get_page_permalink') ? wc_get_page_permalink('myaccount') : '';
+    if (!$account_url) return; // The shortcode still provides a manual fallback.
+    wp_safe_redirect($account_url);
+    exit;
+}, 1);
 add_shortcode('champro_connect', function () {
     if (!champro_bridge_ready()) {
         return '<p>ChấmPro chưa được cấu hình.</p>';
