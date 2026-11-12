@@ -2,10 +2,27 @@
 /**
  * Plugin Name: ChấmPro App Login & Checkout (Staging)
  * Description: One-time pairing with ChấmPro APK and WooCommerce/SePay checkout; no client-side entitlement granting.
- * Version: 0.2.0
+ * Version: 0.3.0
  * Requires Plugins: woocommerce
  */
 defined('ABSPATH') || exit;
+
+// Install the first-party return page without overwriting an existing page.
+// Plugin activation does not deploy any Cloudflare service or modify other ChấmPro pages.
+register_activation_hook(__FILE__, function () {
+    $existing = get_page_by_path('champro-connect-app');
+    if ($existing) return;
+    wp_insert_post(array(
+        'post_title'=>'Kết nối tài khoản ChấmPro',
+        'post_name'=>'champro-connect-app',
+        'post_type'=>'page',
+        'post_status'=>'publish',
+        'post_content'=>'[champro_app_connect]',
+        'comment_status'=>'closed',
+        'ping_status'=>'closed'
+    ));
+});
+
 
 /** Requires the existing isolated ChấmPro Bridge plugin; no secrets in this source. */
 function cpapp_ready() {
@@ -27,12 +44,54 @@ function cpapp_plan_product($plan) {
 function cpapp_safe_checkout_url() {
     return home_url('/champro-connect-app/');
 }
+function cpapp_pair_code_from_request() {
+    $v = isset($_GET['cp_pair']) ? strtoupper(sanitize_text_field(wp_unslash($_GET['cp_pair']))) : '';
+    return preg_match('/^[A-HJ-NP-Z2-9]{9}$/', $v) ? $v : '';
+}
+function cpapp_auth_return_page($code) {
+    $target = 'champrotest://auth/complete?pair=' . rawurlencode($code);
+    nocache_headers();
+    header('Content-Type: text/html; charset=utf-8');
+    header('Referrer-Policy: no-referrer');
+    header('X-Robots-Tag: noindex, nofollow', true);
+    echo '<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Quay lại ChấmPro</title></head>';
+    echo '<body style="font:16px system-ui;margin:24px;max-width:560px">';
+    echo '<h2>Đã đăng nhập và liên kết tài khoản ChấmPro</h2>';
+    echo '<p>Đang mở lại ứng dụng để nhận quyền sử dụng…</p>';
+    echo '<a id="cpapp-return" style="display:inline-block;padding:14px 20px;background:#1763c8;color:white;border-radius:9px;text-decoration:none" href="' . esc_url($target, array('champrotest')) . '">Quay lại ChấmPro</a>';
+    echo '<p>Nếu trình duyệt yêu cầu xác nhận mở ứng dụng, hãy chọn Cho phép.</p>';
+    echo '<script>location.replace(' . wp_json_encode($target) . ');</script>';
+    echo '</body></html>';
+    exit;
+}
 add_shortcode('champro_app_connect', function () {
+    $pair = cpapp_pair_code_from_request();
     if (!is_user_logged_in()) {
-        return '<section><h2>ChấmPro – Đăng ký và đăng nhập</h2><p>Đăng nhập vào mrhien.com để kết nối ứng dụng, sử dụng offline và nâng cấp gói.</p>' .
-          '<a href="' . esc_url(wp_login_url(cpapp_safe_checkout_url())) . '">Đăng nhập hoặc đăng ký</a></section>';
+        $destination = $pair ? add_query_arg('cp_pair',rawurlencode($pair),cpapp_safe_checkout_url()) : cpapp_safe_checkout_url();
+        return '<section><h2>Đăng nhập để sử dụng ChấmPro</h2><p>Sau khi đăng nhập, hệ thống tự chuyển về ứng dụng. Không cần nhập mã thủ công.</p>' .
+          '<a href="' . esc_url(wp_login_url($destination)) . '">Đăng nhập hoặc đăng ký</a></section>' .
+          ($pair ? '<script>location.replace(' . wp_json_encode(wp_login_url($destination)) . ');</script>' : '');
     }
     if (!cpapp_ready()) return '<p>Cầu nối tài khoản ChấmPro chưa được cấu hình. Chưa thể kích hoạt.</p>';
+    if ($pair) {
+        // The authenticated visitor explicitly initiated a pairing in the APK.
+        // Nonce-protected POST performs all sensitive changes; no side-effects on GET.
+        ob_start(); ?>
+        <div style="max-width:480px;margin:30px auto;padding:20px;font:16px system-ui">
+          <h2>Đang kết nối tài khoản ChấmPro</h2>
+          <p>Bạn sẽ tự động trở lại ứng dụng sau khi xác nhận đăng nhập.</p>
+          <form id="cpapp-auto-pair" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post">
+            <input type="hidden" name="action" value="cpapp_pair">
+            <input type="hidden" name="pair_code" value="<?php echo esc_attr($pair); ?>">
+            <input type="hidden" name="auto_return" value="1">
+            <?php wp_nonce_field('cpapp_pair'); ?>
+            <button type="submit" style="padding:12px 18px;background:#1763c8;color:white;border:0;border-radius:9px">Xác nhận và mở ChấmPro</button>
+          </form>
+          <p><small>Nếu chưa tự chuyển, bấm nút trên.</small></p>
+        </div>
+        <script>document.getElementById('cpapp-auto-pair').requestSubmit();</script>
+        <?php return ob_get_clean();
+    }
     $success = isset($_GET['connected']) && $_GET['connected'] === '1';
     ob_start(); ?>
     <section class="cpapp-panel" style="max-width:660px;margin:24px auto;padding:22px;border:1px solid #dce5f0;border-radius:16px">
@@ -88,6 +147,7 @@ add_action('admin_post_cpapp_pair', function () {
     if (is_wp_error($account)) wp_die('Không đồng bộ được tài khoản ChấmPro.', 'ChấmPro',array('response'=>503));
     $result=champro_bridge_request(array('action'=>'approve-pair','wpUserId'=>(int)$user->ID,'pairCode'=>$code));
     if (is_wp_error($result) || empty($result['paired'])) wp_die('Mã đã hết hạn hoặc chưa ghép nối được. Hãy tạo mã mới trong ứng dụng.', 'ChấmPro',array('response'=>409));
+    if (isset($_POST['auto_return']) && $_POST['auto_return'] === '1') cpapp_auth_return_page($code);
     wp_safe_redirect(add_query_arg('connected','1',cpapp_safe_checkout_url()));exit;
 });
 add_action('admin_post_cpapp_buy', function () {

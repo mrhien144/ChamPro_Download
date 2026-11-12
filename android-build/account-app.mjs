@@ -2,6 +2,7 @@
    HTTPS is used only when linking, upgrading, or explicitly checking a plan.
    No background polling while camera or grading screen is active. */
 import {verifyLicense} from './offline-license.mjs';
+import {acceptedAuthPair} from './auth-return.mjs';
 const API='https://champro-platform-staging.luckylove1404.workers.dev';
 const WEB='https://mrhien.com/champro-connect-app/';
 const LOGIN='https://mrhien.com/my-account/';
@@ -9,6 +10,7 @@ const LICENSE_KEY='cp-v14-signed-license';
 const ID_KEY='cp-v14-install-id';
 const REFRESH_KEY='cp-v14-device-refresh';
 const PENDING_KEY='cp-v14-payment-pending';
+const ACTIVE_PAIR_KEY='cp-v143-auth-pair';
 let linked=false,activePair=null,pairTimer=null,refreshTimer=null,view='login';
 let currentPlan='free',expiresAt=null;
 const $=id=>document.getElementById(id);
@@ -97,7 +99,14 @@ async function checkRights(){
 }
 function resetPair(){
  if(pairTimer){clearInterval(pairTimer);pairTimer=null;}
- activePair=null;
+ activePair=null;localStorage.removeItem(ACTIVE_PAIR_KEY);
+}
+function restorePair(){
+ try{
+  const pair=JSON.parse(localStorage.getItem(ACTIVE_PAIR_KEY)||'null');
+  if(pair&&typeof pair.pairCode==='string'&&Date.now()<pair.deadline){activePair=pair;return true;}
+ }catch{}
+ localStorage.removeItem(ACTIVE_PAIR_KEY);return false;
 }
 async function pollPair(){
  if(!activePair||!navigator.onLine)return;
@@ -115,22 +124,43 @@ async function pollPair(){
  }
 }
 function openWordPressLogin(){
- if(!navigator.onLine){status('Cần Internet để đăng ký hoặc đăng nhập lần đầu.');return;}
- void openCheckout(LOGIN).then(()=>status('Đã mở trang tài khoản mrhien.com. Sau khi đăng nhập, quay lại ChấmPro và chọn “Kết nối tài khoản với ứng dụng”.')).catch(e=>status(explainNetworkError(e)));
+ // Single tap: allocate a short-lived pairing on the server, then open WordPress.
+ // WordPress completes login and approves the pairing, then deep-links back.
+ void startLogin();
+}
+async function receiveAuthLink(raw){
+ try{
+  if(!activePair)restorePair();
+  const code=activePair?.pairCode||'';
+  if(!acceptedAuthPair(raw,code))return;
+  if(activePair.deadline<Date.now()){resetPair();return status('Liên kết đăng nhập đã hết hạn. Vui lòng thử lại.');}
+  try{await window.Capacitor?.Plugins?.Browser?.close?.();}catch{}
+  status('Đang xác minh tài khoản và kích hoạt ChấmPro…');
+  await pollPair();
+ }catch(e){status(explainNetworkError(e));}
+}
+async function registerAuthCallback(){
+ const app=window.Capacitor?.Plugins?.App;
+ if(!app?.addListener)return;
+ await app.addListener('appUrlOpen',event=>{if(event?.url)void receiveAuthLink(event.url);});
+ const launch=await app.getLaunchUrl?.();
+ if(launch?.url)void receiveAuthLink(launch.url);
 }
 async function startLogin(){
- const button=$('cpLinkAccount');button.disabled=true;
+ const button=$('cpSignIn');button.disabled=true;
  try{
   if(!navigator.onLine)throw Error('Cần Internet để đăng ký và đăng nhập lần đầu.');
   resetPair();
   const pair=await api('/api/device/start',{deviceId:getId()});
-  activePair=pair;
+  activePair={...pair,deadline:Date.now()+Math.max(1,Number(pair.expiresIn)||600)*1000};
+  localStorage.setItem(ACTIVE_PAIR_KEY,JSON.stringify(activePair));
   text('cpPairCode',pair.pairCode);
   setView('waiting');
   status('Đang chờ xác nhận tài khoản trên mrhien.com…');
   pairTimer=setInterval(()=>{if(activeAccountPanel())void pollPair();},4000);
-  // User opens the WordPress site with a direct click: Android pop-up blockers do not block it.
-  // Only the short-lived pairing code is passed in a URL fragment, never a credential.
+  // One tap: open the first-party login/activation page. Only the public one-use code travels in URL.
+  const link=WEB+'?cp_pair='+encodeURIComponent(pair.pairCode);
+  void openCheckout(link).catch(e=>status('Không mở được trình duyệt đăng nhập: '+explainNetworkError(e)));
  }catch(e){status(explainNetworkError(e));}
  finally{button.disabled=false;}
 }
@@ -167,11 +197,16 @@ function startRefresh(){
 }
 async function boot(){
  getId();
+ if(restorePair()){
+  text('cpPairCode',activePair.pairCode);
+  pairTimer=setInterval(()=>{if(activeAccountPanel())void pollPair();},4000);
+ }
  $('cpSignIn').onclick=openWordPressLogin;
+ void registerAuthCallback().catch(e=>status('Không mở được liên kết đăng nhập Android: '+explainNetworkError(e)));
  $('cpLinkAccount').onclick=startLogin;
  $('cpPairRetry').onclick=startLogin;
  $('cpReLogin').onclick=openWordPressLogin;
- $('cpOpenWeb').onclick=()=>{if(!activePair)return;void openCheckout(WEB+'#pair='+encodeURIComponent(activePair.pairCode)).catch(e=>status(e.message));};
+ $('cpOpenWeb').onclick=()=>{if(!activePair)return;void openCheckout(WEB+'?cp_pair='+encodeURIComponent(activePair.pairCode)).catch(e=>status(explainNetworkError(e)));};
  $('cpPairCheck').onclick=pollPair;
  $('cpBuyAnnual').onclick=()=>buy('annual');
  $('cpBuyLifetime').onclick=()=>buy('lifetime');

@@ -7,11 +7,21 @@ manifest = android / "app/src/main/AndroidManifest.xml"
 s = manifest.read_text(encoding="utf-8")
 if 'android.permission.CAMERA' not in s:
     s = s.replace('<application', '<uses-permission android:name="android.permission.CAMERA" />\n    <application', 1)
+# v14.3 opt-in deep link. No camera permission or WebChromeClient changes.
+# Only a public pairing code is returned; no account JWT or refresh secret in URLs.
+if 'android:scheme="champrotest"' not in s:
+    deep_link = """<intent-filter>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="champrotest" android:host="auth" android:path="/complete" />
+        </intent-filter>"""
+    s = s.replace('</activity>', deep_link + '\n        </activity>', 1)
 manifest.write_text(s, encoding="utf-8")
 # Capacitor WebView requires explicit permission for getUserMedia camera.
-activity = android / "app/src/main/java/com/champro/nativepreview/v142/MainActivity.java"
+activity = android / "app/src/main/java/com/champro/nativepreview/v143/MainActivity.java"
 assert activity.exists(), activity
-activity.write_text("""package com.champro.nativepreview.v142;
+activity.write_text("""package com.champro.nativepreview.v143;
 
 import android.Manifest;
 import android.content.pm.PackageManager;

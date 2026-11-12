@@ -1,0 +1,94 @@
+name: ChấmPro Test v14.3 - Login Fix and Offline Updater APK
+on:
+  push:
+    branches:
+      - feature/champro-v14-3-auto-login-return-20261112
+    paths:
+      - 'android-build/**'
+      - 'app-preview/**'
+      - 'platform/worker/src/**'
+      - 'tests/**'
+      - '.github/workflows/champro-v14-3-apk.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-v14-3:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Confirm Android SDK
+        run: test -d "$ANDROID_HOME"
+      - name: Verify account security, offline signing, and grading regression
+        run: |
+          node --check android-build/account-app.mjs
+          node --check android-build/auth-return.mjs
+          node --test tests/champro-auto-login.test.mjs
+          node --check android-build/update-app.mjs
+          node --test tests/champro-updater.test.mjs
+          node --check android-build/offline-license.mjs
+          node --check platform/worker/src/index.js
+          node --check platform/worker/src/device-pairing.js
+          node --check platform/worker/src/offline-license.js
+          node --test tests/offline-license.test.mjs
+          node --test tests/device-pairing.test.mjs
+          node --check app-preview/app.mjs
+          node --check app-preview/grader.mjs
+          node --check android-build/native-app.js
+          node tests/compact-points-preview.test.mjs
+          node tests/visual-answer-ii.test.mjs
+          node --test tests/preview-pending-code.test.mjs
+          php -l platform/wordpress/champro-app-account.php
+          grep -q '@capacitor/app' android-build/package.json
+      - name: Bundle unchanged v13 camera with isolated v14.3 login and update UI
+        run: |
+          mkdir -p _champro_android/app
+          cp -a app-preview/. _champro_android/app/
+          cp android-build/native-app.css android-build/native-app.js android-build/photo-review-apk.mjs android-build/account-app.mjs android-build/offline-license.mjs android-build/update-app.mjs android-build/auth-return.mjs _champro_android/app/
+          cp android-build/package.json _champro_android/package.json
+          cp android-build/preview-capacitor.config.json _champro_android/capacitor.config.json
+          python3 android-build/prepare-preview-apk.py _champro_android/app
+          grep -q 'cpAccountGate' _champro_android/app/index.html
+          grep -q 'account-app.mjs' _champro_android/app/index.html
+          grep -q 'update-app.mjs' _champro_android/app/index.html
+          grep -q 'cpSignIn' _champro_android/app/index.html
+          grep -q 'ChấmPro Test v14.3' _champro_android/app/index.html
+          ! grep -q 'cpLicenseCode' _champro_android/app/index.html
+          cmp app-preview/grader.mjs _champro_android/app/grader.mjs
+          cmp app-preview/omr-native.mjs _champro_android/app/omr-native.mjs
+          cmp app-preview/omr-verified-paper.mjs _champro_android/app/omr-verified-paper.mjs
+      - name: Install Capacitor and generate Android project
+        working-directory: _champro_android
+        run: |
+          npm install --no-audit --no-fund
+          npx cap add android
+          npx cap sync android
+      - name: Enable unchanged camera permission behavior
+        run: python3 android-build/enable-preview-camera.py _champro_android/android
+      - name: Set actual Android package versionCode
+        run: python3 android-build/set-android-version.py _champro_android/android
+      - name: Verify Android deep-link intent filter
+        run: grep -q 'android:scheme="champrotest"' _champro_android/android/app/src/main/AndroidManifest.xml
+      - name: Build APK (debug signed, for isolated testing only)
+        working-directory: _champro_android/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+      - name: Verify the generated APK
+        run: |
+          test -s _champro_android/android/app/build/outputs/apk/debug/app-debug.apk
+          sha256sum _champro_android/android/app/build/outputs/apk/debug/app-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChamPro-Test-v14_3-Login-Fix-Updater-APK
+          path: _champro_android/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
