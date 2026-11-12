@@ -7,7 +7,7 @@ const INSTALL_KEY='cp-v14-install-id';
 const LICENSE_KEY='cp-v14-signed-license';
 const CLOCK_KEY='cp-v14-last-verified-time';
 const ISSUER='champro-platform';
-const AUDIENCE='com.champro.nativepreview.v14';
+const AUDIENCE='com.champro.nativepreview.v144';
 const enc=new TextEncoder();
 function decode64(s){
  if(!/^[A-Za-z0-9_-]+$/.test(s))throw Error('Mã kích hoạt có ký tự không hợp lệ');
