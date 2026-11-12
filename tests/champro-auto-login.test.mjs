@@ -1,23 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {acceptedAuthPair} from '../android-build/auth-return.mjs';
-const valid='ABCDEFGH2';
-test('accept only app callback containing exact 9 character one-use code',()=>{
- assert.equal(acceptedAuthPair('champrotest://auth/complete?pair='+valid,valid),true);
+import {parseAuthReturn} from '../android-build/auth-return.mjs';
+const state='a'.repeat(32), ticket='b'.repeat(48);
+test('accept only exact WordPress one-time ticket and state callback',()=>{
+ assert.deepEqual(parseAuthReturn('champrotest://auth/complete?ticket='+ticket+'&state='+state,state),{ticket,state});
 });
-test('reject unknown protocol, forged host, path, extra credentials, queries and reused code',()=>{
+test('reject forged host, state, duplicate keys and injected credentials',()=>{
  for(const url of [
-  'https://auth/complete?pair='+valid,
-  'champrotest://evil/complete?pair='+valid,
-  'champrotest://auth/wrong?pair='+valid,
-  'champrotest://auth/complete?pair=ABCDEFGH3',
-  'champrotest://auth/complete?pair='+valid+'&token=fake',
-  'champrotest://auth/complete?pair='+valid+'#secret',
-  'champrotest://user@auth/complete?pair='+valid,
-  'champrotest://auth/complete?pair='+valid+'&pair='+valid,
-  'garbage'
- ]) assert.equal(acceptedAuthPair(url,valid),false,url);
-});
-test('never accept invalid expected code',()=>{
- assert.equal(acceptedAuthPair('champrotest://auth/complete?pair='+valid,'INVALID'),false);
+  'https://auth/complete?ticket='+ticket+'&state='+state,
+  'champrotest://evil/complete?ticket='+ticket+'&state='+state,
+  'champrotest://auth/wrong?ticket='+ticket+'&state='+state,
+  'champrotest://auth/complete?ticket='+ticket+'&state='+'c'.repeat(32),
+  'champrotest://auth/complete?ticket='+ticket+'&state='+state+'&token=evil',
+  'champrotest://auth/complete?ticket='+ticket+'&state='+state+'#secret',
+  'champrotest://user@auth/complete?ticket='+ticket+'&state='+state,
+  'champrotest://auth/complete?ticket='+ticket+'&ticket='+ticket+'&state='+state,
+  'champrotest://auth/complete?ticket=invalid&state='+state,
+  'invalid'
+ ])assert.equal(parseAuthReturn(url,state),null,url);
 });
