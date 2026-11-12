@@ -5,7 +5,6 @@ import {verifyLicense} from './offline-license.mjs';
 const API='https://champro-platform-staging.luckylove1404.workers.dev';
 const WEB='https://mrhien.com/champro-connect-app/';
 const LOGIN='https://mrhien.com/my-account/';
-const AUTH_RETURN='champrotest://auth/complete';
 const LICENSE_KEY='cp-v14-signed-license';
 const ID_KEY='cp-v14-install-id';
 const REFRESH_KEY='cp-v14-device-refresh';
@@ -149,7 +148,7 @@ async function registerAuthCallback(){
  if(launch?.url)void receiveAuthLink(launch.url);
 }
 async function startLogin(){
- const button=$('cpLinkAccount');button.disabled=true;
+ const button=$('cpSignIn');button.disabled=true;
  try{
   if(!navigator.onLine)throw Error('Cần Internet để đăng ký và đăng nhập lần đầu.');
   resetPair();
