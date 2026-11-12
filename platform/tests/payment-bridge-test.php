@@ -51,28 +51,33 @@ function check($ok,$label) {
  if(!$ok){fwrite(STDERR,"FAIL: ".$label."\n");exit(1);}
  echo "PASS: ".$label."\n";
 }
-check(isset($GLOBALS['hooks']['woocommerce_payment_complete']),'hook payment_complete registered');
-check(!isset($GLOBALS['hooks']['woocommerce_order_status_completed']),'manual status change does not grant');
-function run_case($label, $mutate, $shouldGrant, $plan='annual') {
- $GLOBALS['requests']=[];
- $o=new FakeOrder();
- $mutate($o);
- $GLOBALS['orders'][9876]=$o;
- champro_bridge_paid_order(9876);
- $grant=array_values(array_filter($GLOBALS['requests'],fn($p)=>$p['action']==='paid-order'));
- check(($shouldGrant && count($grant)===1 && $grant[0]['plan']===$plan) ||
-  (!$shouldGrant && count($grant)===0), $label);
+check(isset($GLOBALS['hooks']['woocommerce_order_status_changed']),'SePay status change hook registered');
+check(!isset($GLOBALS['hooks']['woocommerce_payment_complete']),'Do not depend on payment_complete for SePay 1.1.23');
+function sepay_api($order_id,$new_status='processing') {
+    $order=$GLOBALS['orders'][$order_id];
+    champro_bridge_sepay_status_changed($order_id,'on-hold',$new_status,$order);
 }
-run_case('paid SePay annual / Processing accepted',fn($o)=>null,true);
-run_case('unpaid order rejected',fn($o)=>$o->paid=false,false);
-run_case('missing paid date rejected',fn($o)=>$o->date=false,false);
-run_case('on-hold rejected',fn($o)=>$o->status='on-hold',false);
-run_case('manual gateway rejected',fn($o)=>$o->method='bacs',false);
-run_case('wrong amount rejected',fn($o)=>$o->total=1000,false);
-run_case('wrong currency rejected',fn($o)=>$o->currency='USD',false);
-run_case('guest buyer rejected',fn($o)=>$o->user=0,false);
-run_case('mixed cart rejected',fn($o)=>$o->items=[new FakeItem(8919),new FakeItem(8920)],false);
-run_case('quantity >1 rejected',fn($o)=>$o->items=[new FakeItem(8919,2)],false);
-run_case('unrecognized product rejected',fn($o)=>$o->items=[new FakeItem(9999)],false);
-run_case('paid SePay lifetime / Completed accepted',function($o){$o->status='completed';$o->total=299000;$o->items=[new FakeItem(8920)];},true,'lifetime');
-echo "WooCommerce payment bridge contract checks passed.\n";
+function run_case($label, $mutate, $shouldGrant, $plan='annual', $fromSepay=true) {
+    $GLOBALS['requests']=[];
+    $o=new FakeOrder();
+    $mutate($o);
+    $GLOBALS['orders'][9876]=$o;
+    if ($fromSepay) sepay_api(9876,$o->status);
+    else champro_bridge_sepay_status_changed(9876,'on-hold',$o->status,$o);
+    $grant=array_values(array_filter($GLOBALS['requests'],fn($p)=>$p['action']==='paid-order'));
+    check(($shouldGrant && count($grant)===1 && $grant[0]['plan']===$plan && $grant[0]['orderStatus']==='paid') ||
+       (!$shouldGrant && count($grant)===0), $label);
+}
+run_case('SePay callback accepts 99k annual / Processing',fn($o)=>null,true);
+run_case('Manual Processing with all paid flags is rejected',fn($o)=>null,false,'annual',false);
+run_case('SePay callback with Woo unpaid flag is rejected',fn($o)=>$o->paid=false,false);
+run_case('SePay callback with on-hold is rejected',fn($o)=>$o->status='on-hold',false);
+run_case('Other gateway rejected',fn($o)=>$o->method='bacs',false);
+run_case('Wrong price rejected',fn($o)=>$o->total=1000,false);
+run_case('Wrong currency rejected',fn($o)=>$o->currency='USD',false);
+run_case('Guest buyer rejected',fn($o)=>$o->user=0,false);
+run_case('Mixed cart rejected',fn($o)=>$o->items=[new FakeItem(8919),new FakeItem(8920)],false);
+run_case('Quantity 2 rejected',fn($o)=>$o->items=[new FakeItem(8919,2)],false);
+run_case('Wrong product rejected',fn($o)=>$o->items=[new FakeItem(9999)],false);
+run_case('SePay callback accepts 299k lifetime / Completed',function($o){$o->status='completed';$o->total=299000;$o->items=[new FakeItem(8920)];},true,'lifetime');
+echo "SePay 1.1.23 webhook contract checks passed.\\n";
