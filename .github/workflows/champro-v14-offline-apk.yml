@@ -1,0 +1,74 @@
+name: ChấmPro Test v14 - Offline License APK
+on:
+  push:
+    branches:
+      - feature/champro-v14-offline-license-20261112
+    paths:
+      - 'android-build/**'
+      - 'app-preview/**'
+      - 'platform/worker/src/offline-license.js'
+      - 'tests/offline-license.test.mjs'
+      - '.github/workflows/champro-v14-offline-apk.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-v14:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Confirm Android SDK
+        run: test -d "${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+      - name: Verify signed offline license and regression tests
+        run: |
+          node --check android-build/offline-license.mjs
+          node --check platform/worker/src/offline-license.js
+          node --test tests/offline-license.test.mjs
+          node --check app-preview/app.mjs
+          node --check app-preview/advanced.mjs
+          node --check app-preview/grader.mjs
+          node --check android-build/native-app.js
+          node tests/compact-points-preview.test.mjs
+          node tests/visual-answer-ii.test.mjs
+          node --test tests/preview-pending-code.test.mjs
+      - name: Assemble offline APK bundle from unchanged v13 source
+        run: |
+          mkdir -p _champro_android/app
+          cp -a app-preview/. _champro_android/app/
+          cp android-build/native-app.css android-build/native-app.js android-build/photo-review-apk.mjs android-build/offline-license.mjs _champro_android/app/
+          cp android-build/package.json _champro_android/package.json
+          cp android-build/preview-capacitor.config.json _champro_android/capacitor.config.json
+          python3 android-build/prepare-preview-apk.py _champro_android/app
+          grep -q 'cpLicenseGate' _champro_android/app/index.html
+          grep -q 'cp-license-pending' _champro_android/app/index.html
+      - name: Install and sync Capacitor
+        working-directory: _champro_android
+        run: |
+          npm install --no-audit --no-fund
+          npx cap add android
+          npx cap sync android
+      - name: Configure Android camera access
+        run: python3 android-build/enable-preview-camera.py _champro_android/android
+      - name: Build signed DEBUG APK for isolated testing
+        working-directory: _champro_android/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+      - name: Validate APK
+        run: |
+          test -s _champro_android/android/app/build/outputs/apk/debug/app-debug.apk
+          sha256sum _champro_android/android/app/build/outputs/apk/debug/app-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChamPro-Test-v14-Offline-License-APK
+          path: _champro_android/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
