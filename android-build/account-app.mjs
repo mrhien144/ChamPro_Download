@@ -5,6 +5,7 @@ import {verifyLicense} from './offline-license.mjs';
 const API='https://champro-platform-staging.luckylove1404.workers.dev';
 const WEB='https://mrhien.com/champro-connect-app/';
 const LOGIN='https://mrhien.com/my-account/';
+const AUTH_RETURN='champrotest://auth/complete';
 const LICENSE_KEY='cp-v14-signed-license';
 const ID_KEY='cp-v14-install-id';
 const REFRESH_KEY='cp-v14-device-refresh';
@@ -115,8 +116,28 @@ async function pollPair(){
  }
 }
 function openWordPressLogin(){
- if(!navigator.onLine){status('Cần Internet để đăng ký hoặc đăng nhập lần đầu.');return;}
- void openCheckout(LOGIN).then(()=>status('Đã mở trang tài khoản mrhien.com. Sau khi đăng nhập, quay lại ChấmPro và chọn “Kết nối tài khoản với ứng dụng”.')).catch(e=>status(explainNetworkError(e)));
+ // Single tap: allocate a short-lived pairing on the server, then open WordPress.
+ // WordPress completes login and approves the pairing, then deep-links back.
+ void startLogin();
+}
+async function receiveAuthLink(raw){
+ try{
+  const url=new URL(raw);
+  if(url.protocol!=='champrotest:'||url.hostname!=='auth'||url.pathname!=='/complete')return;
+  const code=url.searchParams.get('pair')||'';
+  // Browser callback contains only the public short code, NEVER the polling credential.
+  if(!activePair||code!==activePair.pairCode)return status('Liên kết đăng nhập đã hết hạn. Hãy đăng nhập lại.');
+  try{await window.Capacitor?.Plugins?.Browser?.close?.();}catch{}
+  status('Đang xác minh tài khoản và kích hoạt ChấmPro…');
+  await pollPair();
+ }catch(e){status(explainNetworkError(e));}
+}
+async function registerAuthCallback(){
+ const app=window.Capacitor?.Plugins?.App;
+ if(!app?.addListener)return;
+ await app.addListener('appUrlOpen',event=>{if(event?.url)void receiveAuthLink(event.url);});
+ const launch=await app.getLaunchUrl?.();
+ if(launch?.url)void receiveAuthLink(launch.url);
 }
 async function startLogin(){
  const button=$('cpLinkAccount');button.disabled=true;
@@ -129,8 +150,9 @@ async function startLogin(){
   setView('waiting');
   status('Đang chờ xác nhận tài khoản trên mrhien.com…');
   pairTimer=setInterval(()=>{if(activeAccountPanel())void pollPair();},4000);
-  // User opens the WordPress site with a direct click: Android pop-up blockers do not block it.
-  // Only the short-lived pairing code is passed in a URL fragment, never a credential.
+  // One tap: open the first-party login/activation page. Only the public one-use code travels in URL.
+  const link=WEB+'?cp_pair='+encodeURIComponent(pair.pairCode);
+  void openCheckout(link).catch(e=>status('Không mở được trình duyệt đăng nhập: '+explainNetworkError(e)));
  }catch(e){status(explainNetworkError(e));}
  finally{button.disabled=false;}
 }
@@ -168,10 +190,11 @@ function startRefresh(){
 async function boot(){
  getId();
  $('cpSignIn').onclick=openWordPressLogin;
+ void registerAuthCallback().catch(e=>status('Không mở được liên kết đăng nhập Android: '+explainNetworkError(e)));
  $('cpLinkAccount').onclick=startLogin;
  $('cpPairRetry').onclick=startLogin;
  $('cpReLogin').onclick=openWordPressLogin;
- $('cpOpenWeb').onclick=()=>{if(!activePair)return;void openCheckout(WEB+'#pair='+encodeURIComponent(activePair.pairCode)).catch(e=>status(e.message));};
+ $('cpOpenWeb').onclick=()=>{if(!activePair)return;void openCheckout(WEB+'?cp_pair='+encodeURIComponent(activePair.pairCode)).catch(e=>status(explainNetworkError(e)));};
  $('cpPairCheck').onclick=pollPair;
  $('cpBuyAnnual').onclick=()=>buy('annual');
  $('cpBuyLifetime').onclick=()=>buy('lifetime');
