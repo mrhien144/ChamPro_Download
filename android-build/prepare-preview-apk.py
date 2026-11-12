@@ -67,7 +67,7 @@ html.cp-license-pending body > :not(#cpAccountGate){display:none!important}
 </style><script>document.documentElement.classList.add('cp-license-pending')</script></head>""", 1)
 s = s.replace("</body>", """<section id="cpAccountGate" role="dialog" aria-modal="true" aria-label="Tài khoản ChấmPro">
 <div class="cp-account-card">
-<h1>ChấmPro Test v14.4</h1>
+<h1>ChấmPro Test v14.5</h1>
 <p><strong>Đăng ký và đăng nhập</strong> để chấm bài hoàn toàn offline sau khi kích hoạt. Không cần nhập giấy phép thủ công.</p>
 <p class="cp-tag" id="cpCurrentPlan" role="status">Chưa kích hoạt</p>
 <div id="cpViewLogin">
@@ -97,7 +97,7 @@ s = s.replace("</body>", """<section id="cpAccountGate" role="dialog" aria-modal
 <p id="cpAuthStatus" role="status">Đang kiểm tra quyền offline…</p>
 <button id="cpAccountClose" type="button">Quay lại ChấmPro</button>
 <button class="secondary" id="cpAccountLogout" type="button">Đăng xuất khỏi thiết bị</button>
-<div id="cpUpdaterPanel" class="cp-plan"><h2>Cập nhật ChấmPro</h2><p id="cpUpdateStatus" role="status">Phiên bản thử nghiệm hiện tại v14.4. Ứng dụng vẫn chấm hoàn toàn offline.</p><button class="secondary" id="cpUpdateCheck" type="button">Kiểm tra phiên bản mới</button><button id="cpUpdateDownload" type="button" hidden>Tải bản cập nhật chính thức</button><p id="cpUpdateDetails" hidden></p></div>
+<div id="cpUpdaterPanel" class="cp-plan"><h2>Cập nhật ChấmPro</h2><p id="cpUpdateStatus" role="status">Phiên bản thử nghiệm hiện tại v14.5. Ứng dụng vẫn chấm hoàn toàn offline.</p><button class="secondary" id="cpUpdateCheck" type="button">Kiểm tra phiên bản mới</button><button id="cpUpdateDownload" type="button" hidden>Tải bản cập nhật chính thức</button><p id="cpUpdateDetails" hidden></p></div>
 <small>Chỉ tính điểm trên thiết bị. Không truyền ảnh phiếu và dữ liệu học sinh lên máy chủ để chấm bài.</small>
 </div></section>
 <script type="module" src="./account-direct.mjs"></script><script type="module" src="./update-app.mjs"></script></body>""",1)
