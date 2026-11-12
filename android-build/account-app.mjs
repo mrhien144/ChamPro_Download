@@ -18,7 +18,7 @@ function getId(){
  return id;
 }
 function refreshSecret(){return localStorage.getItem(REFRESH_KEY)||'';}
-function activeAccountPanel(){return document.documentElement.classList.contains('cp-license-pending')||!$('cpAccountModal')?.hidden;}
+function activeAccountPanel(){return document.documentElement.classList.contains('cp-license-pending')||!$('cpAccountGate')?.hidden;}
 function status(s){text('cpAuthStatus',s);}
 function setView(next){
  view=next;
@@ -105,9 +105,8 @@ async function startLogin(){
   setView('waiting');
   status('Đang chờ xác nhận tài khoản trên mrhien.com…');
   pairTimer=setInterval(()=>{if(activeAccountPanel())void pollPair();},4000);
-  // No token or pollSecret leaves the device via the link.
-  // The one-time human pairing code is in the URL fragment, not sent to HTTP servers.
-  window.open(WEB+'#pair='+encodeURIComponent(pair.pairCode),'_blank','noopener');
+  // User opens the WordPress site with a direct click: Android pop-up blockers do not block it.
+  // Only the short-lived pairing code is passed in a URL fragment, never a credential.
  }catch(e){status(e.message);}
  finally{button.disabled=false;}
 }
@@ -127,7 +126,7 @@ function addAccountMenu(){
  b.id='cpOpenAccount';b.type='button';b.textContent='♙ Tài khoản & Nâng cấp gói';
  b.addEventListener('click',()=>{
   document.getElementById('cpNativeClose')?.click();
-  $('cpAccountModal').hidden=false;
+  $('cpAccountGate').hidden=false;
   setView('plans');
   if(navigator.onLine&&refreshSecret())void checkRights().catch(e=>status(e.message));
   startRefresh();
@@ -145,20 +144,23 @@ async function boot(){
  getId();
  $('cpSignIn').onclick=startLogin;
  $('cpPairRetry').onclick=startLogin;
+ $('cpReLogin').onclick=startLogin;
+ $('cpOpenWeb').onclick=()=>{if(!activePair)return;window.open(WEB+'#pair='+encodeURIComponent(activePair.pairCode),'_blank','noopener');};
  $('cpPairCheck').onclick=pollPair;
  $('cpBuyAnnual').onclick=()=>buy('annual');
  $('cpBuyLifetime').onclick=()=>buy('lifetime');
  $('cpRefreshPlan').onclick=async()=>{try{await checkRights();status('Đã cập nhật quyền sử dụng từ mrhien.com.');}catch(e){status(e.message);}};
  $('cpAccountClose').onclick=()=>{if(document.documentElement.classList.contains('cp-license-pending'))return;
-  $('cpAccountModal').hidden=true;if(refreshTimer){clearInterval(refreshTimer);refreshTimer=null;}};
+  $('cpAccountGate').hidden=true;if(refreshTimer){clearInterval(refreshTimer);refreshTimer=null;}};
  $('cpAccountLogout').onclick=()=>{
   if(!confirm('Ngắt tài khoản trên thiết bị này? Giấy phép offline sẽ được xóa, nhưng đề, điểm và ảnh phiếu vẫn được giữ nguyên.'))return;
   resetPair();localStorage.removeItem(REFRESH_KEY);localStorage.removeItem(LICENSE_KEY);
   currentPlan='free';expiresAt=null;linked=false;
-  $('cpAccountModal').hidden=true;lock();status('Đã đăng xuất. Dữ liệu chấm bài trên máy không bị xóa.');
+  $('cpAccountGate').hidden=true;lock();status('Đã đăng xuất. Dữ liệu chấm bài trên máy không bị xóa.');
  };
  window.addEventListener('online',()=>{if(activeAccountPanel()&&refreshSecret())void checkRights().catch(()=>{});});
  document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&activePair)void pollPair();
   if(!document.hidden&&activeAccountPanel()&&navigator.onLine&&refreshSecret())void checkRights().catch(()=>{});
  });
  setTimeout(addAccountMenu,150);
