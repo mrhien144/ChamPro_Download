@@ -115,7 +115,7 @@ function openWordPressLogin(){
  void openCheckout(LOGIN).then(()=>status('Đã mở trang tài khoản mrhien.com. Sau khi đăng nhập, quay lại ChấmPro và chọn “Kết nối tài khoản với ứng dụng”.')).catch(e=>status(explainNetworkError(e)));
 }
 async function startLogin(){
- const button=$('cpSignIn');button.disabled=true;
+ const button=$('cpLinkAccount');button.disabled=true;
  try{
   if(!navigator.onLine)throw Error('Cần Internet để đăng ký và đăng nhập lần đầu.');
   resetPair();
