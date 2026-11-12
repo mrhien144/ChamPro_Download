@@ -47,6 +47,22 @@ const net=$('cpNativeNet');
 function network(){const online=navigator.onLine;net.textContent=online?'Trực tuyến':'Offline';net.classList.toggle('offline',!online);}
 window.addEventListener('online',network);window.addEventListener('offline',network);network();sync();
 
+// APK-only organization: move the existing graded-paper history card to the
+// bottom of Chấm bài, after the live camera and its settings. Moving the same
+// DOM element keeps the original result filter, search, edit, photo viewer,
+// history and event listeners fully intact (including late QR/Excel updates).
+// Kết quả retains its independent aggregate score reports and exports.
+const scanPage=$('page-scan');
+const historyCard=$('filterExam')?.closest('.card');
+if(scanPage&&historyCard&&historyCard.closest('#page-results')){
+ const heading=document.createElement('div');
+ heading.className='cp-native-scan-history-heading';
+ heading.innerHTML='<h2>Phiếu đã chấm · Xem lại bài</h2>'+
+  '<p>Lọc môn hoặc tìm học sinh để xem phiếu, sửa bài và cập nhật điểm đã chấm.</p>';
+ historyCard.classList.add('cp-native-scan-history');
+ scanPage.append(heading,historyCard);
+}
+
 // APK camera presentation only: keep the existing exam picker in
 // "Cài đặt quét" BELOW the camera, as in the phone reference screenshot.
 // Do not relocate it or replace any existing camera/listener elements.
