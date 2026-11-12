@@ -214,7 +214,7 @@ function champro_bridge_paid_order($order_id) {
         'productId' => $pid,
         'plan' => $plan,
         'amountVnd' => $price,
-        'orderStatus' => 'completed', // Represents verified gateway payment, not Woo order status.
+        'orderStatus' => 'paid', // Verified payment_complete event, independent of Woo order state.
     ));
     if (is_wp_error($result)) {
         $order->add_order_note('ChấmPro: Chưa đồng bộ quyền. Cần thử lại sự kiện thanh toán, không kích hoạt thủ công.');
