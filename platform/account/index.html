@@ -30,6 +30,11 @@ dt{color:#65768f}dd{margin:0;font-variant-numeric:tabular-nums;font-weight:700}
 .note{background:#fff9eb;border:1px solid #efdfb9;border-radius:12px;padding:12px 15px}
 .pill{display:inline-block;border-radius:99px;background:#e7f2ff;color:#1d4e8c;font-size:13px;font-weight:750;padding:3px 10px}
 #notice{white-space:pre-line}
+.upgrade-grid{margin:15px 0}.upgrade-grid .stat{display:flex;flex-direction:column;gap:8px}
+.upgrade-grid .stat h3,.upgrade-grid .stat p{margin:0}.upgrade-grid .stat strong{font-size:27px}
+.upgrade-grid .stat .pill{align-self:flex-start;margin-top:auto}
+.upgrade-account-link{display:inline-block;padding:10px 15px;background:#eaf2ff;color:#174898;border-radius:9px;text-decoration:none;font-weight:700}
+#nang-cap{scroll-margin-top:24px}
 [hidden]{display:none!important}
 @media(max-width:740px){main{padding:14px}.grid{grid-template-columns:1fr}.card{padding:17px}}
 </style>
@@ -62,12 +67,19 @@ dt{color:#65768f}dd{margin:0;font-variant-numeric:tabular-nums;font-weight:700}
 </div>
 <p class="muted" style="font-size:13px">Gói miễn phí có 100 lượt chấm, 5 lượt trộn đề, 5 lượt tạo QR. Lượt tặng thêm được tính riêng và cộng vào hạn mức. Số lượt đã dùng chỉ tăng khi công cụ được kết nối với hệ thống cấp phép.</p>
 </section>
-<section class="card">
-<h2>Nâng cấp gói</h2>
-<p>Gói 1 năm: <strong>99.000đ</strong> · Gói trọn đời: <strong>299.000đ</strong></p>
-<div class="note">Hệ thống thanh toán và khóa lượt của các công cụ đang được hoàn thiện. Chức năng mua gói chưa được mở, chưa phát sinh thanh toán trên trang này.</div>
-</section>
 </div>
+<section class="card" id="nang-cap">
+<h2>Mua gói / Nâng cấp ChấmPro</h2>
+<p>Chọn gói sử dụng phù hợp. Hai gói đều áp dụng cho <strong>Chấm bài, Trộn đề và Tạo QR</strong>.</p>
+<div class="grid upgrade-grid">
+<div class="stat"><h3>Miễn phí</h3><strong>0đ</strong><p>100 lượt chấm · 5 lượt trộn · 5 lượt tạo QR. Có thể được tặng thêm lượt.</p><span class="pill">Đang hỗ trợ</span></div>
+<div class="stat"><h3>Gói 1 năm</h3><strong>99.000đ</strong><p>Không giới hạn lượt chấm, trộn đề và tạo QR trong thời hạn 12 tháng.</p><span class="pill">Chưa mở thanh toán</span></div>
+<div class="stat"><h3>Gói trọn đời</h3><strong>299.000đ</strong><p>Không giới hạn lượt sử dụng các chức năng ChấmPro được cấp phép.</p><span class="pill">Chưa mở thanh toán</span></div>
+</div>
+<div id="upgradeCurrent" class="note" role="status">Để kiểm tra gói đang dùng, hãy chọn “Đăng nhập / Kết nối tài khoản” phía trên.</div>
+<p class="muted" style="font-size:13px">Thanh toán chưa được kích hoạt trên trang này vì liên kết sản phẩm WooCommerce và cấp quyền tự động cần được xác minh. Vui lòng không chuyển khoản theo bất kỳ thông tin thanh toán chưa được xác nhận nào.</p>
+<p><a href="https://mrhien.com/my-account/" rel="noopener" class="upgrade-account-link">Đăng nhập / Đăng ký trên mrhien.com</a></p>
+</section>
 <div class="card">
 <p class="muted" style="font-size:13px">Đây là trang thử nghiệm tài khoản. Chưa đồng bộ lớp, học sinh, đáp án hoặc điểm. Việc xem quyền tại đây không trừ lượt và không thay đổi dữ liệu trên máy của bạn.</p>
 </div>
