@@ -1,23 +1,34 @@
 /* User quota panel; tokens stay in memory, never localStorage or URLs. */
 const API='https://champro-platform-staging.luckylove1404.workers.dev';
-// FAIL CLOSED: do not turn on before verified production settlement + rotated SePay credentials.
-const PURCHASES_OPEN=false;
+// Fail closed: checkout availability is declared by WordPress, never a frontend flag.
+const PURCHASE_READY_API='https://mrhien.com/wp-json/champro/v1/checkout-readiness';
+let purchasesOpen=false;
 const PURCHASE_PAGE='https://mrhien.com/champro-mua-goi/';
+async function checkPurchaseReadiness(){
+ purchasesOpen=false;
+ try{
+  const response=await fetch(PURCHASE_READY_API,{method:'GET',cache:'no-store',credentials:'omit',mode:'cors'});
+  const data=await response.json().catch(()=>({}));
+  purchasesOpen=response.ok && data.ok===true && data.ready===true;
+ }catch(e){purchasesOpen=false;}
+ updatePurchaseControls(state.plan||'free');
+ return purchasesOpen;
+}
 function updatePurchaseControls(plan='free'){
  const lifetime=plan==='lifetime',suspended=plan==='suspended';
  for(const [id,pkg] of [['buyAnnual','annual'],['buyLifetime','lifetime']]){
   const btn=el(id);if(!btn)continue;
-  btn.disabled=!PURCHASES_OPEN||!state.token||lifetime||suspended||(pkg==='annual'&&plan==='annual');
+  btn.disabled=!purchasesOpen||!state.token||lifetime||suspended||(pkg==='annual'&&plan==='annual');
   btn.onclick=()=>{if(!btn.disabled)window.location.assign(PURCHASE_PAGE+'?plan='+encodeURIComponent(pkg));};
  }
  for(const id of ['annualStatus','lifetimeStatus']){
-  const node=el(id);if(node)node.textContent=PURCHASES_OPEN?'Chọn gói để thanh toán':'Chưa mở thanh toán';
+  const node=el(id);if(node)node.textContent=purchasesOpen?'Chọn gói để thanh toán':'Chưa mở thanh toán';
  }
 }
 
 const el=id=>document.getElementById(id);
 const session=window.champroAuthSession;
-const state={token:session?.getToken()||null,popup:null};
+const state={token:session?.getToken()||null,popup:null,plan:'free'};
 const tell=s=>{el('notice').textContent=s};
 const fmt=n=>Number(n||0).toLocaleString('vi-VN');
 const plans={free:'Miễn phí',annual:'Gói 1 năm',lifetime:'Trọn đời',suspended:'Tạm khóa'};
@@ -33,7 +44,7 @@ async function apiMe(){
 }
 function reset(){
  session?.clear();
- state.token=null;
+ state.token=null;state.plan='free';
  el('private').hidden=true;el('refresh').disabled=true;el('logout').disabled=true;
  el('login').textContent='Đăng nhập / Kết nối tài khoản';
  el('login').classList.remove('connected');
@@ -45,6 +56,7 @@ function reset(){
 }
 function setInfo(o){
  const a=o.account,plan=a.plan;
+ state.plan=plan;
  el('login').textContent=a.name||a.email||'Tài khoản';
  el('login').classList.add('connected');
  el('login').title='Đã kết nối tài khoản · Nhấn để làm mới số lượt';
@@ -111,6 +123,7 @@ window.addEventListener('champro-auth-logout',()=>{
  tell('Đã đăng xuất khỏi tài khoản ChấmPro.');
 });
 if(state.token)refresh();
-window.addEventListener('focus',()=>{if(state.token)refresh();});
+window.addEventListener('focus',()=>{if(state.token)refresh();checkPurchaseReadiness();});
 
 updatePurchaseControls();
+checkPurchaseReadiness();
