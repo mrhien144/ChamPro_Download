@@ -9,9 +9,48 @@ defined('ABSPATH') || exit;
 
 // Do not enable until payment webhook, production licensing and API key rotation are verified.
 function champro_checkout_is_enabled() {
+    // Three separate administrator-controlled server-side confirmations.
+    // No JavaScript switch or GET parameter can open a payment.
     return defined('CHAMPRO_LIVE_CHECKOUT_ENABLED') && CHAMPRO_LIVE_CHECKOUT_ENABLED === true
-        && defined('CHAMPRO_LIVE_GRANTS_ENABLED') && CHAMPRO_LIVE_GRANTS_ENABLED === true;
+        && defined('CHAMPRO_LIVE_GRANTS_ENABLED') && CHAMPRO_LIVE_GRANTS_ENABLED === true
+        && defined('CHAMPRO_PAYMENT_E2E_VERIFIED') && CHAMPRO_PAYMENT_E2E_VERIFIED === true;
 }
+function champro_checkout_system_ready() {
+    if (!champro_checkout_is_enabled()) return false;
+    if (!function_exists('champro_bridge_ready') || !champro_bridge_ready()) return false;
+    if (!function_exists('WC') || !function_exists('wc_get_product')
+        || !function_exists('get_woocommerce_currency')) return false;
+    if (strtoupper(get_woocommerce_currency()) !== 'VND') return false;
+    if (!WC() || !WC()->payment_gateways()) return false;
+    $gateways = WC()->payment_gateways()->get_available_payment_gateways();
+    if (!isset($gateways['sepay']) || $gateways['sepay']->enabled !== 'yes') return false;
+    foreach (champro_checkout_plans() as $plan) {
+        $product = wc_get_product($plan['id']);
+        if (!$product || $product->get_status() !== 'publish'
+            || !$product->is_virtual() || !$product->is_type('simple')
+            || !$product->is_purchasable()
+            || abs(floatval($product->get_price()) - $plan['price']) > 0.001) return false;
+    }
+    return true;
+}
+
+// Read-only public readiness endpoint. Never expose configuration, keys or account data.
+// Both the checkout POST and this endpoint use the same server-side prerequisites.
+add_action('rest_api_init', function () {
+    register_rest_route('champro/v1', '/checkout-readiness', array(
+        'methods' => 'GET',
+        'permission_callback' => '__return_true',
+        'callback' => function () {
+            if (function_exists('nocache_headers')) nocache_headers();
+            $ready = champro_checkout_system_ready();
+            return rest_ensure_response(array(
+                'ok' => true, 'ready' => $ready,
+                'message' => $ready ? 'Cổng thanh toán ChấmPro đã sẵn sàng.' :
+                    'Cổng thanh toán ChấmPro chưa được xác minh để mở bán.'
+            ));
+        },
+    ));
+});
 function champro_checkout_plans() {
     return array(
         'annual' => array('id' => 8919, 'price' => 99000, 'name' => 'Gói 1 năm'),
@@ -19,7 +58,7 @@ function champro_checkout_plans() {
     );
 }
 function champro_checkout_validate_plan($plan) {
-    if (!champro_checkout_is_enabled()) return new WP_Error('champro_closed', 'ChấmPro chưa mở bán. Không tạo đơn hàng.', array('status' => 503));
+    if (!champro_checkout_system_ready()) return new WP_Error('champro_closed', 'ChấmPro chưa mở bán. Không tạo đơn hàng.', array('status' => 503));
     if (!function_exists('WC') || !function_exists('wc_get_product')) return new WP_Error('champro_wc', 'WooCommerce chưa sẵn sàng.');
     if (!is_user_logged_in()) return new WP_Error('champro_login', 'Vui lòng đăng nhập trước khi thanh toán.');
     if (strtoupper(get_woocommerce_currency()) !== 'VND') return new WP_Error('champro_currency', 'Cửa hàng chưa thiết lập VND.');
@@ -47,7 +86,7 @@ add_shortcode('champro_purchase', function () {
     $plans = champro_checkout_plans();
     $plan = isset($_GET['plan']) ? sanitize_key(wp_unslash($_GET['plan'])) : '';
     if (!isset($plans[$plan])) return '<p>Vui lòng chọn gói từ trang ChấmPro.</p>';
-    if (!champro_checkout_is_enabled()) return '<p>Thanh toán ChấmPro chưa được mở. Vui lòng quay lại sau.</p>';
+    if (!champro_checkout_system_ready()) return '<p>Thanh toán ChấmPro chưa được mở. Vui lòng quay lại sau.</p>';
     if (!is_user_logged_in()) {
         $back = add_query_arg('plan', $plan, get_permalink());
         return '<p>Để mua gói, vui lòng đăng nhập tài khoản mrhien.com.</p><a href="' .
@@ -68,7 +107,7 @@ add_shortcode('champro_purchase', function () {
 add_action('template_redirect', function () {
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !is_page('champro-mua-goi')) return;
     if (!isset($_POST['champro_checkout_plan'])) return;
-    if (!champro_checkout_is_enabled()) wp_die('Thanh toán chưa được mở.', 'ChấmPro', array('response' => 503));
+    if (!champro_checkout_system_ready()) wp_die('Thanh toán chưa được mở.', 'ChấmPro', array('response' => 503));
     $plan = sanitize_key(wp_unslash($_POST['champro_checkout_plan']));
     $nonce = isset($_POST['champro_checkout_nonce']) ? sanitize_text_field(wp_unslash($_POST['champro_checkout_nonce'])) : '';
     if (!wp_verify_nonce($nonce, 'champro_checkout_' . $plan)) wp_die('Yêu cầu đã hết hạn. Vui lòng tải lại trang.', 'ChấmPro', array('response' => 403));
@@ -101,7 +140,7 @@ function champro_checkout_cart_plan() {
 function champro_checkout_cart_issue() {
     $plan = champro_checkout_cart_plan();
     if ($plan === null) return '';
-    if (!champro_checkout_is_enabled()) return 'ChấmPro chưa mở thanh toán.';
+    if (!champro_checkout_system_ready()) return 'ChấmPro chưa mở thanh toán.';
     if (!is_user_logged_in()) return 'Vui lòng đăng nhập tài khoản trước khi mua ChấmPro.';
     if (strtoupper(get_woocommerce_currency()) !== 'VND') return 'Gói ChấmPro chỉ thanh toán bằng VND.';
     $items = WC()->cart->get_cart();
