@@ -1,5 +1,20 @@
 /* User quota panel; tokens stay in memory, never localStorage or URLs. */
 const API='https://champro-platform-staging.luckylove1404.workers.dev';
+// FAIL CLOSED: do not turn on before verified production settlement + rotated SePay credentials.
+const PURCHASES_OPEN=false;
+const PURCHASE_PAGE='https://mrhien.com/champro-mua-goi/';
+function updatePurchaseControls(plan='free'){
+ const lifetime=plan==='lifetime',suspended=plan==='suspended';
+ for(const [id,pkg] of [['buyAnnual','annual'],['buyLifetime','lifetime']]){
+  const btn=el(id);if(!btn)continue;
+  btn.disabled=!PURCHASES_OPEN||!state.token||lifetime||suspended||(pkg==='annual'&&plan==='annual');
+  btn.onclick=()=>{if(!btn.disabled)window.location.assign(PURCHASE_PAGE+'?plan='+encodeURIComponent(pkg));};
+ }
+ for(const id of ['annualStatus','lifetimeStatus']){
+  const node=el(id);if(node)node.textContent=PURCHASES_OPEN?'Chọn gói để thanh toán':'Chưa mở thanh toán';
+ }
+}
+
 const el=id=>document.getElementById(id);
 const session=window.champroAuthSession;
 const state={token:session?.getToken()||null,popup:null};
@@ -24,6 +39,7 @@ function reset(){
  el('login').classList.remove('connected');
  el('login').removeAttribute('title');
  el('upgradeAccountAction').hidden=false;
+ updatePurchaseControls('free');
  el('upgradeCurrent').textContent='Chưa kết nối tài khoản ChấmPro. Hãy đăng nhập để xem gói đang dùng.';
  tell('Đã đăng xuất khỏi tài khoản ChấmPro.');
 }
@@ -33,6 +49,7 @@ function setInfo(o){
  el('login').classList.add('connected');
  el('login').title='Đã kết nối tài khoản · Nhấn để làm mới số lượt';
  el('upgradeAccountAction').hidden=true;
+ updatePurchaseControls(plan);
  el('name').textContent=a.name||'Giáo viên';
  el('email').textContent=a.email||'';
  el('plan').textContent=plans[plan]||plan;
@@ -89,8 +106,11 @@ window.addEventListener('champro-auth-logout',()=>{
  el('login').textContent='Đăng nhập / Kết nối tài khoản';
  el('login').classList.remove('connected');el('login').removeAttribute('title');
  el('upgradeAccountAction').hidden=false;
+ updatePurchaseControls('free');
  el('upgradeCurrent').textContent='Bạn chưa đăng nhập. Hãy kết nối tài khoản để xem gói đang dùng.';
  tell('Đã đăng xuất khỏi tài khoản ChấmPro.');
 });
 if(state.token)refresh();
 window.addEventListener('focus',()=>{if(state.token)refresh();});
+
+updatePurchaseControls();
