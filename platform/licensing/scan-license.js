@@ -5,9 +5,10 @@
 (function(){
 "use strict";
 const API="https://champro-platform-staging.luckylove1404.workers.dev";
-const state={token:null,popup:null,pending:null,accountId:null};
+const session=window.champroAuthSession;
+const state={token:session?.getToken()||null,popup:null,pending:null,accountId:null};
 const el=id=>document.getElementById(id);
-const msg=message=>{el("scanLicenseStatus").textContent=message;};
+const msg=message=>{const node=el("scanLicenseStatus");if(node)node.textContent=message;};
 async function query(path,data){
  if(!state.token)throw Error("Hãy đăng nhập mrhien.com trước khi lưu kết quả chấm.");
  const r=await fetch(API+path,{method:data?"POST":"GET",cache:"no-store",
@@ -37,6 +38,7 @@ window.addEventListener("message",async event=>{
   event.data?.type!=="champro-session"||typeof event.data?.token!=="string"||
   event.data.token.length>4096)return;
  state.token=event.data.token;
+ session?.save(event.data.token);
  state.popup?.close();
  el("scanLicenseRefresh").disabled=false;
  el("scanLicenseLogout").disabled=false;
@@ -44,9 +46,19 @@ window.addEventListener("message",async event=>{
 });
 el("scanLicenseRefresh").onclick=async()=>{try{await refresh();}catch(e){msg("Không tải được số lượt: "+e.message);}};
 el("scanLicenseLogout").onclick=()=>{
- state.token=null;state.accountId=null;el("scanLicenseRefresh").disabled=true;el("scanLicenseLogout").disabled=true;
+ session?.clear();state.token=null;state.accountId=null;el("scanLicenseRefresh").disabled=true;el("scanLicenseLogout").disabled=true;
  msg("Đã đăng xuất. Không thể lưu thêm kết quả cho đến khi đăng nhập lại.");
 };
+window.addEventListener("champro-auth-logout",()=>{
+ state.token=null;state.accountId=null;state.pending=null;
+ el("scanLicenseRefresh").disabled=true;el("scanLicenseLogout").disabled=true;
+ msg("Đã đăng xuất khỏi ChấmPro.");
+});
+if(state.token){
+ el("scanLicenseRefresh").disabled=false;
+ el("scanLicenseLogout").disabled=false;
+ refresh().catch(e=>msg("Không đọc được hạn mức: "+e.message));
+}
 window.champroScanLicense={
  loggedIn:()=>Boolean(state.token),
  async charge(fingerprint){

@@ -359,7 +359,7 @@ async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;
   const fingerprint=JSON.stringify([exam.id,student?.id||'CHUA_GAN',result.examCode,result.I.slice(0,exam.counts.I),result.II.slice(0,exam.counts.II),result.III.slice(0,exam.counts.III)]);
   if(lastAuto?.fingerprint!==fingerprint||Date.now()-lastAuto.time>7000){lastAuto={fingerprint,time:Date.now()};$('scanStatus').textContent='Đã đọc mã đề và đáp án. Giữ yên để xác nhận lần hai…';return;}
   if(lastSaved===fingerprint){$('scanStatus').textContent='Phiếu này vừa chấm, hãy đổi phiếu tiếp theo';return;}
-  const done=saveResult(exam,student,result,true);lastSaved=fingerprint;lastAuto=null;lastGoodOrientation=match.deg;
+  const done=await saveResultAuthorized(exam,student,result,true);lastSaved=fingerprint;lastAuto=null;lastGoodOrientation=match.deg;
   $('scanStatus').textContent='Đã chấm: '+done.score+'/'+done.max+' điểm'+(student?'':' · Chưa xác định học sinh; gán SBD trong Kết quả');
  }catch(e){if(manual)toast('Không nhận diện được: '+e.message+'; có thể nhập thủ công.');$('scanStatus').textContent='Không nhận diện: '+e.message;$('scanInfo').textContent='Lỗi nhận diện: '+e.message;lastAuto=null;if(manual){openReview(exam,{sbd:'',examCode:'',I:[],II:[],III:[],confidence:0,uncertain:['Chưa đọc được ảnh – nhập tay']});}}
  finally{captureBusy=false;}}
@@ -371,10 +371,32 @@ function openReview(exam,omr){review={exam,omr};const student=findStudentForSbd(
  const field=(p,num,val,opts)=>`<label>${p} ${num}<input data-p="${p}" data-q="${num-1}" ${opts||''} value="${esc(val)}"></label>`;
  $('reviewBody').innerHTML=info+(lastReviewImage?`<details><summary>Ảnh phiếu đang kiểm tra (không lưu vào kết quả)</summary><img src="${lastReviewImage}" alt="Ảnh phiếu để đối chiếu" style="display:block;width:100%;max-height:460px;object-fit:contain;background:#0b1724;margin:8px 0 15px"></details>`:'')+`<div class="review-data"><label>Học sinh<select id="reviewStudent"><option value="">-- Chọn học sinh --</option>${db.students.map(s=>`<option value="${esc(s.id)}" ${student?.id===s.id?'selected':''}>${esc(s.sbd)} - ${esc(s.name)}</option>`).join('')}</select></label><label>SBD đọc từ phiếu<input id="reviewSbd" value="${esc(omr.sbd)}" maxlength="12" inputmode="numeric"></label><label>Mã đề<input id="reviewCode" value="${esc(omr.examCode)}" maxlength="4" inputmode="numeric"></label></div><h3>Phần I</h3><div class="answeredit">${Array.from({length:exam.counts.I},(_,i)=>field('I',i+1,omr.I?.[i]||'', 'maxlength="3"')).join('')}</div>${exam.counts.II?'<h3>Phần II (Đ/S, 4 ý)</h3><div class="answeredit">'+Array.from({length:exam.counts.II},(_,i)=>field('II',i+1,omr.II?.[i]||'', 'maxlength="4"')).join('')+'</div>':''}${exam.counts.III?'<h3>Phần III</h3><div class="answeredit">'+Array.from({length:exam.counts.III},(_,i)=>field('III',i+1,omr.III?.[i]||'', '')).join('')+'</div>':''}`;
  $('saveReview').hidden=false;$('reviewDialog').showModal();}
+// STAGING ONLY: accounting happens at a confirmed save boundary, never during OMR frame analysis.
+const pendingAnonymousScanKeys=new Map();
+async function saveResultAuthorized(exam,student,ans,fromAuto=false){
+ const exists=student?db.results.find(x=>x.examId===exam.id&&x.studentId===student.id):null;
+ if(exists&&fromAuto)throw Error('Bài đã có trong lịch sử, không chấm trùng');
+ if(exists&&!fromAuto&&!confirm('Bài này đã được chấm. Ghi đè kết quả cũ?'))return null;
+ const license=window.champroScanLicense;
+ if(!license||!license.loggedIn())throw Error('Cần đăng nhập ChấmPro trước khi chấm và lưu kết quả.');
+ // No student roster is required. A scanned SBD still identifies a saved sheet.
+ // Anonymous sheets with identical answers must be charged separately.
+ const identified=student?.id||preserveSbd(ans.sbd);
+ const anonymousKey=JSON.stringify([exam.id,ans.examCode,ans.I,ans.II,ans.III]);
+ if(!identified&&!pendingAnonymousScanKeys.has(anonymousKey))pendingAnonymousScanKeys.set(anonymousKey,id());
+ const identity=identified?('id:'+identified):('anonymous:'+pendingAnonymousScanKeys.get(anonymousKey));
+ const fingerprint=JSON.stringify([exam.id,identity]);
+ // Cloudflare performs the quota check before committing results; never grant an
+ // offline web free-credit exception. Offline APK is not modified by this change.
+ await license.charge(fingerprint);
+ const saved=saveResult(exam,student,ans,fromAuto);
+ if(saved&&!identified)pendingAnonymousScanKeys.delete(anonymousKey);
+ return saved;
+}
 function saveResult(exam,student,ans,fromAuto=false){
  const value=grade(exam,{examCode:ans.examCode,I:ans.I,II:ans.II,III:ans.III});
  const exists=student?db.results.find(x=>x.examId===exam.id&&x.studentId===student.id):null;
- if(exists&&!fromAuto&&!confirm('Bài này đã được chấm. Ghi đè kết quả cũ?'))return null;
+ // Overwrite confirmation is handled before requesting a Cloudflare usage credit.
  if(exists&&fromAuto)throw Error('Bài đã có trong lịch sử, không chấm trùng');
  const record={id:exists?.id||id(),examId:exam.id,gradeClass:exam.gradeClass||student?.classroom||'',subject:exam.subject||'',period:exam.name,
   studentId:student?.id||null,studentName:student?.name||'Chưa xác định học sinh',classroom:student?.classroom||'',sbd:student?.sbd||'',rawSbd:preserveSbd(ans.sbd),
@@ -385,12 +407,12 @@ function saveResult(exam,student,ans,fromAuto=false){
  flash.hidden=false;clearTimeout(saveResult._flash);saveResult._flash=setTimeout(()=>{flash.hidden=true;$('scanMode').textContent='Sẵn sàng chấm bài tiếp';},1100);
  if(navigator.vibrate)try{navigator.vibrate(90);}catch{}return record;
 }
-$('saveReview').onclick=()=>{try{if(!review)return;const student=db.students.find(s=>s.id===$('reviewStudent').value),exam=review.exam,sbd=preserveSbd($('reviewSbd').value),examCode=$('reviewCode').value.trim();if(student&&sbd&&canonicalSbd(student.sbd)!==canonicalSbd(sbd))throw Error('SBD không khớp học sinh đã chọn');if(!exam.keys[examCode])throw Error('Không tìm thấy đáp án cho mã đề '+examCode);
+$('saveReview').onclick=async()=>{try{if(!review)return;const student=db.students.find(s=>s.id===$('reviewStudent').value),exam=review.exam,sbd=preserveSbd($('reviewSbd').value),examCode=$('reviewCode').value.trim();if(student&&sbd&&canonicalSbd(student.sbd)!==canonicalSbd(sbd))throw Error('SBD không khớp học sinh đã chọn');if(!exam.keys[examCode])throw Error('Không tìm thấy đáp án cho mã đề '+examCode);
  const answers={sbd,examCode,I:[],II:[],III:[]};document.querySelectorAll('#reviewBody input[data-p]').forEach(i=>{answers[i.dataset.p][Number(i.dataset.q)]=i.value.trim().toUpperCase()});
  if(!Object.values({I:answers.I,II:answers.II,III:answers.III}).flat().some(Boolean))throw Error('Chưa có câu trả lời nào');
  if(answers.I.some(x=>x&&!/^[ABCD]$/.test(x)))throw Error('Phần I chỉ chọn A/B/C/D');
  if(answers.II.some(x=>x&&!/^[ĐSD? ]{0,4}$/.test(x)))throw Error('Phần II chỉ nhập 4 ký tự Đ/S');
- const done=saveResult(exam,student,answers,false);if(!done)return;$('reviewDialog').close();toast('Đã chấm và lưu: '+done.score+'/'+done.max+' điểm');
+ const done=await saveResultAuthorized(exam,student,answers,false);if(!done)return;$('reviewDialog').close();toast('Đã chấm và lưu: '+done.score+'/'+done.max+' điểm');
  }catch(e){toast('Không lưu được: '+e.message);}};
 $('closeReview').onclick=()=>$('reviewDialog').close();
 // Offline PWA install prompt

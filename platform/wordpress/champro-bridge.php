@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ChấmPro Bridge (Staging)
  * Description: Connects verified WordPress customers and completed WooCommerce orders to the isolated ChấmPro licensing API.
- * Version: 0.1.2
+ * Version: 0.1.5-staging
  * Requires PHP: 7.4
  *
  * Do not activate until wp-config.php defines:
@@ -168,36 +168,51 @@ add_shortcode('champro_connect', function () {
       '<p><a href="https://champro.mrhien.com/">Quay về ChấmPro</a></p>' .
       '</div><script>' . $script . '</script>';
 });
-// Only confirmed WooCommerce orders containing a single recognized ChấmPro
-// license product are eligible for an activation. Never trust browser claims.
-add_action('woocommerce_order_status_completed', function ($order_id) {
-    if (!champro_bridge_ready() || !function_exists('wc_get_order')) {
-        return;
+// SePay Gateway 1.1.23 is audited from its official ZIP:
+// gateway ID 'sepay', webhook handler sepay_api(), route v2/add-payment.
+// When the configured paid status is Processing, it invokes update_status()
+// after validating the webhook API key and exact order total.
+// It does NOT invoke payment_complete() on that path.
+//
+// A manual change to Processing can also set date_paid in WooCommerce; therefore
+// neither order status nor is_paid/date_paid is sufficient proof of a bank payment.
+function champro_bridge_verified_sepay_context() {
+    if (!function_exists('sepay_api')) return false;
+    foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 32) as $frame) {
+        if (isset($frame['function']) && $frame['function'] === 'sepay_api'
+            && empty($frame['class'])) return true;
     }
-    $order = wc_get_order($order_id);
-    if (!$order || !$order->get_user_id()) {
-        return; // Guest orders must link/verify an account first.
-    }
+    return false;
+}
+
+function champro_bridge_paid_order($order_id, $order = null) {
+    // Production grants remain disabled until verified SePay webhook and Worker are ready.
+    if (!defined('CHAMPRO_LIVE_GRANTS_ENABLED') || CHAMPRO_LIVE_GRANTS_ENABLED !== true) return;
+    if (!champro_bridge_ready() || !function_exists('wc_get_order')) return;
+    // Fail closed: only a synchronous event inside SePay's authenticated webhook
+    // handler may grant ChấmPro rights. Never grant for manual status changes.
+    if (!champro_bridge_verified_sepay_context()) return;
+    if (!$order) $order = wc_get_order($order_id);
+    if (!$order || !$order->get_user_id() || !$order->is_paid()) return;
+    if (!in_array($order->get_status(), array('processing','completed'), true)) return;
+    if ((string) $order->get_payment_method() !== 'sepay') return;
+
     $items = $order->get_items();
-    if (count($items) !== 1) {
-        return; // Avoid ambiguous bundled/mixed purchases.
-    }
+    if (count($items) !== 1) return;
     $item = reset($items);
-    if (intval($item->get_quantity()) !== 1) {
-        return;
-    }
+    if (intval($item->get_quantity()) !== 1) return;
     $pid = intval($item->get_product_id());
     $plan = $pid === intval(CHAMPRO_ANNUAL_PRODUCT_ID) ? 'annual' :
         ($pid === intval(CHAMPRO_LIFETIME_PRODUCT_ID) ? 'lifetime' : '');
-    if (!$plan) {
-        return;
-    }
+    if (!$plan || $order->get_currency() !== 'VND') return;
     $price = $plan === 'annual' ? 99000 : 299000;
-    if ($order->get_currency() !== 'VND' || abs(floatval($order->get_total()) - $price) > 0.001) {
-        return;
-    }
+    if (abs(floatval($order->get_total()) - $price) > 0.001) return;
+
     $user = get_user_by('id', $order->get_user_id());
-    if (!$user || is_wp_error(champro_bridge_account($user))) {
+    if (!$user) return;
+    $account = champro_bridge_account($user);
+    if (is_wp_error($account)) {
+        $order->add_order_note('ChấmPro: SePay đã xác nhận thanh toán, nhưng chưa đồng bộ được tài khoản. Cần đối soát và thử lại an toàn.');
         return;
     }
     $result = champro_bridge_request(array(
@@ -207,11 +222,19 @@ add_action('woocommerce_order_status_completed', function ($order_id) {
         'productId' => $pid,
         'plan' => $plan,
         'amountVnd' => $price,
-        'orderStatus' => 'completed',
+        'orderStatus' => 'paid', // Authenticated SePay 1.1.23 payment callback only.
     ));
     if (is_wp_error($result)) {
-        $order->add_order_note('ChấmPro: Chưa cấp được quyền tự động. Kiểm tra kết nối Worker và xử lý lại.');
+        $order->add_order_note('ChấmPro: Đã nhận thanh toán nhưng chưa đồng bộ quyền. Kiểm tra Worker và đối soát trước khi cấp.');
     } else {
-        $order->add_order_note('ChấmPro: Đã đồng bộ gói ' . $plan . ' cho tài khoản #' . $user->ID);
+        $order->add_order_note('ChấmPro: Đã cấp quyền ' . $plan . ' cho tài khoản #' . $user->ID);
     }
-}, 15, 1);
+}
+function champro_bridge_sepay_status_changed($order_id, $old_status, $new_status, $order = null) {
+    if (!in_array($new_status, array('processing','completed'), true)) return;
+    if (in_array($old_status, array('processing','completed'), true)) return;
+    champro_bridge_paid_order($order_id, $order);
+}
+// WooCommerce fires this synchronously during SePay's update_status() call.
+// The stack-origin guard above rejects a manual admin status update.
+add_action('woocommerce_order_status_changed', 'champro_bridge_sepay_status_changed', 20, 4);
