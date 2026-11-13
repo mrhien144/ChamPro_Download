@@ -28,6 +28,8 @@ async function refresh(){
  const a=p.account;
  const loginButton=e("mixLicenseLogin");
  e("mixLicenseLogout").disabled=false;
+ e("mixLicenseLogout").hidden=false;
+ const secondaryLogin=e("mixLicenseLoginCard");if(secondaryLogin)secondaryLogin.hidden=true;
  loginButton.textContent=a.name||a.email||"Tài khoản";
  loginButton.classList.add("hs-auth-connected");
  loginButton.title="Đã kết nối tài khoản · Bấm để cập nhật lượt sử dụng";
@@ -36,6 +38,9 @@ async function refresh(){
  " · Trộn còn "+remaining+" lượt · Tặng thêm "+p.bonus.mix+" · Đã dùng "+p.used.mix);
  return p;
 }
+const secondaryLoginButton=e("mixLicenseLoginCard");
+if(secondaryLoginButton)secondaryLoginButton.onclick=()=>e("mixLicenseLogin").click();
+e("mixLicenseLogout").hidden=true;
 e("mixLicenseLogin").onclick=function(){
  if(state.token){refresh().catch(err=>message("Không đọc được quyền sử dụng: "+err.message));return;}
  state.popup=window.open("https://mrhien.com/champro-connect/","champro-mix-login","popup=yes,width=620,height=760");
@@ -62,6 +67,8 @@ window.addEventListener("champro-auth-logout",()=>{
  e("mixLicenseLogin").classList.remove("hs-auth-connected");
  e("mixLicenseLogin").removeAttribute("title");
  e("mixLicenseLogout").disabled=true;
+ e("mixLicenseLogout").hidden=true;
+ const secondaryLogin=e("mixLicenseLoginCard");if(secondaryLogin)secondaryLogin.hidden=false;
  message("Đã đăng xuất. Đăng nhập lại để sử dụng.");
 });
 if(state.token)refresh().catch(err=>message("Phiên trước chưa thể xác thực: "+err.message));
@@ -72,6 +79,8 @@ e("mixLicenseLogout").onclick=function(){
  e("mixLicenseLogin").classList.remove("hs-auth-connected");
  e("mixLicenseLogin").removeAttribute("title");
  e("mixLicenseLogout").disabled=true;
+ e("mixLicenseLogout").hidden=true;
+ const secondaryLogin=e("mixLicenseLoginCard");if(secondaryLogin)secondaryLogin.hidden=false;
  message("Đã đăng xuất. Cần đăng nhập lại trước khi trộn đề.");
 };
 window.champroMixLicense={
