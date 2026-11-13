@@ -1,0 +1,61 @@
+name: ChấmPro shared login and quotas UI checks
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'platform/licensing/quota-dashboard.js'
+      - 'platform/licensing/mix-license.js'
+      - 'platform/licensing/qr-license.js'
+      - 'app/index.html'
+      - 'app-license-preview/index.html'
+      - 'tron-de/index.html'
+      - 'qr-excel.html'
+      - '.github/workflows/champro-ui-account-parity.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate JavaScript syntax
+        run: |
+          node --check platform/licensing/quota-dashboard.js
+          node --check platform/licensing/mix-license.js
+          node --check platform/licensing/qr-license.js
+          node --check app/app.mjs
+          node --check app-license-preview/app.mjs
+      - name: Check login controls and quota panels
+        run: |
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          import assert from 'node:assert/strict';
+          const file=p=>readFileSync(p,'utf8');
+          for(const path of ['app/index.html','app-license-preview/index.html']){
+            const s=file(path);
+            for(const id of ['champroQuotaDashboard','champroQuotaStats','champroQuotaLogin','champroQuotaLogout','champroQuotaRefresh','champroHeaderLogin'])assert(s.includes('id="'+id+'"'),path+' missing '+id);
+            assert(s.includes('/platform/licensing/quota-dashboard.js'),path+' quota script missing');
+            assert(s.indexOf('/platform/licensing/auth-session.js')<s.indexOf('/platform/licensing/quota-dashboard.js'),path+' auth must load before dashboard');
+          }
+          for(const [path,login,logout,script] of [
+            ['tron-de/index.html','mixLicenseLoginCard','mixLicenseLogout','platform/licensing/mix-license.js'],
+            ['qr-excel.html','licenseLoginCard','licenseLogout','platform/licensing/qr-license.js']
+          ]){
+            const html=file(path),js=file(script);
+            assert(html.includes('id="'+login+'"'),path+' missing visible card login');
+            assert(new RegExp('id="'+logout+'"[^>]+hidden').test(html),path+' logout must default hidden');
+            assert(js.includes('e("'+logout+'").hidden=false'),path+' logout must show on auth');
+            assert(js.includes('e("'+logout+'").hidden=true'),path+' logout must hide on signout');
+            assert(js.includes('e("'+login+'").click()'),path+' card login not connected');
+          }
+          const dashboard=file('platform/licensing/quota-dashboard.js');
+          assert(dashboard.includes('"/api/me"')&&dashboard.includes('scan')&&dashboard.includes('mix')&&dashboard.includes('qr'));
+          assert(!dashboard.includes('/api/usage/'),'Dashboard must not consume credits');
+          assert(!dashboard.includes('localStorage.'),'Dashboard must not store tokens in localStorage');
+          assert(file('app/app.mjs').includes('const storedKey=\'champro-web-beta-v1\''),'Camera data key must not change');
+          console.log('PASS: unified quota read-only; controls correct; existing grading code untouched.');
+          JS
