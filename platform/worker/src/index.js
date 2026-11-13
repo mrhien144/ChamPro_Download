@@ -67,9 +67,18 @@ async function internal(req,env){
  const plan=String(b.plan),order=Number(b.orderId),product=Number(b.productId),amount=Number(b.amountVnd);
  if(!Object.hasOwn(PRICES,plan)||!Number.isSafeInteger(order)||order<1||
   product!==Number(plan==='annual'?env.PRODUCT_ANNUAL_ID:env.PRODUCT_LIFETIME_ID)||
-  amount!==PRICES[plan]||b.orderStatus!=='completed')return error('Đơn hàng, số tiền hoặc trạng thái không hợp lệ');
+  amount!==PRICES[plan]||b.orderStatus!=='paid')return error('Đơn hàng, số tiền hoặc trạng thái không hợp lệ');
  const a=await env.DB.prepare('SELECT id FROM accounts WHERE id=?').bind(aid).first();
  if(!a)return error('Khách hàng chưa đăng ký ChấmPro',409);
+ // Reject reused order IDs that belong to a different account, plan or amount.
+ // Identical gateway retries are an idempotent no-op.
+ const previous=await env.DB.prepare('SELECT * FROM payments WHERE order_id=?').bind(order).first();
+ const matches=p=>p&&p.wp_user_id===uid&&p.account_id===aid&&
+  p.product_id===product&&p.plan===plan&&p.amount_vnd===amount&&p.status==='completed';
+ if(previous){
+  if(!matches(previous))return error('Mã đơn hàng đã được sử dụng cho giao dịch khác',409);
+  if(previous.processed_at)return send({ok:true,duplicate:true,accountId:aid,orderId:order});
+ }
  // A single D1 batch ensures all statements commit or none commit.
  // processed_at IS NULL protects against duplicate paid-order notifications.
  await env.DB.batch([
@@ -77,7 +86,11 @@ async function internal(req,env){
   env.DB.prepare("UPDATE accounts SET plan=CASE WHEN plan='lifetime' THEN 'lifetime' ELSE ? END,expires_at=CASE WHEN plan='lifetime' OR ?='lifetime' THEN NULL WHEN plan='annual' AND expires_at>datetime('now') THEN datetime(expires_at,'+1 year') ELSE datetime('now','+1 year') END,updated_at=CURRENT_TIMESTAMP WHERE id=? AND EXISTS(SELECT 1 FROM payments WHERE order_id=? AND account_id=? AND plan=? AND amount_vnd=? AND processed_at IS NULL)").bind(plan,plan,aid,order,aid,plan,amount),
   env.DB.prepare("UPDATE payments SET processed_at=CURRENT_TIMESTAMP WHERE order_id=? AND account_id=? AND processed_at IS NULL").bind(order,aid)
  ]);
- return send({ok:true,accountId:aid,orderId:order});
+ // A concurrent request can race the pre-check. Validate persisted facts
+ // before claiming success; never confirm a mismatched reused order ID.
+ const saved=await env.DB.prepare('SELECT * FROM payments WHERE order_id=?').bind(order).first();
+ if(!matches(saved)||!saved.processed_at)return error('Chưa xác nhận được quyền từ đơn hàng',409);
+ return send({ok:true,duplicate:false,accountId:aid,orderId:order});
 }
 async function useCredit(env,who,feature,b){
  if(!Object.hasOwn(LIMITS,feature))return error('Chức năng không hợp lệ',404);
