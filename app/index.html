@@ -16,6 +16,16 @@ body.scan-active .top{display:flex}
 body.scan-active .top .logo{display:none}
 body.scan-active .top .hs-primary-menu{flex:1 1 100%}
 }
+</style><style id="champro-scan-entitlement-style">
+.champro-scan-entitlement{margin:13px clamp(12px,2vw,30px);padding:15px 20px;border:1px solid #f2c264;border-radius:16px;background:#fff9e9;color:#193451;box-shadow:0 5px 17px #1b365409}
+.champro-scan-entitlement .champro-scan-entitlement-main{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.champro-scan-entitlement .champro-scan-entitlement-head{display:flex;align-items:baseline;gap:15px;flex-wrap:wrap}
+.champro-scan-entitlement h2{font-size:18px;font-weight:800;line-height:1.4;margin:0;color:#092748}
+.champro-scan-entitlement .champro-scan-entitlement-help{margin:0;font-size:13px;color:#62768c}
+.champro-scan-entitlement .champro-scan-entitlement-status{margin:10px 0 0;font-size:13px;line-height:1.6;color:#315372;overflow-wrap:anywhere}
+.champro-scan-entitlement .champro-scan-entitlement-logout{background:#eef8ff;color:#125b98;border:1px solid #bbdcf8;border-radius:10px;padding:9px 13px;font-weight:800;cursor:pointer}
+.champro-scan-entitlement .champro-scan-entitlement-logout:hover{background:#ddebff}
+@media(max-width:760px){.champro-scan-entitlement{margin:8px;padding:11px 13px}.champro-scan-entitlement h2{font-size:16px}.champro-scan-entitlement .champro-scan-entitlement-help{font-size:12px}body.scan-active .champro-scan-entitlement{display:none}}
 </style></head>
 <body>
 <header class="top"><a class="logo" href="../" title="Trang ChấmPro"><img class="brand-logo-image" src="./icon.svg" alt="Logo HienSoft" width="96" height="75" decoding="async"><span>Chấm<span class="brand-accent">Pro</span><small>WEB · BETA</small></span></a><span class="pill" id="cvStatus" title="Bộ đọc ảnh nhẹ tích hợp sẵn, không dùng OpenCV" data-build="20261104-cam-r2">Bộ đọc ảnh nhẹ sẵn sàng</span><button class="outline" id="installBtn" hidden>Cài ứng dụng</button>
@@ -31,6 +41,13 @@ body.scan-active .top .hs-primary-menu{flex:1 1 100%}
 
 <a class="hs-menu-download" href="/tai-ung-dung.html" title="Tải bản Android ChấmPro Test v14.5">Tải ứng dụng</a>
 </nav></header>
+<section id="champroScanEntitlement" class="champro-scan-entitlement" aria-label="Quyền sử dụng ChấmPro">
+ <div class="champro-scan-entitlement-main">
+  <div class="champro-scan-entitlement-head"><h2>Quyền sử dụng ChấmPro</h2><p class="champro-scan-entitlement-help">Miễn phí 100 lượt chấm; gói trả phí không giới hạn. Xem lại bài đã chấm không trừ thêm lượt.</p></div>
+  <button type="button" id="champroScanEntitlementLogout" class="champro-scan-entitlement-logout" hidden>Đăng xuất</button>
+ </div>
+ <p id="champroScanEntitlementStatus" class="champro-scan-entitlement-status" role="status" aria-live="polite">Chưa đăng nhập. Vui lòng đăng nhập trên menu để xem lượt chấm.</p>
+</section>
 <div class="shell"><aside class="side"><nav id="nav"><button data-page="home" class="active">◈ Tổng quan</button><button data-page="scan">▣ Camera chấm bài</button><button data-page="exams">▤ Đề & đáp án</button><button data-page="students">♙ Học sinh</button><button data-page="results">▥ Kết quả</button><button data-page="backup">◇ Sao lưu & dữ liệu</button></nav><div class="foot">Chạy trên thiết bị này<br><strong>Không tự tải bài lên máy chủ</strong><br><small>© Bản quyền thuộc về Mr Hiển</small></div></aside>
 <main class="main"><div id="toast" role="status" aria-live="polite"></div>
 <section class="page shown" id="page-home"><div class="page-heading"><div><p class="eyebrow">QUẢN LÝ CHẤM BÀI</p><h1>Chào mừng đến ChấmPro</h1><p class="muted">Chấm bằng camera hoặc ảnh phiếu, kiểm tra kết quả và lưu điểm ngay trên thiết bị.</p></div><button class="primary" data-goto="scan">Mở camera chấm bài</button></div><div class="statgrid"><div class="stat"><span>Kỳ kiểm tra</span><strong id="statExams">0</strong></div><div class="stat"><span>Học sinh</span><strong id="statStudents">0</strong></div><div class="stat"><span>Bài đã chấm</span><strong id="statResults">0</strong></div><div class="stat"><span>Đã chấm gần nhất</span><strong id="statLast">—</strong></div></div><div class="card" id="champroQuotaDashboard" aria-label="Hạn mức ChấmPro của ba chức năng"><h2>Gói sử dụng và hạn mức ChấmPro</h2><p id="champroQuotaPlan" class="muted">Chưa đăng nhập</p><div class="champro-quota-grid" id="champroQuotaStats"></div><div class="actions" style="margin-top:12px;flex-wrap:wrap"><button id="champroQuotaLogin" type="button" class="primary">Đăng ký và đăng nhập</button><button id="champroQuotaRefresh" type="button" class="outline">Làm mới hạn mức</button><button id="champroQuotaLogout" type="button" class="outline" hidden>Đăng xuất</button><a class="outline" style="display:inline-flex;align-items:center;padding:10px 14px;border-radius:8px;text-decoration:none" href="/platform/account/#nang-cap">Xem gói / Nâng cấp</a></div><p id="champroQuotaMessage" class="hint" role="status">Đăng nhập để xem số lượt trên Cloudflare.</p><p class="hint">Hạn mức sử dụng được đồng bộ theo tài khoản. Dữ liệu học sinh, đề và điểm trên bản web này vẫn lưu trên thiết bị, chưa đồng bộ lên máy chủ.</p></div><div class="card"><h2>Bắt đầu sử dụng</h2><div class="steps"><div><b>01</b><strong>Tạo kỳ kiểm tra</strong><p>Chọn phiếu 120 câu hoặc 3 phần; cấu hình mã đề và điểm số.</p></div><div><b>02</b><strong>Nhập đáp án & học sinh</strong><p>Nhập tay hoặc tải CSV/Excel, giữ nguyên SBD trong tệp nhập.</p></div><div><b>03</b><strong>Chấm và xác nhận</strong><p>Quét tự động hoặc chụp thủ công, kiểm tra các ô chưa rõ rồi lưu.</p></div></div></div><div class="notice">Bản web thử nghiệm: dữ liệu được lưu trong bộ nhớ trình duyệt của thiết bị này. Hãy sao lưu thường xuyên. Không dùng chế độ ẩn danh hoặc xóa dữ liệu trang web nếu muốn giữ kết quả.</div></section>
