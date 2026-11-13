@@ -38,6 +38,9 @@ jobs:
           for(const path of ['app/index.html','app-license-preview/index.html']){
             const s=file(path);
             for(const id of ['champroQuotaDashboard','champroQuotaStats','champroQuotaLogin','champroQuotaLogout','champroQuotaRefresh','champroHeaderLogin'])assert(s.includes('id="'+id+'"'),path+' missing '+id);
+            for(const id of ['champroScanEntitlement','champroScanEntitlementStatus','champroScanEntitlementLogout'])assert(s.includes('id="'+id+'"'),path+' missing scan entitlement '+id);
+            assert(s.includes('Quyền sử dụng ChấmPro'),path+' missing scan banner title');
+            assert(s.includes('body.scan-active .champro-scan-entitlement{display:none}'),path+' scan camera fullscreen should hide mobile banner');
             assert(s.includes('/platform/licensing/quota-dashboard.js'),path+' quota script missing');
             assert(s.indexOf('/platform/licensing/auth-session.js')<s.indexOf('/platform/licensing/quota-dashboard.js'),path+' auth must load before dashboard');
           }
@@ -55,6 +58,8 @@ jobs:
           }
           const dashboard=file('platform/licensing/quota-dashboard.js');
           assert(dashboard.includes('"/api/me"')&&dashboard.includes('scan')&&dashboard.includes('mix')&&dashboard.includes('qr'));
+          assert(dashboard.includes('scanBanner(data)')&&dashboard.includes('scanBanner(null)'), 'Scan banner must update and clear on auth');
+          assert(dashboard.includes('champroScanEntitlementLogout")?.addEventListener("click",logout)'), 'Scan banner logout must share existing logout');
           assert(!dashboard.includes('/api/usage/'),'Dashboard must not consume credits');
           assert(!dashboard.includes('localStorage.'),'Dashboard must not store tokens in localStorage');
           assert(file('app/app.mjs').includes('const storedKey=\'champro-web-beta-v1\''),'Camera data key must not change');
