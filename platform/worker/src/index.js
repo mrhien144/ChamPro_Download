@@ -54,6 +54,19 @@ async function secureBridge(req,env){
 async function internal(req,env){
  if(!await secureBridge(req,env))return error('Không đủ quyền',401);
  const b=await body(req);
+ // Authenticated WordPress-only preflight. Never creates an order or grants rights.
+ if(b.action==='checkout-preflight'){
+  const annual=Number(env.PRODUCT_ANNUAL_ID),lifetime=Number(env.PRODUCT_LIFETIME_ID);
+  if(annual!==8919||lifetime!==8920||
+     Number(b.annualProductId)!==annual||Number(b.lifetimeProductId)!==lifetime||
+     PRICES.annual!==99000||PRICES.lifetime!==299000)
+    return error('Cấu hình gói trên Worker chưa đồng nhất',409);
+  try{
+   const db=await env.DB.prepare('SELECT COUNT(*) AS n FROM accounts').first();
+   if(!db||!Number.isFinite(Number(db.n)))return error('Cơ sở dữ liệu cấp quyền chưa sẵn sàng',503);
+  }catch{return error('Cơ sở dữ liệu cấp quyền chưa sẵn sàng',503);}
+  return send({ok:true,ready:true});
+ }
  const uid=Number(b.wpUserId);
  if(!Number.isSafeInteger(uid)||uid<1)return error('Tài khoản không hợp lệ');
  const aid='wp:'+uid;
