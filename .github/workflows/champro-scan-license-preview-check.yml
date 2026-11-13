@@ -1,0 +1,44 @@
+name: ChấmPro scan-license isolated preview checks
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app-license-preview/**'
+      - 'platform/licensing/scan-license-preview.js'
+      - '.github/workflows/champro-scan-license-preview-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: |
+          node --check app-license-preview/app.mjs
+          node --check app-license-preview/advanced.mjs
+          node --check platform/licensing/scan-license-preview.js
+      - name: Isolated storage and non-interference contracts
+        run: |
+          node --input-type=module <<'JS'
+          import {readFileSync, existsSync} from 'node:fs';
+          import assert from 'node:assert/strict';
+          const html=readFileSync('app-license-preview/index.html','utf8');
+          const app=readFileSync('app-license-preview/app.mjs','utf8');
+          const adv=readFileSync('app-license-preview/advanced.mjs','utf8');
+          assert(html.includes('scan-license-preview.js'));
+          assert(html.includes('id="scanLicenseLogin"'));
+          assert(html.includes('app.mjs?v=scan-quota-preview-1'));
+          assert(!app.includes("const storedKey='champro-web-beta-v1'"));
+          assert(app.includes("const storedKey='champro-scan-license-preview-v1'"));
+          assert(app.includes('await saveResultAuthorized(exam,student,result,true)'));
+          assert(app.includes('await saveResultAuthorized(exam,student,answers,false)'));
+          assert(!app.includes('serviceWorker.register('));
+          assert(adv.includes("from './app.mjs?v=scan-quota-preview-1'"));
+          for(const x of ['app/grader.mjs','app/layouts.json','app/styles.css','app/advanced.mjs'])assert(existsSync(x));
+          console.log('Preview isolated from /app/ storage and service worker: PASS');
+          JS
