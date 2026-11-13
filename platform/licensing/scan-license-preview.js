@@ -6,7 +6,8 @@
 "use strict";
 const API="https://champro-platform-staging.luckylove1404.workers.dev";
 const session=window.champroAuthSession;
-const state={token:session?.getToken()||null,popup:null,pending:null,accountId:null};
+const state={token:session?.getToken()||null,popup:null,pending:null,accountId:null,usedScan:null};
+const receipt=(message)=>{const e=el("scanLicenseReceipt");if(e)e.textContent=message;};
 const el=id=>document.getElementById(id);
 const msg=message=>{const node=el("scanLicenseStatus");if(node)node.textContent=message;};
 async function query(path,data){
@@ -21,6 +22,7 @@ async function query(path,data){
 async function refresh(){
  const x=await query("/api/me");
  state.accountId=x.account.id;
+ state.usedScan=Number(x.used.scan);
  const left=x.left.scan===null?"không giới hạn":String(x.left.scan);
  msg("Đã đăng nhập: "+(x.account.name||x.account.email)+
   " · Gói: "+x.account.plan+
@@ -38,6 +40,8 @@ window.addEventListener("message",async event=>{
   event.data?.type!=="champro-session"||typeof event.data?.token!=="string"||
   event.data.token.length>4096)return;
  state.token=event.data.token;
+ state.accountId=null;state.pending=null;state.usedScan=null;
+ receipt("Đã đăng nhập; chưa ghi nhận lượt chấm mới trong phiên này.");
  session?.save(event.data.token);
  state.popup?.close();
  el("scanLicenseRefresh").disabled=false;
@@ -46,11 +50,11 @@ window.addEventListener("message",async event=>{
 });
 el("scanLicenseRefresh").onclick=async()=>{try{await refresh();}catch(e){msg("Không tải được số lượt: "+e.message);}};
 el("scanLicenseLogout").onclick=()=>{
- session?.clear();state.token=null;state.accountId=null;el("scanLicenseRefresh").disabled=true;el("scanLicenseLogout").disabled=true;
+ session?.clear();state.token=null;state.accountId=null;state.usedScan=null;state.pending=null;receipt("Đã đăng xuất.");el("scanLicenseRefresh").disabled=true;el("scanLicenseLogout").disabled=true;
  msg("Đã đăng xuất. Không thể lưu thêm kết quả cho đến khi đăng nhập lại.");
 };
 window.addEventListener("champro-auth-logout",()=>{
- state.token=null;state.accountId=null;state.pending=null;
+ state.token=null;state.accountId=null;state.pending=null;state.usedScan=null;receipt("Đã đăng xuất.");
  el("scanLicenseRefresh").disabled=true;el("scanLicenseLogout").disabled=true;
  msg("Đã đăng xuất khỏi ChấmPro.");
 });
@@ -74,9 +78,30 @@ window.champroScanLicense={
    const hash=Array.from(digest,b=>b.toString(16).padStart(2,"0")).join("");
    state.pending={fingerprint,requestId:"scan:"+hash};
   }
-  const r=await query("/api/usage/scan",{requestId:state.pending.requestId});
+  const before=state.usedScan;
+  receipt("Đang xác minh lượt chấm với Cloudflare…");
+  let r;
+  try{r=await query("/api/usage/scan",{requestId:state.pending.requestId});}
+  catch(e){receipt("CHƯA XÁC NHẬN lượt chấm: "+e.message);throw e;}
+  // A successful HTTP response alone is insufficient: verify the D1 usage
+  // counter returned by /api/me before allowing a local result to commit.
+  let after;
+  try{after=await refresh();}
+  catch(e){
+    receipt("Chưa đối soát được số lượt sau khi gửi. Thử lưu LẠI CÙNG PHIẾU để tránh trừ trùng.");
+    throw Error("Không xác minh được số lượt đã ghi trên Cloudflare. Vui lòng thử lại cùng phiếu.");
+  }
+  if(!Number.isFinite(state.usedScan) ||
+     (!r.duplicate && before!==null && state.usedScan<=before) ||
+     (r.duplicate && state.usedScan<1)){
+    receipt("LỖI ĐỐI SOÁT: Cloudflare chưa xác nhận số lượt mới. Chưa lưu kết quả.");
+    throw Error("Số lượt trên Cloudflare chưa khớp sau khi gửi. Không lưu bài để tránh sai hạn mức.");
+  }
+  const label=r.duplicate?"Đã ghi nhận trước đó (không trừ trùng)":"Đã ghi nhận 1 lượt mới";
+  const left=after.left.scan===null?"không giới hạn":after.left.scan;
+  receipt("ĐÃ XÁC NHẬN · "+label+" · Tài khoản "+after.account.id+
+          " · Đã dùng "+state.usedScan+" · Còn "+left);
   state.pending=null;
-  try{await refresh();}catch(e){msg("Đã ghi nhận lượt chấm; không tải được số dư mới.");}
   return r;
  }
 };
