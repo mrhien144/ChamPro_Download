@@ -81,61 +81,6 @@ async function internal(req,env){
   // READ-ONLY INSPECTION: no grants, no order status changes, no bank secret disclosed.
   return send({ok:true,readOnly:true,orderId:order,receipts});
  }
- if(b.action==='claim-sepay-sandbox-7734'){
-  // Operator-controlled, single-order trial. No WooCommerce status changes.
-  // NOT a production payment method or general purpose entitlement API.
-  if(String(env.SEPAY_TEST_GRANTS_ENABLED||'')!=='1')return error('Chế độ cấp quyền thử nghiệm đang khóa',403);
-  if(uid!==3 || Number(b.orderId)!==7734 || Number(b.productId)!==7726 ||
-      String(b.plan)!=='annual' || Number(b.amountVnd)!==99000 ||
-      String(b.orderStatus)!=='pending' || String(b.paymentMethod)!=='')
-   return error('Không khớp đơn thử nghiệm được phép',422);
-  const txRows=await env.DB.prepare(
-    "SELECT transaction_id,payment_code,amount_vnd,account_number FROM sepay_test_receipts WHERE payment_code=? LIMIT 2"
-  ).bind('DH7734').all();
-  if(!txRows.results||txRows.results.length!==1)return error('Phải có đúng một biên nhận HMAC SePay',409);
-  const tx=txRows.results[0];
-  if(tx.payment_code!=='DH7734'||Number(tx.amount_vnd)!==99000||
-     String(tx.account_number)!==String(env.SEPAY_TEST_BANK_ACCOUNT))
-   return error('Biên nhận thử nghiệm không hợp lệ',422);
-  const account=await env.DB.prepare('SELECT id,plan,status FROM accounts WHERE id=?').bind(aid).first();
-  if(!account||account.status!=='active')return error('Tài khoản không hợp lệ',409);
-  const oldClaim=await env.DB.prepare('SELECT * FROM sepay_test_claims WHERE order_id=? OR transaction_id=?')
-    .bind(7734,tx.transaction_id).first();
-  if(oldClaim){
-   if(Number(oldClaim.order_id)!==7734||Number(oldClaim.transaction_id)!==Number(tx.transaction_id)||
-      oldClaim.account_id!==aid||Number(oldClaim.product_id)!==7726||
-      Number(oldClaim.amount_vnd)!==99000||oldClaim.plan!=='annual')
-    return error('Biên nhận đã dùng cho đơn khác',409);
-   if(oldClaim.processed_at)return send({ok:true,duplicate:true,testOnly:true,orderId:7734,accountId:aid});
-  }
-  if(account.plan!=='free'&&!oldClaim)return error('Tài khoản không còn là gói miễn phí',409);
-  const oldPayment=await env.DB.prepare('SELECT order_id FROM payments WHERE order_id=?').bind(7734).first();
-  if(oldPayment&&!oldClaim)return error('Đơn đã có bản ghi cấp quyền khác',409);
-  // D1 batch is atomic; only a newly unprocessed matching claim can update entitlements.
-  await env.DB.batch([
-   env.DB.prepare(
-    "INSERT OR IGNORE INTO sepay_test_claims (transaction_id,order_id,wp_user_id,account_id,product_id,plan,amount_vnd) SELECT transaction_id,?,?,?,?,?,? FROM sepay_test_receipts WHERE transaction_id=? AND payment_code='DH7734' AND amount_vnd=99000 AND account_number=?"
-   ).bind(7734,3,aid,7726,'annual',99000,tx.transaction_id,String(env.SEPAY_TEST_BANK_ACCOUNT)),
-   env.DB.prepare(
-    "INSERT OR IGNORE INTO payments (order_id,wp_user_id,account_id,product_id,plan,amount_vnd,status) SELECT order_id,wp_user_id,account_id,product_id,plan,amount_vnd,'completed' FROM sepay_test_claims WHERE order_id=7734 AND account_id=? AND processed_at IS NULL"
-   ).bind(aid),
-   env.DB.prepare(
-    "UPDATE accounts SET plan='annual',expires_at=datetime('now','+1 year'),updated_at=CURRENT_TIMESTAMP WHERE id=? AND plan='free' AND EXISTS (SELECT 1 FROM sepay_test_claims c JOIN payments p ON p.order_id=c.order_id WHERE c.order_id=7734 AND c.account_id=? AND c.processed_at IS NULL AND p.account_id=? AND p.status='completed')"
-   ).bind(aid,aid,aid),
-   env.DB.prepare(
-    "UPDATE payments SET processed_at=CURRENT_TIMESTAMP WHERE order_id=7734 AND account_id=? AND processed_at IS NULL AND EXISTS (SELECT 1 FROM sepay_test_claims WHERE order_id=7734 AND account_id=? AND processed_at IS NULL)"
-   ).bind(aid,aid),
-   env.DB.prepare(
-    "UPDATE sepay_test_claims SET processed_at=CURRENT_TIMESTAMP WHERE order_id=7734 AND account_id=? AND processed_at IS NULL AND EXISTS(SELECT 1 FROM payments WHERE order_id=7734 AND account_id=? AND processed_at IS NOT NULL)"
-   ).bind(aid,aid)
-  ]);
-  const applied=await env.DB.prepare(
-    "SELECT c.transaction_id,c.processed_at,a.plan,a.expires_at,p.status,p.processed_at AS payment_processed FROM sepay_test_claims c JOIN accounts a ON a.id=c.account_id JOIN payments p ON p.order_id=c.order_id WHERE c.order_id=7734 AND c.account_id=?"
-  ).bind(aid).first();
-  if(!applied||!applied.processed_at||!applied.payment_processed||applied.plan!=='annual')
-   return error('Không xác minh được việc cấp quyền thử nghiệm',409);
-  return send({ok:true,duplicate:false,testOnly:true,accountId:aid,orderId:7734,transactionId:tx.transaction_id,plan:applied.plan,expiresAt:applied.expires_at});
- }
  if(b.action!=='paid-order')return error('Thao tác không hợp lệ');
  const plan=String(b.plan),order=Number(b.orderId),product=Number(b.productId),amount=Number(b.amountVnd);
  if(!Object.hasOwn(PRICES,plan)||!Number.isSafeInteger(order)||order<1||
