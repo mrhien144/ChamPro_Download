@@ -195,6 +195,54 @@ async function admin(env,who,path,req){
  }
  return error('API quản trị không tồn tại',404);
 }
+
+// Read-only-to-entitlements SePay TEST MODE webhook receiver.
+// Separate HMAC secret and D1 table; cannot create/complete WooCommerce orders or grant plans.
+// Based on SePay X-SePay-Signature: sha256=<hex HMAC-SHA256(timestamp + '.' + raw_bytes)>.
+async function acceptSePayTest(req,env){
+ if(!env.SEPAY_TEST_WEBHOOK_SECRET || !env.SEPAY_TEST_BANK_ACCOUNT)
+  return error('Cấu hình SePay Test Mode chưa hoàn tất',503);
+ if(!/^application\/json(?:\s*;|$)/i.test(req.headers.get('content-type')||''))
+  return error('Chỉ nhận JSON',415);
+ const ts=req.headers.get('X-SePay-Timestamp')||'';
+ const sig=req.headers.get('X-SePay-Signature')||'';
+ if(!/^\d{10,12}$/.test(ts)||Math.abs(Math.floor(Date.now()/1000)-Number(ts))>300 ||
+    !/^sha256=[a-fA-F0-9]{64}$/.test(sig))
+  return error('Chứng thực webhook hết hạn hoặc không hợp lệ',401);
+ const len=Number(req.headers.get('content-length')||0);
+ if(!Number.isFinite(len)||len>16384)return error('Dữ liệu quá lớn',413);
+ const raw=new Uint8Array(await req.arrayBuffer());
+ if(raw.length===0||raw.length>16384)return error('Dữ liệu trống hoặc quá lớn',413);
+ const prefix=txt.encode(ts+'.'), signed=new Uint8Array(prefix.length+raw.length);
+ signed.set(prefix);signed.set(raw,prefix.length);
+ const signature=Uint8Array.from(sig.slice(7).match(/../g),byte=>parseInt(byte,16));
+ const verified=await crypto.subtle.verify(
+  'HMAC',await hmacKey(env.SEPAY_TEST_WEBHOOK_SECRET),signature,signed);
+ if(!verified)return error('Chữ ký SePay không hợp lệ',401);
+ let data;
+ try{data=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(raw));}
+ catch{return error('JSON không hợp lệ');}
+ const tx=Number(data?.id),amount=Number(data?.transferAmount);
+ const account=String(data?.accountNumber??''),code=String(data?.code??'');
+ if(!Number.isSafeInteger(tx)||tx<1||!Number.isSafeInteger(amount)||amount<1||
+    data?.transferType!=='in'||account!==String(env.SEPAY_TEST_BANK_ACCOUNT)||
+    !/^DH\d{3,10}$/.test(code))
+  return error('Dữ liệu không khớp giao dịch ChấmPro TEST',422);
+ const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',raw));
+ const digestHex=Array.from(digest,b=>b.toString(16).padStart(2,'0')).join('');
+ const existing=await env.DB.prepare('SELECT payload_sha256 FROM sepay_test_receipts WHERE transaction_id=?').bind(tx).first();
+ if(existing){
+  if(existing.payload_sha256!==digestHex)return error('Mã giao dịch đã tồn tại với nội dung khác',409);
+  return send({success:true,received:true,duplicate:true});
+ }
+ await env.DB.prepare('INSERT OR IGNORE INTO sepay_test_receipts (transaction_id,payment_code,amount_vnd,account_number,payload_sha256,signature_timestamp) VALUES (?,?,?,?,?,?)')
+  .bind(tx,code,amount,account,digestHex,Number(ts)).run();
+ const saved=await env.DB.prepare('SELECT payload_sha256 FROM sepay_test_receipts WHERE transaction_id=?').bind(tx).first();
+ if(!saved||saved.payload_sha256!==digestHex)return error('Không ghi được biên nhận webhook',503);
+ // CRITICAL: receipt only. Not a payment proof for WordPress and no paid-order action.
+ return send({success:true,received:true,duplicate:false});
+}
+
 export default {
  async fetch(req,env){
   const origin=req.headers.get('Origin')||'';
@@ -218,6 +266,7 @@ export default {
     }
     res=send({ok:true,service:'champro-payment-test',database:'connected',tablesChecked:5});
    }
+   else if(path==='/webhooks/sepay-test'&&req.method==='POST')res=await acceptSePayTest(req,env);
    else if(path==='/api/internal'&&req.method==='POST')res=await internal(req,env);
    else{
     const who=await session(req,env);
