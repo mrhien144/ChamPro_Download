@@ -32,13 +32,16 @@ jobs:
           const adv=readFileSync('app-license-preview/advanced.mjs','utf8');
           assert(html.includes('scan-license-preview.js'));
           assert(html.includes('id="scanLicenseLogin"'));
-          assert(html.includes('app.mjs?v=scan-quota-preview-1'));
+          assert(html.includes('id="scanLicenseReceipt"'));
+          assert(readFileSync('platform/licensing/scan-license-preview.js','utf8').includes('await refresh()'));
+          assert(readFileSync('platform/licensing/scan-license-preview.js','utf8').includes('CHƯA XÁC NHẬN'));
+          assert(html.includes('app.mjs?v=scan-quota-preview-3'));
           assert(!app.includes("const storedKey='champro-web-beta-v1'"));
           assert(app.includes("const storedKey='champro-scan-license-preview-v1'"));
           assert(app.includes('await saveResultAuthorized(exam,student,result,true)'));
           assert(app.includes('await saveResultAuthorized(exam,student,answers,false)'));
           assert(!app.includes('serviceWorker.register('));
-          assert(adv.includes("from './app.mjs?v=scan-quota-preview-1'"));
+          assert(adv.includes("from './app.mjs?v=scan-quota-preview-3'"));
           for(const x of ['app/grader.mjs','app/layouts.json','app/styles.css','app/advanced.mjs'])assert(existsSync(x));
           console.log('Preview isolated from /app/ storage and service worker: PASS');
           JS
