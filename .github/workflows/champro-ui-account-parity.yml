@@ -50,7 +50,7 @@ jobs:
             assert(new RegExp('id="'+logout+'"[^>]+hidden').test(html),path+' logout must default hidden');
             assert(js.includes('e("'+logout+'").hidden=false'),path+' logout must show on auth');
             assert(js.includes('e("'+logout+'").hidden=true'),path+' logout must hide on signout');
-            assert(js.includes('e("'+login+'").click()'),path+' card login not connected');
+            assert(js.includes('if(secondaryLoginButton)secondaryLoginButton.onclick=()=>e("'+(path.startsWith('tron')?'mixLicenseLogin':'licenseLogin')+'").click()'),path+' card login not connected');
           }
           const dashboard=file('platform/licensing/quota-dashboard.js');
           assert(dashboard.includes('"/api/me"')&&dashboard.includes('scan')&&dashboard.includes('mix')&&dashboard.includes('qr'));
