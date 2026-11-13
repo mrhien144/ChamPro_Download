@@ -2,14 +2,15 @@
 /**
  * Plugin Name: ChấmPro Checkout Gate (Staging)
  * Description: A fail-closed checkout entry for ChấmPro plans; disabled unless explicitly configured.
- * Version: 0.1.1-staging
+ * Version: 0.1.2-staging
  * Requires PHP: 7.4
  */
 defined('ABSPATH') || exit;
 
 // Do not enable until payment webhook, production licensing and API key rotation are verified.
 function champro_checkout_is_enabled() {
-    return defined('CHAMPRO_LIVE_CHECKOUT_ENABLED') && CHAMPRO_LIVE_CHECKOUT_ENABLED === true;
+    return defined('CHAMPRO_LIVE_CHECKOUT_ENABLED') && CHAMPRO_LIVE_CHECKOUT_ENABLED === true
+        && defined('CHAMPRO_LIVE_GRANTS_ENABLED') && CHAMPRO_LIVE_GRANTS_ENABLED === true;
 }
 function champro_checkout_plans() {
     return array(
