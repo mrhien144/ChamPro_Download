@@ -43,9 +43,47 @@ sheet.addEventListener('click',e=>{
 $('cpNativeMore').addEventListener('click',()=>{sheet.hidden=false;document.body.classList.add('cp-native-sheet-open');});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet();});
 if(menu)new MutationObserver(sync).observe(menu,{attributes:true,subtree:true,attributeFilter:['class']});
+// Display actual Android connectivity via the Capacitor native Network API.
+// navigator.onLine alone can remain true inside the Android WebView after mobile data/Wi-Fi is disabled.
 const net=$('cpNativeNet');
-function network(){const online=navigator.onLine;net.textContent=online?'Trực tuyến':'Offline';net.classList.toggle('offline',!online);}
-window.addEventListener('online',network);window.addEventListener('offline',network);network();sync();
+const nativeNetwork=window.Capacitor?.Plugins?.Network;
+let currentNativeStatus=null;
+function renderNetwork(connected){
+  if(!net)return;
+  net.textContent=connected?'Trực tuyến':'Ngoại tuyến';
+  net.classList.toggle('offline',!connected);
+  net.setAttribute('aria-label',connected?'Đang có kết nối mạng':'Không có kết nối mạng');
+}
+async function refreshNetwork(){
+  if(nativeNetwork?.getStatus){
+    try{
+      const info=await nativeNetwork.getStatus();
+      if(typeof info.connected==='boolean'){
+        currentNativeStatus=info.connected;
+        renderNetwork(info.connected);
+        return;
+      }
+    }catch(e){/* Fallback only when native plugin is unavailable. */}
+  }
+  currentNativeStatus=null;
+  renderNetwork(navigator.onLine);
+}
+if(nativeNetwork?.addListener){
+  try{
+    Promise.resolve(nativeNetwork.addListener('networkStatusChange',status=>{
+      if(typeof status?.connected==='boolean'){
+        currentNativeStatus=status.connected;
+        renderNetwork(status.connected);
+      }
+    })).catch(()=>{});
+  }catch(e){/* Preserve offline UI if listener registration fails. */}
+}
+window.addEventListener('online',()=>{void refreshNetwork();});
+window.addEventListener('offline',()=>{void refreshNetwork();});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refreshNetwork();});
+window.addEventListener('focus',()=>{void refreshNetwork();});
+void refreshNetwork();
+sync();
 
 // APK-only organization: move the existing graded-paper history card to the
 // bottom of Chấm bài, after the live camera and its settings. Moving the same
