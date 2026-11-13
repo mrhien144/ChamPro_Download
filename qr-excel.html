@@ -41,7 +41,7 @@ header.hs-sitebar .hs-links .hs-auth-nav-button.hs-auth-connected{background:#ed
 .qr-leftcol>.panel:first-child #licenseStatus{font-size:12px;line-height:1.5;margin:8px 0}
 .qr-leftcol>.panel:first-child>p:last-child{font-size:12px;margin:5px 0 0}
 @media(max-width:600px){header.hs-sitebar .hs-links .hs-auth-nav-button{font-size:12px;min-height:34px}}
-</style></head>
+</style><style id="champro-conditional-auth-buttons">[hidden]{display:none!important}</style></head>
 <body><div class="top"></div>
 <header class="hs-sitebar"><nav class="hs-navwrap" aria-label="Điều hướng chính"><a class="hs-brand" href="https://mrhien.com/" aria-label="HienSoft - về mrhien.com"><img class="hs-brand-icon" src="/app/icon.svg" alt="Logo HienSoft" width="75" height="60" decoding="async"><span class="hs-brand-copy"><strong>Tạo mã QR</strong><small>https://mrhien.com/</small></span></a><div class="hs-links"><a href="https://mrhien.com/">Trang chủ</a><a href="/app/">Chấm Pro</a><a href="/tron-de/">Trộn đề</a><a href="/qr-excel.html" aria-current="page">Tạo QR</a><a href="/ho-tro.html">Hỗ trợ</a><a class="hs-cta" href="/platform/account/#nang-cap" style="white-space:nowrap">Mua gói / Nâng cấp</a><button id="licenseLogin" class="hs-auth-nav-button" type="button">Đăng ký và đăng nhập</button></div></nav></header>
 <section class="hero"><div class="wrap"><span class="kicker">Công cụ dành cho giáo viên</span><h1>Tạo mã QR từ Excel</h1><p>Chọn đúng file mẫu ChấmPro, kiểm tra dữ liệu và tạo một hoặc nhiều mã QR để nhập vào ứng dụng bằng camera.</p></div></section>
@@ -89,7 +89,7 @@ header.hs-sitebar .hs-links .hs-auth-nav-button.hs-auth-connected{background:#ed
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="/platform/licensing/auth-session.js"></script><script src="/platform/licensing/qr-license.js"></script>
+<script src="/platform/licensing/auth-session.js"></script><script src="/platform/licensing/qr-license.js?v=20261113-authfix-1"></script>
 <script>
 (function(){
 "use strict";
