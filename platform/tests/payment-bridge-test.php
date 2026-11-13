@@ -8,6 +8,8 @@ define('CHAMPRO_BRIDGE_SECRET', 'test-only-secret');
 define('CHAMPRO_ANNUAL_PRODUCT_ID', 8919);
 define('CHAMPRO_LIFETIME_PRODUCT_ID', 8920);
 define('CHAMPRO_ALLOWED_GATEWAY_IDS', 'sepay');
+// Enable only inside isolated fake WooCommerce contract tests.
+define('CHAMPRO_LIVE_GRANTS_ENABLED', true);
 $GLOBALS['hooks'] = [];
 $GLOBALS['requests'] = [];
 function add_action($name, $callback, $priority=10, $argc=1) { $GLOBALS['hooks'][$name][] = $callback; }
