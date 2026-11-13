@@ -63,6 +63,24 @@ async function internal(req,env){
   await env.DB.prepare('INSERT INTO accounts (id,wp_user_id,email,display_name) VALUES (?,?,?,?) ON CONFLICT(wp_user_id) DO UPDATE SET email=excluded.email,display_name=excluded.display_name,updated_at=CURRENT_TIMESTAMP').bind(aid,uid,email,name).run();
   return send({ok:true,accountId:aid});
  }
+ if(b.action==='inspect-sepay-test'){
+  const order=Number(b.orderId);
+  if(!Number.isSafeInteger(order)||order<1||order>9999999999)
+    return error('Mã đơn thử nghiệm không hợp lệ');
+  const paymentCode='DH'+String(order);
+  const rows=await env.DB.prepare(
+   'SELECT transaction_id,payment_code,amount_vnd,account_number,received_at FROM sepay_test_receipts WHERE payment_code=? ORDER BY received_at DESC LIMIT 10'
+  ).bind(paymentCode).all();
+  const receipts=(rows.results||[]).map(row=>({
+   transactionId:row.transaction_id,
+   paymentCode:row.payment_code,
+   amountVnd:row.amount_vnd,
+   accountMatches:String(row.account_number)===String(env.SEPAY_TEST_BANK_ACCOUNT),
+   receivedAt:row.received_at
+  }));
+  // READ-ONLY INSPECTION: no grants, no order status changes, no bank secret disclosed.
+  return send({ok:true,readOnly:true,orderId:order,receipts});
+ }
  if(b.action!=='paid-order')return error('Thao tác không hợp lệ');
  const plan=String(b.plan),order=Number(b.orderId),product=Number(b.productId),amount=Number(b.amountVnd);
  if(!Object.hasOwn(PRICES,plan)||!Number.isSafeInteger(order)||order<1||
