@@ -25,9 +25,9 @@ jobs:
         with:
           python-version: '3.12'
       - name: PHP syntax
-        run: php -l platform/wordpress/champro-bridge.php && php -l platform/tests/payment-bridge-test.php
-      - name: Worker syntax
-        run: node --check platform/worker/src/index.js
+        run: php -l platform/wordpress/champro-bridge.php && php -l platform/tests/payment-bridge-test.php && php -l platform/wordpress/champro-checkout-gate.php
+      - name: Worker and account JS syntax
+        run: node --check platform/worker/src/index.js && node --check platform/account/account.js
       - name: Staging signed receipt settlement checks
         run: node platform/tests/sepay-settlement-test.mjs
       - name: SePay Test Mode webhook HMAC and duplicate tests
