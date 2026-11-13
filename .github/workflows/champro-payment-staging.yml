@@ -28,6 +28,8 @@ jobs:
         run: php -l platform/wordpress/champro-bridge.php && php -l platform/tests/payment-bridge-test.php
       - name: Worker syntax
         run: node --check platform/worker/src/index.js
+      - name: SePay Test Mode webhook HMAC and duplicate tests
+        run: node platform/tests/sepay-test-webhook.mjs
       - name: Payment bridge rejection and acceptance tests (fake WooCommerce)
         run: php platform/tests/payment-bridge-test.php
       - name: D1 payment SQL transaction tests (in-memory SQLite)
