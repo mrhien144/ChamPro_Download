@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ChấmPro Bridge (Staging)
  * Description: Connects verified WordPress customers and completed WooCommerce orders to the isolated ChấmPro licensing API.
- * Version: 0.1.4-staging
+ * Version: 0.1.5-staging
  * Requires PHP: 7.4
  *
  * Do not activate until wp-config.php defines:
@@ -186,6 +186,8 @@ function champro_bridge_verified_sepay_context() {
 }
 
 function champro_bridge_paid_order($order_id, $order = null) {
+    // Production grants remain disabled until verified SePay webhook and Worker are ready.
+    if (!defined('CHAMPRO_LIVE_GRANTS_ENABLED') || CHAMPRO_LIVE_GRANTS_ENABLED !== true) return;
     if (!champro_bridge_ready() || !function_exists('wc_get_order')) return;
     // Fail closed: only a synchronous event inside SePay's authenticated webhook
     // handler may grant ChấmPro rights. Never grant for manual status changes.
