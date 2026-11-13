@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - staging/champro-payment-8919-8920-20261112
+      - feature/champro-checkout-server-readiness-20261113
   pull_request:
     branches:
       - main
@@ -25,9 +26,13 @@ jobs:
         with:
           python-version: '3.12'
       - name: PHP syntax
-        run: php -l platform/wordpress/champro-bridge.php && php -l platform/tests/payment-bridge-test.php && php -l platform/wordpress/champro-checkout-gate.php
+        run: php -l platform/wordpress/champro-bridge.php && php -l platform/tests/payment-bridge-test.php && php -l platform/wordpress/champro-checkout-gate.php && php -l platform/tests/checkout-readiness-test.php
       - name: Checkout isolation and closed-default tests
         run: php platform/tests/champro-checkout-gate-test.php
+      - name: Server readiness correct product IDs, SePay, WordPress bridge
+        run: php platform/tests/checkout-readiness-test.php
+      - name: Cloudflare authenticated checkout preflight contracts
+        run: node platform/tests/checkout-preflight-worker.test.mjs
       - name: Worker and account JS syntax
         run: node --check platform/worker/src/index.js && node --check platform/account/account.js && node --check platform/licensing/scan-license.js && node --check app/app.mjs
       - name: Scan authorization integration contract
