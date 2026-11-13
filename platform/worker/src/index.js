@@ -81,6 +81,78 @@ async function internal(req,env){
   // READ-ONLY INSPECTION: no grants, no order status changes, no bank secret disclosed.
   return send({ok:true,readOnly:true,orderId:order,receipts});
  }
+ if(b.action==='settle-sepay-sandbox'){
+  // STAGING ONLY: D1 HMAC-verified receipt => idempotent test entitlement.
+  // Production authorization remains disabled; this never changes WooCommerce itself.
+  if(String(env.SEPAY_TEST_SETTLEMENTS_ENABLED||'')!=='1')
+   return error('Thanh toán thử nghiệm chưa được cho phép',403);
+  const order=Number(b.orderId),product=Number(b.productId),amount=Number(b.amountVnd),
+   plan=String(b.plan||''),created=Number(b.orderCreatedUnix),status=String(b.orderStatus||''),
+   method=String(b.paymentMethod||'');
+  const expectedProduct=plan==='annual'?Number(env.PRODUCT_ANNUAL_ID):plan==='lifetime'?Number(env.PRODUCT_LIFETIME_ID):0;
+  const expectedAmount=plan==='annual'?99000:plan==='lifetime'?299000:0;
+  // Only the known, reviewed manual test order may have an empty method.
+  // Subsequent orders must explicitly use the separate staging-only payment method.
+  const manualTest=(order===7734 && uid===3 && product===7726 && plan==='annual' && amount===99000 && method==='');
+  if(!Number.isSafeInteger(order)||order<1||!Number.isSafeInteger(created)||created<1 ||
+     product!==expectedProduct||amount!==expectedAmount||
+     !['pending','on-hold'].includes(status) || !(method==='champro_sepay_test'||manualTest))
+   return error('Đơn thử nghiệm không đủ điều kiện',422);
+  const rows=await env.DB.prepare(
+   'SELECT transaction_id,payment_code,amount_vnd,account_number,received_at FROM sepay_test_receipts WHERE payment_code=? LIMIT 2'
+  ).bind('DH'+order).all();
+  if(!rows.results || rows.results.length!==1)return error('Không có đúng một biên nhận thử nghiệm',409);
+  const receipt=rows.results[0],receiptTime=Date.parse(String(receipt.received_at).replace(' ','T')+'Z');
+  if(!Number.isSafeInteger(Number(receipt.transaction_id))||
+     Number(receipt.amount_vnd)!==amount||
+     String(receipt.account_number)!==String(env.SEPAY_TEST_BANK_ACCOUNT)||
+     !Number.isFinite(receiptTime)||receiptTime<created*1000-120000||
+     receiptTime>Date.now()+120000)
+   return error('Giao dịch thử nghiệm không khớp thời gian, số tiền hoặc tài khoản ngân hàng',422);
+  const account=await env.DB.prepare('SELECT id,plan,status FROM accounts WHERE id=?').bind(aid).first();
+  if(!account || account.status!=='active')return error('Tài khoản thử nghiệm không hợp lệ',409);
+  const existing=await env.DB.prepare(
+   'SELECT * FROM sepay_test_settlements WHERE order_id=? OR transaction_id=?'
+  ).bind(order,Number(receipt.transaction_id)).all();
+  const claims=existing.results||[];
+  if(claims.some(c=>Number(c.order_id)!==order||Number(c.transaction_id)!==Number(receipt.transaction_id)||
+      c.account_id!==aid||Number(c.wp_user_id)!==uid||Number(c.product_id)!==product||
+      c.plan!==plan||Number(c.amount_vnd)!==amount))
+   return error('Giao dịch đã được dùng cho đơn hàng khác',409);
+  if(claims.length===1 && claims[0].processed_at)
+   return send({ok:true,testOnly:true,duplicate:true,orderId:order,accountId:aid});
+  if(claims.length>1)return error('Biên nhận trùng bất thường',409);
+  if(account.plan!=='free' && claims.length===0)return error('Tài khoản chưa đủ điều kiện nâng cấp thử nghiệm',409);
+  const prior=await env.DB.prepare('SELECT * FROM payments WHERE order_id=?').bind(order).first();
+  if(prior && claims.length===0)return error('Mã đơn đã được sử dụng',409);
+  // A single atomic D1 batch serializes new settlement writes and rights update.
+  await env.DB.batch([
+   env.DB.prepare(
+    'INSERT OR IGNORE INTO sepay_test_settlements (order_id,transaction_id,wp_user_id,account_id,product_id,plan,amount_vnd) VALUES (?,?,?,?,?,?,?)'
+   ).bind(order,Number(receipt.transaction_id),uid,aid,product,plan,amount),
+   env.DB.prepare(
+    "INSERT OR IGNORE INTO payments (order_id,wp_user_id,account_id,product_id,plan,amount_vnd,status) SELECT order_id,wp_user_id,account_id,product_id,plan,amount_vnd,'completed' FROM sepay_test_settlements WHERE order_id=? AND account_id=? AND processed_at IS NULL"
+   ).bind(order,aid),
+   env.DB.prepare(
+    "UPDATE accounts SET plan=?,expires_at=CASE WHEN ?='annual' THEN datetime('now','+1 year') ELSE NULL END,updated_at=CURRENT_TIMESTAMP WHERE id=? AND plan='free' AND EXISTS(SELECT 1 FROM sepay_test_settlements s JOIN payments p ON p.order_id=s.order_id WHERE s.order_id=? AND s.account_id=? AND s.processed_at IS NULL AND p.account_id=? AND p.product_id=? AND p.amount_vnd=? AND p.plan=?)"
+   ).bind(plan,plan,aid,order,aid,aid,product,amount,plan),
+   env.DB.prepare(
+    "UPDATE payments SET processed_at=CURRENT_TIMESTAMP WHERE order_id=? AND account_id=? AND processed_at IS NULL AND EXISTS(SELECT 1 FROM sepay_test_settlements WHERE order_id=? AND account_id=? AND processed_at IS NULL)"
+   ).bind(order,aid,order,aid),
+   env.DB.prepare(
+    "UPDATE sepay_test_settlements SET processed_at=CURRENT_TIMESTAMP WHERE order_id=? AND account_id=? AND processed_at IS NULL AND EXISTS(SELECT 1 FROM payments WHERE order_id=? AND account_id=? AND status='completed' AND processed_at IS NOT NULL)"
+   ).bind(order,aid,order,aid)
+  ]);
+  const saved=await env.DB.prepare(
+   'SELECT s.transaction_id,s.processed_at,a.plan,a.expires_at,p.product_id,p.amount_vnd,p.processed_at AS paid_at FROM sepay_test_settlements s JOIN accounts a ON a.id=s.account_id JOIN payments p ON p.order_id=s.order_id WHERE s.order_id=? AND s.account_id=?'
+  ).bind(order,aid).first();
+  if(!saved || Number(saved.transaction_id)!==Number(receipt.transaction_id)||
+     !saved.processed_at||!saved.paid_at||saved.plan!==plan||
+     Number(saved.product_id)!==product||Number(saved.amount_vnd)!==amount)
+   return error('Chưa xác minh được việc cấp quyền thử nghiệm',409);
+  return send({ok:true,testOnly:true,duplicate:false,orderId:order,accountId:aid,
+    transactionId:receipt.transaction_id,plan,expiresAt:saved.expires_at});
+ }
  if(b.action!=='paid-order')return error('Thao tác không hợp lệ');
  const plan=String(b.plan),order=Number(b.orderId),product=Number(b.productId),amount=Number(b.amountVnd);
  if(!Object.hasOwn(PRICES,plan)||!Number.isSafeInteger(order)||order<1||
