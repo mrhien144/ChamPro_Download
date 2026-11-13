@@ -19,14 +19,32 @@ function controls(user){
  if(logout)logout.hidden=!user;
  if(header){header.textContent=user?(user.name||user.email||"Tài khoản"):"Đăng ký và đăng nhập";header.title=user?"Đã đăng nhập · Bấm để cập nhật lượt":"";}
 }
+function scanBanner(data){
+ const node=$("champroScanEntitlementStatus"),logoutBtn=$("champroScanEntitlementLogout");
+ if(!node)return;
+ const a=data?.account;
+ if(!a){
+  node.textContent="Chưa đăng nhập. Vui lòng đăng nhập trên menu để xem lượt chấm.";
+  if(logoutBtn)logoutBtn.hidden=true;
+  return;
+ }
+ const available=data.left?.scan===null?"không giới hạn":fmt(data.left?.scan);
+ const user=a.name||a.email||"Tài khoản";
+ const pkg=plans[a.plan]||a.plan||"Không xác định";
+ const deadline=a.plan==="annual"&&a.expiresAt?" · Hạn dùng "+a.expiresAt:"";
+ node.textContent="Đã đăng nhập: "+user+" · Gói: "+pkg+deadline+" · Chấm còn "+available+" lượt · Tặng thêm "+fmt(data.bonus?.scan)+" · Đã dùng "+fmt(data.used?.scan);
+ if(logoutBtn)logoutBtn.hidden=false;
+}
 function blank(){
  controls(null);
+ scanBanner(null);
  const area=$("champroQuotaStats");if(area)area.replaceChildren();
  const plan=$("champroQuotaPlan");if(plan)plan.textContent="Chưa đăng nhập";
  status("Đăng nhập để xem gói và lượt sử dụng được lưu trên Cloudflare.");
 }
 function formatStats(data){
  const a=data.account;
+ scanBanner(data);
  controls(a);
  const p=$("champroQuotaPlan");if(p)p.textContent=(a.name||a.email||"Tài khoản")+" · "+(plans[a.plan]||a.plan)+(a.plan==="annual"&&a.expiresAt?" · Hết hạn "+a.expiresAt:"");
  const target=$("champroQuotaStats");
@@ -69,6 +87,7 @@ function logout(){
 }
 $("champroQuotaLogin")?.addEventListener("click",login);
 $("champroQuotaLogout")?.addEventListener("click",logout);
+$("champroScanEntitlementLogout")?.addEventListener("click",logout);
 $("champroQuotaRefresh")?.addEventListener("click",refresh);
 $("champroHeaderLogin")?.addEventListener("click",login);
 window.addEventListener("message",event=>{
