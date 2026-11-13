@@ -1,0 +1,29 @@
+name: ChấmPro checkout frontend fail-closed checks
+on:
+  push:
+    branches:
+      - feature/champro-checkout-frontend-readiness-20261113
+    paths:
+      - 'platform/account/account.js'
+      - 'platform/tests/account-purchase-readiness.test.mjs'
+      - '.github/workflows/champro-checkout-frontend-readiness.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'platform/account/account.js'
+      - 'platform/tests/account-purchase-readiness.test.mjs'
+      - '.github/workflows/champro-checkout-frontend-readiness.yml'
+permissions:
+  contents: read
+jobs:
+  account-checkout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate purchase controller JavaScript
+        run: node --check platform/account/account.js
+      - name: Verify server readiness and account plan gate
+        run: node platform/tests/account-purchase-readiness.test.mjs
