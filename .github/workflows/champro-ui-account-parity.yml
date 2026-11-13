@@ -41,16 +41,17 @@ jobs:
             assert(s.includes('/platform/licensing/quota-dashboard.js'),path+' quota script missing');
             assert(s.indexOf('/platform/licensing/auth-session.js')<s.indexOf('/platform/licensing/quota-dashboard.js'),path+' auth must load before dashboard');
           }
-          for(const [path,login,logout,script] of [
-            ['tron-de/index.html','mixLicenseLoginCard','mixLicenseLogout','platform/licensing/mix-license.js'],
-            ['qr-excel.html','licenseLoginCard','licenseLogout','platform/licensing/qr-license.js']
+          for(const [path,navLogin,cardLogin,logout,script] of [
+            ['tron-de/index.html','mixLicenseLogin','mixLicenseLoginCard','mixLicenseLogout','platform/licensing/mix-license.js'],
+            ['qr-excel.html','licenseLogin','licenseLoginCard','licenseLogout','platform/licensing/qr-license.js']
           ]){
             const html=file(path),js=file(script);
-            assert(html.includes('id="'+login+'"'),path+' missing visible card login');
+            assert(html.includes('id="'+navLogin+'"'),path+' missing menu login');
+            assert(!html.includes('id="'+cardLogin+'"'),path+' must not duplicate login inside quota card');
             assert(new RegExp('id="'+logout+'"[^>]+hidden').test(html),path+' logout must default hidden');
             assert(js.includes('e("'+logout+'").hidden=false'),path+' logout must show on auth');
             assert(js.includes('e("'+logout+'").hidden=true'),path+' logout must hide on signout');
-            assert(js.includes('if(secondaryLoginButton)secondaryLoginButton.onclick=()=>e("'+(path.startsWith('tron')?'mixLicenseLogin':'licenseLogin')+'").click()'),path+' card login not connected');
+            assert(js.includes('e("'+navLogin+'").onclick'),path+' menu login handler missing');
           }
           const dashboard=file('platform/licensing/quota-dashboard.js');
           assert(dashboard.includes('"/api/me"')&&dashboard.includes('scan')&&dashboard.includes('mix')&&dashboard.includes('qr'));
