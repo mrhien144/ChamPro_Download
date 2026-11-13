@@ -120,7 +120,7 @@ async function internal(req,env){
       c.plan!==plan||Number(c.amount_vnd)!==amount))
    return error('Giao dịch đã được dùng cho đơn hàng khác',409);
   if(claims.length===1 && claims[0].processed_at)
-   return send({ok:true,testOnly:true,duplicate:true,orderId:order,accountId:aid});
+   return send({ok:true,testOnly:true,duplicate:true,orderId:order,accountId:aid,transactionId:receipt.transaction_id,plan});
   if(claims.length>1)return error('Biên nhận trùng bất thường',409);
   if(account.plan!=='free' && claims.length===0)return error('Tài khoản chưa đủ điều kiện nâng cấp thử nghiệm',409);
   const prior=await env.DB.prepare('SELECT * FROM payments WHERE order_id=?').bind(order).first();
