@@ -31,7 +31,17 @@ function champro_checkout_system_ready() {
             || !$product->is_purchasable()
             || abs(floatval($product->get_price()) - $plan['price']) > 0.001) return false;
     }
-    return true;
+    if (!defined('CHAMPRO_ANNUAL_PRODUCT_ID') || intval(CHAMPRO_ANNUAL_PRODUCT_ID) !== 8919
+        || !defined('CHAMPRO_LIFETIME_PRODUCT_ID') || intval(CHAMPRO_LIFETIME_PRODUCT_ID) !== 8920
+        || !function_exists('champro_bridge_request')) return false;
+    // Fail closed unless the actual Cloudflare Worker responds with matching
+    // live product IDs and a functioning D1 database. Never trust a frontend flag.
+    $result = champro_bridge_request(array(
+        'action' => 'checkout-preflight',
+        'annualProductId' => 8919,
+        'lifetimeProductId' => 8920,
+    ));
+    return !is_wp_error($result) && !empty($result['ready']);
 }
 
 // Read-only public readiness endpoint. Never expose configuration, keys or account data.
