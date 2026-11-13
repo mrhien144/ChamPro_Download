@@ -29,7 +29,9 @@ jobs:
       - name: Checkout isolation and closed-default tests
         run: php platform/tests/champro-checkout-gate-test.php
       - name: Worker and account JS syntax
-        run: node --check platform/worker/src/index.js && node --check platform/account/account.js
+        run: node --check platform/worker/src/index.js && node --check platform/account/account.js && node --check platform/licensing/scan-license.js && node --check app/app.mjs
+      - name: Scan authorization integration contract
+        run: node platform/tests/scan-license-integration.test.mjs
       - name: Staging signed receipt settlement checks
         run: node platform/tests/sepay-settlement-test.mjs
       - name: SePay Test Mode webhook HMAC and duplicate tests
