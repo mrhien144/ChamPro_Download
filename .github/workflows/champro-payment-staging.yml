@@ -38,3 +38,17 @@ jobs:
         run: php platform/tests/payment-bridge-test.php
       - name: D1 payment SQL transaction tests (in-memory SQLite)
         run: python platform/tests/payment-worker-sql-test.py
+
+      - name: Package guarded ChấmPro Bridge (not deployed)
+        run: |
+          mkdir -p build/champro-bridge
+          cp platform/wordpress/champro-bridge.php build/champro-bridge/champro-bridge.php
+          cd build
+          zip -q -r ChamPro_Bridge_v0.1.5_guarded.zip champro-bridge
+          unzip -l ChamPro_Bridge_v0.1.5_guarded.zip
+      - name: Upload guarded Bridge ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChamPro-Bridge-v0.1.5-guarded
+          path: build/ChamPro_Bridge_v0.1.5_guarded.zip
+          retention-days: 30
