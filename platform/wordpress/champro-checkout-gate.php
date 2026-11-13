@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ChấmPro Checkout Gate (Staging)
  * Description: A fail-closed checkout entry for ChấmPro plans; disabled unless explicitly configured.
- * Version: 0.1.0-staging
+ * Version: 0.1.1-staging
  * Requires PHP: 7.4
  */
 defined('ABSPATH') || exit;
@@ -80,3 +80,60 @@ add_action('template_redirect', function () {
     wp_safe_redirect(wc_get_checkout_url(), 303);
     exit;
 }, 20);
+
+/**
+ * ChấmPro is sold in a single-item, authenticated, full-price SePay order.
+ * Do not change gateways or coupons for ordinary mrhien.com purchases.
+ * These checkout controls are enforced only when the cart has a ChấmPro ID.
+ */
+function champro_checkout_cart_plan() {
+    if (!function_exists('WC') || !WC()->cart) return null;
+    $plans = champro_checkout_plans();
+    foreach (WC()->cart->get_cart() as $item) {
+        $id = intval($item['product_id'] ?? 0);
+        foreach ($plans as $slug => $product) {
+            if ($id === $product['id']) return $slug;
+        }
+    }
+    return null;
+}
+function champro_checkout_cart_issue() {
+    $plan = champro_checkout_cart_plan();
+    if ($plan === null) return '';
+    if (!champro_checkout_is_enabled()) return 'ChấmPro chưa mở thanh toán.';
+    if (!is_user_logged_in()) return 'Vui lòng đăng nhập tài khoản trước khi mua ChấmPro.';
+    if (strtoupper(get_woocommerce_currency()) !== 'VND') return 'Gói ChấmPro chỉ thanh toán bằng VND.';
+    $items = WC()->cart->get_cart();
+    $expected = champro_checkout_plans()[$plan];
+    if (count($items) !== 1) return 'Mỗi đơn ChấmPro chỉ được có một gói.';
+    $item = reset($items);
+    if (intval($item['product_id'] ?? 0) !== $expected['id'] ||
+        intval($item['quantity'] ?? 0) !== 1) return 'Không hỗ trợ ghép hoặc mua nhiều gói trong cùng một đơn.';
+    if (abs(floatval(WC()->cart->get_total('edit')) - $expected['price']) > 0.001)
+        return 'Số tiền ChấmPro chưa đúng giá niêm yết. Vui lòng kiểm tra giỏ hàng.';
+    return '';
+}
+add_filter('woocommerce_available_payment_gateways', function ($gateways) {
+    if (champro_checkout_cart_plan() === null) return $gateways;
+    // Never allow Wallet, manual transfers or alternative gateways for a ChấmPro license.
+    return isset($gateways['sepay']) ? array('sepay' => $gateways['sepay']) : array();
+}, 20);
+add_action('woocommerce_checkout_process', function () {
+    $issue = champro_checkout_cart_issue();
+    if ($issue !== '') wc_add_notice($issue, 'error');
+    if (champro_checkout_cart_plan() !== null) {
+        $method = isset($_POST['payment_method']) ? sanitize_key(wp_unslash($_POST['payment_method'])) : '';
+        if ($method !== 'sepay') wc_add_notice('Gói ChấmPro yêu cầu thanh toán bằng SePay.', 'error');
+    }
+}, 20);
+add_action('woocommerce_checkout_create_order', function ($order, $data) {
+    $issue = champro_checkout_cart_issue();
+    if ($issue !== '') throw new Exception($issue);
+    $plan = champro_checkout_cart_plan();
+    if ($plan === null) return;
+    if (($data['payment_method'] ?? '') !== 'sepay')
+        throw new Exception('Phương thức thanh toán ChấmPro không hợp lệ.');
+    $expected = champro_checkout_plans()[$plan];
+    if (abs(floatval($order->get_total()) - $expected['price']) > 0.001)
+        throw new Exception('Tổng đơn ChấmPro không đúng giá.');
+}, 20, 2);
