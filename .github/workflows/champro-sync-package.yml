@@ -1,0 +1,42 @@
+name: ChấmPro Sync staging packages (DO NOT ACTIVATE)
+on:
+  push:
+    branches: [feature/champro-sync-foundation-20261114]
+    paths:
+      - 'platform/wordpress/champro-sync-device.php'
+      - 'platform/sync-worker/**'
+      - 'platform/migrations/0003_sync_records.sql'
+      - '.github/workflows/champro-sync-package.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate source syntax
+        run: |
+          php -l platform/wordpress/champro-sync-device.php
+          node --check platform/sync-worker/src/index.js
+          node --check platform/sync-worker/src/sync.js
+      - name: Create unsigned and secret-free test archives
+        run: |
+          mkdir -p _out _wp/champro-sync-device _cloud/src
+          cp platform/wordpress/champro-sync-device.php _wp/champro-sync-device/champro-sync-device.php
+          (cd _wp && zip -qr ../_out/ChamPro_Sync_WordPress_Staging_v0.1.0.zip champro-sync-device)
+          cp platform/sync-worker/src/index.js platform/sync-worker/src/sync.js _cloud/src/
+          cp platform/sync-worker/wrangler.jsonc _cloud/wrangler.jsonc
+          cp platform/migrations/0003_sync_records.sql _cloud/schema_additive.sql
+          cp platform/sync-worker/README_VI.md _cloud/README_VI.md
+          (cd _cloud && zip -qr ../_out/ChamPro_Sync_Cloudflare_Staging_v0.1.0.zip .)
+          test -s _out/ChamPro_Sync_WordPress_Staging_v0.1.0.zip
+          test -s _out/ChamPro_Sync_Cloudflare_Staging_v0.1.0.zip
+          sha256sum _out/*.zip
+      - name: Upload review artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChamPro-Sync-Staging-WP-and-Worker-ZIP
+          path: _out/*.zip
+          if-no-files-found: error
+          retention-days: 30
