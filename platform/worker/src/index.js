@@ -216,7 +216,8 @@ export default {
   const whitelist=String(env.ALLOWED_ORIGINS||'https://champro.mrhien.com,https://mrhien.com').split(',').map(x=>x.trim());
   if(origin&&!whitelist.includes(origin))return error('Nguồn bị từ chối',403);
   const cors={'Access-Control-Allow-Origin':origin||'https://champro.mrhien.com',
-   'Access-Control-Allow-Headers':'Authorization,Content-Type,X-Bridge-Secret',
+   'Access-Control-Allow-Headers':'Authorization,Content-Type,X-Bridge-Secret,X-Photo-Metadata,X-Photo-Base-Sha256',
+   'Access-Control-Expose-Headers':'X-Photo-Metadata,X-Content-Sha256',
    'Access-Control-Allow-Methods':'GET,POST,OPTIONS','Vary':'Origin'};
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
   try{
