@@ -252,3 +252,42 @@
 .share-rank-option input{width:18px;height:18px;margin:0;accent-color:#245ee3}
 .share-one{padding:7px 10px;font-size:12px;white-space:nowrap}
 @media(max-width:760px){.share-dialog{padding:18px}.share-dialog .actions button{flex:1 1 180px}}
+
+
+/* Compact answer-key editor, isolated from the camera/OMR layouts. */
+#flexAnswers .flex-items{display:grid;grid-template-columns:minmax(0,1fr);gap:3px;padding:6px 8px 10px}
+#flexAnswers .flex-question{display:flex;align-items:center;gap:10px;border:0;border-bottom:1px solid #e4eaf3;border-radius:0;box-shadow:none;margin:0;padding:5px 7px;background:#fff;min-width:0}
+#flexAnswers .flex-question>strong{flex:0 0 62px;margin:0;font-size:13px;white-space:nowrap}
+#flexAnswers .flex-chips{display:flex;flex:1;align-items:center;gap:9px;flex-wrap:wrap;min-width:0}
+#flexAnswers .flex-chip{border:0;border-radius:5px;gap:5px;padding:3px 5px;min-height:29px;background:transparent;font-size:13px;font-weight:600}
+#flexAnswers .flex-chip.active{background:#ecf3ff;color:#194c9d}
+#flexAnswers .flex-chip input{width:17px;height:17px;flex:none}
+#flexAnswers .flex-question--I .flex-chips{justify-content:space-between;gap:2px}
+#flexAnswers .flex-question--II{align-items:flex-start}
+#flexAnswers .flex-question--II>strong{padding-top:3px}
+#flexAnswers .flex-question--II .flex-chips{display:grid;grid-template-columns:1fr;gap:1px}
+#flexAnswers .flex-sub{display:grid;grid-template-columns:34px 94px 94px;gap:8px;align-items:center;width:100%;min-height:30px;padding:0 3px;border-radius:0;background:#fff}
+#flexAnswers .flex-sub>b{min-width:0;font-weight:700;font-size:13px}
+#flexAnswers .flex-sub .flex-chip{min-height:28px;padding:2px 5px;white-space:nowrap}
+#flexAnswers .flex-question--II .flex-chips>.flex-chip{justify-self:start;margin-top:3px}
+#flexAnswers .flex-question--III{align-items:flex-start}
+#flexAnswers .flex-question--III>strong{padding-top:10px}
+#flexAnswers .flex-short{flex:1;display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-width:0}
+#flexAnswers .flex-shortline{align-items:center;min-width:130px;flex:1 1 160px;gap:5px}
+#flexAnswers .flex-shortline label{display:flex;align-items:center;gap:6px;min-width:0;line-height:1.3}
+#flexAnswers .flex-shortline input{width:100%;padding:7px 8px;margin:0;min-width:0}
+#flexAnswers .flex-shortline button{padding:6px 8px}
+#flexAnswers .flex-short-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+#flexAnswers .flex-short-actions button{padding:7px 9px;font-size:12px}
+#flexAnswers details{margin:8px 0}
+#flexAnswers details>summary{padding:8px 12px}
+@media(max-width:540px){
+ #flexAnswers .flex-question{gap:5px;padding:5px 2px}
+ #flexAnswers .flex-question>strong{flex-basis:48px;font-size:12px}
+ #flexAnswers .flex-chip{gap:3px;padding:3px 2px;font-size:12px}
+ #flexAnswers .flex-chip input{width:16px;height:16px}
+ #flexAnswers .flex-chips{gap:3px}
+ #flexAnswers .flex-sub{grid-template-columns:26px minmax(74px,100px) minmax(74px,100px);gap:4px}
+ #flexAnswers .flex-shortline{flex-basis:125px}
+ #flexAnswers .flex-short-actions{gap:3px}
+}
