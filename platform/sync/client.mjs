@@ -72,9 +72,14 @@ export class SyncTransport {
    const plan=planUpload({record,baseRevision:record.revision});
    try{
     const answer=await this.request('/api/sync/records','POST',JSON.stringify(plan));
-    if(this.dirty.get(key)!==record)continue;
-    this.dirty.delete(key);
-    this.onStatus({kind:'uploaded',record:key,revision:answer.revision});
+    const current=this.dirty.get(key);
+    if(current===record)this.dirty.delete(key);
+    else if(current)this.dirty.set(key,{...current,revision:answer.revision});
+    // Even when a student was edited while HTTP was in flight, acknowledge
+    // the confirmed old revision so the next upload uses the right base.
+    this.onStatus({kind:'uploaded',record:key,revision:answer.revision,
+      hash:record.hash||null,deleted:record.deleted===true,
+      stillDirty:current!==record});
    }catch(e){
     if(e.status===409){
      this.onStatus({kind:'conflict',record:key,remote:e.data?.current||null});
