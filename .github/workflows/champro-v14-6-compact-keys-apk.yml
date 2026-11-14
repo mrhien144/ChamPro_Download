@@ -11,7 +11,7 @@ on:
       - '.github/workflows/champro-v14-6-compact-keys-apk.yml'
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   build-v14-6:
     runs-on: ubuntu-latest
@@ -103,6 +103,28 @@ jobs:
         run: |
           test -s _champro_android/android/app/build/outputs/apk/debug/app-debug.apk
           sha256sum _champro_android/android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Publish direct-install APK to GitHub Releases (not ZIP)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="champro-v14.6-compact-keys-20261114"
+          APK="_champro_android/android/app/build/outputs/apk/debug/app-debug.apk"
+          FILE="ChamPro-Test-v14.6.apk"
+          test -s "$APK"
+          mkdir -p _release
+          cp "$APK" "_release/$FILE"
+          sha256sum "_release/$FILE"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "_release/$FILE" --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" "_release/$FILE" --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "ChấmPro Test v14.6 – Đề & đáp án gọn" \
+              --notes "Bản Android thử nghiệm cài trực tiếp (.apk), tách riêng với bản v14.5. Chỉ điều chỉnh trình sửa Đề & đáp án. Chưa phát hành chính thức; cần kiểm thử tốc độ chấm và chấm offline trên điện thoại thật." \
+              --prerelease
+          fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[] | select(.name == "ChamPro-Test-v14.6.apk") | .url'
       - uses: actions/upload-artifact@v4
         with:
           name: ChamPro-Test-v14_6-Compact-Exam-Answers-APK
