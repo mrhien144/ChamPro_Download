@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ChấmPro Bridge (Staging)
  * Description: Connects verified WordPress customers and completed WooCommerce orders to the isolated ChấmPro licensing API.
- * Version: 0.1.5-staging
+ * Version: 0.1.6-pilot
  * Requires PHP: 7.4
  *
  * Do not activate until wp-config.php defines:
@@ -188,12 +188,20 @@ function champro_bridge_verified_sepay_context() {
 function champro_bridge_paid_order($order_id, $order = null) {
     // Production grants remain disabled until verified SePay webhook and Worker are ready.
     if (!defined('CHAMPRO_LIVE_GRANTS_ENABLED') || CHAMPRO_LIVE_GRANTS_ENABLED !== true) return;
+    // Live grants are fail-closed: public launch needs all three public flags,
+    // otherwise only the configured WordPress pilot customer may be upgraded.
+    $public_checkout = defined('CHAMPRO_LIVE_CHECKOUT_ENABLED') && CHAMPRO_LIVE_CHECKOUT_ENABLED === true
+        && defined('CHAMPRO_PAYMENT_E2E_VERIFIED') && CHAMPRO_PAYMENT_E2E_VERIFIED === true;
+    $pilot_checkout = function_exists('champro_pilot_user_allowed')
+        && champro_pilot_user_allowed(8);
+    if (!$public_checkout && !$pilot_checkout) return;
     if (!champro_bridge_ready() || !function_exists('wc_get_order')) return;
     // Fail closed: only a synchronous event inside SePay's authenticated webhook
     // handler may grant ChấmPro rights. Never grant for manual status changes.
     if (!champro_bridge_verified_sepay_context()) return;
     if (!$order) $order = wc_get_order($order_id);
     if (!$order || !$order->get_user_id() || !$order->is_paid()) return;
+    if (!$public_checkout && intval($order->get_user_id()) !== 8) return;
     if (!in_array($order->get_status(), array('processing','completed'), true)) return;
     if ((string) $order->get_payment_method() !== 'sepay') return;
 
