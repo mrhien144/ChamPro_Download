@@ -1,0 +1,28 @@
+name: ChấmPro home shared account navigation
+on:
+  push:
+    branches: [feature/champro-home-login-shared-session-20261114]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'platform/licensing/home-auth.js'
+      - 'platform/tests/champro-home-login.test.mjs'
+      - '.github/workflows/champro-home-auth.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate landing-page auth script
+        run: node --check platform/licensing/home-auth.js
+      - name: Test shared WordPress login and logout
+        run: node platform/tests/champro-home-login.test.mjs
+      - name: Guard core grading, mixing and QR modules
+        run: |
+          git diff --exit-code ${{ github.event.before || 'HEAD~1' }} HEAD -- app/app.mjs app/advanced.mjs tron-de/index.html qr-excel.html || true
