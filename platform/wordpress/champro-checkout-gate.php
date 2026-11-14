@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ChấmPro Checkout Gate (Staging)
  * Description: A fail-closed checkout entry for ChấmPro plans; disabled unless explicitly configured.
- * Version: 0.1.2-staging
+ * Version: 0.1.3-pilot
  * Requires PHP: 7.4
  */
 defined('ABSPATH') || exit;
@@ -15,8 +15,25 @@ function champro_checkout_is_enabled() {
         && defined('CHAMPRO_LIVE_GRANTS_ENABLED') && CHAMPRO_LIVE_GRANTS_ENABLED === true
         && defined('CHAMPRO_PAYMENT_E2E_VERIFIED') && CHAMPRO_PAYMENT_E2E_VERIFIED === true;
 }
-function champro_checkout_system_ready() {
-    if (!champro_checkout_is_enabled()) return false;
+/** Closed by default: narrow, opt-in checkout pilot for exactly one WP customer.
+ * Public readiness always stays false until all public launch flags pass.
+ */
+function champro_pilot_user_allowed($uid = null) {
+    if (!defined('CHAMPRO_PILOT_CHECKOUT_ENABLED') || CHAMPRO_PILOT_CHECKOUT_ENABLED !== true
+        || !defined('CHAMPRO_PILOT_WP_USER_ID') || intval(CHAMPRO_PILOT_WP_USER_ID) !== 8
+        || !defined('CHAMPRO_LIVE_GRANTS_ENABLED') || CHAMPRO_LIVE_GRANTS_ENABLED !== true)
+        return false;
+    if ($uid === null) {
+        if (!function_exists('is_user_logged_in') || !is_user_logged_in()) return false;
+        $uid = get_current_user_id();
+    }
+    return intval($uid) === 8;
+}
+function champro_checkout_access_allowed() {
+    return champro_checkout_is_enabled() || champro_pilot_user_allowed();
+}
+function champro_checkout_system_ready($require_public = false) {
+    if ($require_public ? !champro_checkout_is_enabled() : !champro_checkout_access_allowed()) return false;
     if (!function_exists('champro_bridge_ready') || !champro_bridge_ready()) return false;
     if (!function_exists('WC') || !function_exists('wc_get_product')
         || !function_exists('get_woocommerce_currency')) return false;
@@ -52,7 +69,7 @@ add_action('rest_api_init', function () {
         'permission_callback' => '__return_true',
         'callback' => function () {
             if (function_exists('nocache_headers')) nocache_headers();
-            $ready = champro_checkout_system_ready();
+            $ready = champro_checkout_system_ready(true);
             return rest_ensure_response(array(
                 'ok' => true, 'ready' => $ready,
                 'message' => $ready ? 'Cổng thanh toán ChấmPro đã sẵn sàng.' :
@@ -68,7 +85,7 @@ function champro_checkout_plans() {
     );
 }
 function champro_checkout_validate_plan($plan) {
-    if (!champro_checkout_system_ready()) return new WP_Error('champro_closed', 'ChấmPro chưa mở bán. Không tạo đơn hàng.', array('status' => 503));
+    if (!champro_checkout_access_allowed() || !champro_checkout_system_ready()) return new WP_Error('champro_closed', 'ChấmPro chưa mở bán. Không tạo đơn hàng.', array('status' => 503));
     if (!function_exists('WC') || !function_exists('wc_get_product')) return new WP_Error('champro_wc', 'WooCommerce chưa sẵn sàng.');
     if (!is_user_logged_in()) return new WP_Error('champro_login', 'Vui lòng đăng nhập trước khi thanh toán.');
     if (strtoupper(get_woocommerce_currency()) !== 'VND') return new WP_Error('champro_currency', 'Cửa hàng chưa thiết lập VND.');
@@ -96,7 +113,7 @@ add_shortcode('champro_purchase', function () {
     $plans = champro_checkout_plans();
     $plan = isset($_GET['plan']) ? sanitize_key(wp_unslash($_GET['plan'])) : '';
     if (!isset($plans[$plan])) return '<p>Vui lòng chọn gói từ trang ChấmPro.</p>';
-    if (!champro_checkout_system_ready()) return '<p>Thanh toán ChấmPro chưa được mở. Vui lòng quay lại sau.</p>';
+    if (!champro_checkout_access_allowed() || !champro_checkout_system_ready()) return '<p>Thanh toán ChấmPro chưa được mở. Vui lòng quay lại sau.</p>';
     if (!is_user_logged_in()) {
         $back = add_query_arg('plan', $plan, get_permalink());
         return '<p>Để mua gói, vui lòng đăng nhập tài khoản mrhien.com.</p><a href="' .
@@ -117,7 +134,7 @@ add_shortcode('champro_purchase', function () {
 add_action('template_redirect', function () {
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !is_page('champro-mua-goi')) return;
     if (!isset($_POST['champro_checkout_plan'])) return;
-    if (!champro_checkout_system_ready()) wp_die('Thanh toán chưa được mở.', 'ChấmPro', array('response' => 503));
+    if (!champro_checkout_access_allowed() || !champro_checkout_system_ready()) wp_die('Thanh toán chưa được mở.', 'ChấmPro', array('response' => 503));
     $plan = sanitize_key(wp_unslash($_POST['champro_checkout_plan']));
     $nonce = isset($_POST['champro_checkout_nonce']) ? sanitize_text_field(wp_unslash($_POST['champro_checkout_nonce'])) : '';
     if (!wp_verify_nonce($nonce, 'champro_checkout_' . $plan)) wp_die('Yêu cầu đã hết hạn. Vui lòng tải lại trang.', 'ChấmPro', array('response' => 403));
@@ -150,7 +167,7 @@ function champro_checkout_cart_plan() {
 function champro_checkout_cart_issue() {
     $plan = champro_checkout_cart_plan();
     if ($plan === null) return '';
-    if (!champro_checkout_system_ready()) return 'ChấmPro chưa mở thanh toán.';
+    if (!champro_checkout_access_allowed() || !champro_checkout_system_ready()) return 'ChấmPro chưa mở thanh toán cho tài khoản này.';
     if (!is_user_logged_in()) return 'Vui lòng đăng nhập tài khoản trước khi mua ChấmPro.';
     if (strtoupper(get_woocommerce_currency()) !== 'VND') return 'Gói ChấmPro chỉ thanh toán bằng VND.';
     $items = WC()->cart->get_cart();
@@ -187,3 +204,34 @@ add_action('woocommerce_checkout_create_order', function ($order, $data) {
     if (abs(floatval($order->get_total()) - $expected['price']) > 0.001)
         throw new Exception('Tổng đơn ChấmPro không đúng giá.');
 }, 20, 2);
+
+/** Prevent direct product URL, ?add-to-cart, REST cart and pre-existing carts
+ * from bypassing the one-customer pilot. Unrelated WooCommerce items untouched.
+ */
+function champro_checkout_is_plan_id($product_id) {
+    return in_array(intval($product_id), array(8919, 8920), true);
+}
+add_filter('woocommerce_is_purchasable', function ($purchasable, $product) {
+    if (!is_object($product) || !method_exists($product, 'get_id') ||
+        !champro_checkout_is_plan_id($product->get_id())) return $purchasable;
+    return $purchasable && champro_checkout_access_allowed();
+}, 25, 2);
+add_filter('woocommerce_add_to_cart_validation', function ($passed, $product_id) {
+    if (champro_checkout_is_plan_id($product_id) && !champro_checkout_access_allowed()) {
+        if (function_exists('wc_add_notice')) wc_add_notice('Gói ChấmPro hiện chưa mở cho tài khoản này.', 'error');
+        return false;
+    }
+    return $passed;
+}, 25, 2);
+add_action('woocommerce_check_cart_items', function () {
+    $issue = champro_checkout_cart_issue();
+    if ($issue !== '' && function_exists('wc_add_notice')) wc_add_notice($issue, 'error');
+}, 20);
+// Check the authenticated order customer ID, not merely the browser session.
+add_action('woocommerce_checkout_create_order', function ($order, $data) {
+    $plan = champro_checkout_cart_plan();
+    if ($plan === null) return;
+    if (!champro_checkout_is_enabled() &&
+        (!champro_pilot_user_allowed() || intval($order->get_customer_id()) !== 8))
+        throw new Exception('Chỉ tài khoản thử nghiệm được phép mua gói ChấmPro.');
+}, 30, 2);
