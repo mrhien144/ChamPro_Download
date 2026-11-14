@@ -7,12 +7,12 @@
 import {validRecord,resolveRecord,planUpload,syncDecision} from './reconcile.mjs';
 const MAX_ATTEMPTS=5,MAX_RECORDS_PER_POLL=100,PHOTO_LIMIT=2*1024*1024;
 export class SyncTransport {
- constructor({api,getToken,getLocal,applyRemote,getPhoto,onStatus=()=>{},isBusy=()=>false,enabled=false}){
+ constructor({api,getToken,getLocal,applyRemote,getPhoto,putPhoto,onStatus=()=>{},isBusy=()=>false,enabled=false}){
   if(!api?.startsWith('https://'))throw Error('Đồng bộ yêu cầu HTTPS');
   if(typeof getToken!=='function'||typeof getLocal!=='function'||typeof applyRemote!=='function')
    throw Error('Thiếu kết nối dữ liệu an toàn');
   this.api=api.replace(/\/$/,'');this.getToken=getToken;this.getLocal=getLocal;
-  this.applyRemote=applyRemote;this.getPhoto=getPhoto;this.onStatus=onStatus;this.isBusy=isBusy;
+  this.applyRemote=applyRemote;this.getPhoto=getPhoto;this.putPhoto=putPhoto;this.onStatus=onStatus;this.isBusy=isBusy;
   this.enabled=Boolean(enabled);this.dirty=new Map();this.photos=new Set();this.blocked=new Set();
   this.running=false;this.lastError=null;this.account=null;this.retry=0;
   this.scheduleId=null;
@@ -57,14 +57,18 @@ export class SyncTransport {
   document.addEventListener('visibilitychange',this.onVisible);
   this.schedule(2000);
  }
- async request(path,method='GET',body=null,type='application/json'){
+ async request(path,method='GET',body=null,type='application/json',extraHeaders={}){
   const token=await this.getToken();
   if(!token)throw Object.assign(Error('Cần xác thực lại để đồng bộ'),{status:401});
   const res=await fetch(this.api+path,{method,mode:'cors',credentials:'omit',
-   cache:'no-store',headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':type}:{})},body});
-  let payload=null;
-  if(type==='image/jpeg'&&method==='GET')return {res,payload:await res.blob()};
-  payload=await res.json().catch(()=>null);
+   cache:'no-store',headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':type}:{}),...extraHeaders},body});
+  if(type==='image/jpeg'&&method==='GET'){
+   if(!res.ok)throw Object.assign(Error('Chưa tải được ảnh phiếu'),{status:res.status});
+   return {blob:await res.blob(),
+    metadata:res.headers.get('x-champro-photo-meta')||'',
+    sha256:res.headers.get('x-content-sha256')||''};
+  }
+  const payload=await res.json().catch(()=>null);
   if(!res.ok||!payload?.ok)throw Object.assign(Error(payload?.error||'Lỗi đồng bộ'),{status:res.status,data:payload});
   return payload;
  }
@@ -96,9 +100,11 @@ export class SyncTransport {
   return true;
  }
  async downloadRecords(){
+  const photoIds=new Set();
   for(let offset=0;offset<500000;offset+=MAX_RECORDS_PER_POLL){
    const page=await this.request('/api/sync/records?limit='+MAX_RECORDS_PER_POLL+'&offset='+offset);
    for(const remote of page.records||[]){
+    if(remote.kind==='result'&&!remote.deletedAt)photoIds.add(remote.id);
     const local=await this.getLocal(remote.kind,remote.id);
     const dirty=this.dirty.has(this.key(remote.kind,remote.id));
     const decision=resolveRecord({local,remote,dirty});
@@ -110,7 +116,7 @@ export class SyncTransport {
     if(decision.action==='download')
      await this.applyRemote(remote);
    }
-   if(page.nextOffset===null)return true;
+   if(page.nextOffset===null){await this.downloadPhotos(photoIds);return true;}
   }
   throw Error('Quá nhiều bản ghi; cần phân trang an toàn hơn');
  }
@@ -124,13 +130,45 @@ export class SyncTransport {
   if(typeof this.getPhoto!=='function')return;
   for(const id of [...this.photos]){
    const file=await this.getPhoto(id);
-   if(!(file instanceof Blob)||file.type!=='image/jpeg'||file.size<4||file.size>PHOTO_LIMIT){
-    this.onStatus({kind:'photo-rejected',record:id});continue;
+   if(!file?.blob || !(file.blob instanceof Blob)||file.blob.type!=='image/jpeg'||
+     file.blob.size<4||file.blob.size>PHOTO_LIMIT){
+    this.onStatus({kind:'photo-pending',record:id});continue;
    }
-   await this.request('/api/sync/photo?resultId='+encodeURIComponent(id),
-    'POST',file,'image/jpeg');
-   this.photos.delete(id);
-   this.onStatus({kind:'photo-uploaded',record:id});
+   const metadata={markers:file.markers,form:file.form,digits:file.digits,
+    examId:file.examId,examCode:file.examCode,angle:file.angle||0,createdAt:file.createdAt};
+   const raw=JSON.stringify(metadata);
+   const bytes=new TextEncoder().encode(raw);
+   if(bytes.length>2000)throw Error('Ảnh phiếu có siêu dữ liệu quá dài');
+   const header=btoa(String.fromCharCode(...bytes));
+   try{
+    const answer=await this.request('/api/sync/photo?resultId='+encodeURIComponent(id),
+     'POST',file.blob,'image/jpeg',{'X-Photo-Metadata':header,
+     'X-Photo-Base-Sha256':file.syncedSha256||''});
+    this.photos.delete(id);
+    this.onStatus({kind:'photo-uploaded',record:id,sha256:answer.sha256});
+   }catch(e){
+    if(e.status===409){
+     this.photos.delete(id);
+     this.onStatus({kind:'photo-conflict',record:id,remote:e.data?.currentSha256||null});
+    }else throw e;
+   }
+  }
+ }
+ async downloadPhotos(resultIds){
+  if(typeof this.getPhoto!=='function'||typeof this.putPhoto!=='function')return;
+  for(const id of resultIds){
+   if(this.isBusy())return;
+   if(await this.getPhoto(id))continue;
+   try{
+    const response=await this.request('/api/sync/photo?resultId='+encodeURIComponent(id),'GET',null,'image/jpeg');
+    const meta=JSON.parse(new TextDecoder().decode(Uint8Array.from(
+      atob(response.metadata),c=>c.charCodeAt(0))));
+    if(!meta||!Array.isArray(meta.markers)||meta.markers.length!==4||
+      response.blob.type!=='image/jpeg'||response.blob.size>PHOTO_LIMIT)
+      throw Error('Ảnh phiếu đã tải không hợp lệ');
+    await this.putPhoto(id,{...meta,blob:response.blob,syncedSha256:response.sha256});
+    this.onStatus({kind:'photo-downloaded',record:id});
+   }catch(e){if(e.status!==404)throw e;}
   }
  }
  async flush(){
