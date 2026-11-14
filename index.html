@@ -89,6 +89,12 @@ footer{background:#0d1b36;color:#bdcce5;padding:35px 0}
 @media(max-width:940px){.hero .container{grid-template-columns:1fr;gap:26px;min-height:unset}.hero-panel{max-width:650px;width:100%}.info-layout{grid-template-columns:1fr;gap:23px}.navigation{gap:12px}.navlinks{overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}.navlinks::-webkit-scrollbar{display:none}}
 @media(max-width:630px){.container{width:min(100% - 28px,1190px)}.navigation{min-height:67px;gap:8px}.brand{font-size:17px;gap:7px}.logo{width:35px;height:35px;border-radius:10px}.logo svg{width:23px;height:23px}.navlinks a{font-size:12px;padding:8px 9px}.hero .container{padding-top:47px;padding-bottom:55px}.hero h1{letter-spacing:-1.3px}.hero p{font-size:15px}.hero-panel{padding:15px}.panel-tile{padding:13px;min-height:99px}.panel-tile strong{font-size:13px}.section{padding:56px 0}.cardgrid{grid-template-columns:1fr}.toolcard{padding:21px;gap:14px;min-height:unset}.ico{width:49px;height:49px;flex-basis:49px}.toolcard h3{font-size:19px}.support{flex-direction:column;align-items:flex-start;padding:24px}.support .btn{width:100%}.foot{align-items:flex-start;flex-direction:column}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn,.toolcard{transition:none}}
+
+/* ChamPro home authentication: exact same WordPress/Cloudflare session as tools. */
+.navlinks .hs-auth-home{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;max-width:195px;min-height:39px;padding:8px 12px;border:1px solid #b7d2ed;border-radius:10px;background:#eaf4ff;color:#13529b;font:750 12px/1.2 system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.navlinks .hs-auth-home:hover,.navlinks .hs-auth-home:focus-visible{background:#d8eaff;border-color:#70a4df}
+.navlinks .hs-auth-home.hs-auth-connected{background:#edf8f1;color:#176340;border-color:#a4dcb9}
+@media(max-width:940px){.navlinks .hs-auth-home{font-size:12px;min-height:36px}}
 </style>
 <link rel="stylesheet" href="/site-refresh.css?v=20261104-01">
 </head>
@@ -96,7 +102,7 @@ footer{background:#0d1b36;color:#bdcce5;padding:35px 0}
 <div class="topline"></div>
 <header class="sitehead"><nav class="container navigation" aria-label="Điều hướng chính">
 <a href="/" class="brand" aria-label="ChấmPro - Trang công cụ"><img class="hs-logo" src="/app/icon.svg" alt="Logo HienSoft" width="75" height="59" decoding="async"><span class="brand-name">ChấmPro</span></a>
-<div class="navlinks"><a href="https://mrhien.com/" title="Trang chủ mrhien.com">Trang chủ</a><a href="/app/">Chấm Pro</a><a href="/tron-de/">Trộn đề</a><a href="/qr-excel.html">Tạo QR</a><a href="/ho-tro.html">Hỗ trợ</a><a href="/tai-ung-dung.html" style="background:#245de0;color:#fff">Tải ứng dụng</a></div>
+<div class="navlinks"><a href="https://mrhien.com/" title="Trang chủ mrhien.com">Trang chủ</a><a href="/app/">Chấm Pro</a><a href="/tron-de/">Trộn đề</a><a href="/qr-excel.html">Tạo QR</a><a href="/ho-tro.html">Hỗ trợ</a><button id="champroHomeLogin" type="button" class="hs-auth-home" aria-label="Đăng ký và đăng nhập">Đăng ký và đăng nhập</button><a href="/tai-ung-dung.html" style="background:#245de0;color:#fff">Tải ứng dụng</a></div>
 </nav></header>
 <main>
 <section class="hero" id="dau-trang"><div class="container">
@@ -125,5 +131,5 @@ footer{background:#0d1b36;color:#bdcce5;padding:35px 0}
 <section class="section"><div class="container"><div class="support"><div><h2>Cần hướng dẫn thêm?</h2><p>Mở trang Hỗ trợ để xem thông tin sử dụng và liên hệ khi gặp sự cố.</p></div><a href="/ho-tro.html" class="btn mint">Đến trang Hỗ trợ →</a></div></div></section>
 </main>
 <footer><div class="container foot"><div><strong>ChấmPro</strong><div>Công cụ hỗ trợ kiểm tra, đánh giá dành cho giáo viên</div><div class="footlinks"><a href="https://mrhien.com/">Trang chủ</a><a href="/app/">Chấm Pro</a><a href="/tron-de/">Trộn đề</a><a href="/qr-excel.html">Tạo QR</a><a href="/ho-tro.html">Hỗ trợ</a><a href="/bao-mat.html">Bảo mật</a><a href="/dieu-khoan.html">Điều khoản</a></div></div><div>© Bản quyền thuộc về Mr Hiển</div></div></footer>
-</body>
+<script src="/platform/licensing/auth-session.js?v=20261114-shared-1"></script><script src="/platform/licensing/home-auth.js?v=20261114-home-1"></script></body>
 </html>
