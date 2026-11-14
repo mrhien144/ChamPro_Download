@@ -23,7 +23,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
+      - name: Use preinstalled Android SDK
+        run: test -d "$ANDROID_HOME"
       - name: Validate unchanged grader and new offline identity
         run: |
           node --check app-preview/app.mjs
