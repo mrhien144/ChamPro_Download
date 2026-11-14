@@ -4,6 +4,7 @@ on:
     branches: [feature/champro-sync-foundation-20261114]
     paths:
       - 'platform/sync/**'
+      - 'platform/wordpress/champro-sync-device.php'
       - 'platform/worker/src/sync.js'
       - 'platform/worker/src/index.js'
       - 'platform/migrations/0003_sync_records.sql'
@@ -19,6 +20,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Validate PHP device enrollment syntax
+        run: php -l platform/wordpress/champro-sync-device.php
       - name: Validate JS syntax
         run: |
           node --check platform/sync/reconcile.mjs
