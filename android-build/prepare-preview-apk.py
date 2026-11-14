@@ -128,6 +128,14 @@ s = s.replace(
  '<small>Chấm và lưu dữ liệu trên thiết bị ngay cả khi offline. Chỉ đồng bộ dữ liệu khi tính năng bảo mật đã được triển khai và kích hoạt.</small>'
 )
 
+# Android-only background sync module. It is gated by the dedicated
+# first-party auth service and an OFF-by-default isolated Cloudflare Worker.
+# It never modifies or awaits camera/OMR/grading functions.
+assert (root / "app-sync.mjs").is_file()
+assert (root / "sync-device.mjs").is_file()
+assert (root / "sync" / "start.mjs").is_file()
+s = s.replace('</body>', '<script type="module" src="./app-sync.mjs"></script></body>', 1)
+
 html.write_text(s, encoding="utf-8")
 # Ensure the bundled libraries needed for offline QR and Excel are present.
 for filename in ["app.mjs", "advanced.mjs", "qr-compatible.mjs",
