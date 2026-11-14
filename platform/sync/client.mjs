@@ -7,12 +7,12 @@
 import {validRecord,resolveRecord,planUpload,syncDecision} from './reconcile.mjs';
 const MAX_ATTEMPTS=5,MAX_RECORDS_PER_POLL=100,PHOTO_LIMIT=2*1024*1024;
 export class SyncTransport {
- constructor({api,getToken,getLocal,applyRemote,getPhoto,onStatus=()=>{},enabled=false}){
+ constructor({api,getToken,getLocal,applyRemote,getPhoto,onStatus=()=>{},isBusy=()=>false,enabled=false}){
   if(!api?.startsWith('https://'))throw Error('Đồng bộ yêu cầu HTTPS');
   if(typeof getToken!=='function'||typeof getLocal!=='function'||typeof applyRemote!=='function')
    throw Error('Thiếu kết nối dữ liệu an toàn');
   this.api=api.replace(/\/$/,'');this.getToken=getToken;this.getLocal=getLocal;
-  this.applyRemote=applyRemote;this.getPhoto=getPhoto;this.onStatus=onStatus;
+  this.applyRemote=applyRemote;this.getPhoto=getPhoto;this.onStatus=onStatus;this.isBusy=isBusy;
   this.enabled=Boolean(enabled);this.dirty=new Map();this.photos=new Set();
   this.running=false;this.lastError=null;this.account=null;this.retry=0;
   this.scheduleId=null;
@@ -20,10 +20,11 @@ export class SyncTransport {
  key(kind,id){return kind+':'+id;}
  setAccount(account){
   if(this.account===account)return;
-  // Never allow a queued mutation to be uploaded to the newly logged-in
-  // account. A sign-out/sign-in switch needs explicit user reconciliation.
-  this.account=account;this.dirty.clear();this.photos.clear();
-  this.lastError=null;this.retry=0;
+  // A pending local exam can NEVER be discarded or uploaded under another
+  // login. Refuse switch until it has been safely backed up/reconciled.
+  if(this.dirty.size||this.photos.size)
+   throw Error('Dữ liệu chưa đồng bộ của tài khoản cũ phải được sao lưu hoặc xử lý trước khi đổi tài khoản');
+  this.account=account;this.lastError=null;this.retry=0;
  }
  enqueueRecord(record){
   if(!this.enabled||!validRecord(record))return false;
@@ -36,7 +37,23 @@ export class SyncTransport {
  }
  schedule(delay=2000){
   if(!this.enabled||this.scheduleId!==null||this.running)return;
-  this.scheduleId=setTimeout(()=>{this.scheduleId=null;void this.flush();},delay);
+  // Network work happens only in a browser idle window. The actual OMR
+  // scoring path never waits for a network request or image compression.
+  this.scheduleId=setTimeout(()=>{
+   this.scheduleId=null;
+   const run=()=>void this.flush();
+   if(typeof requestIdleCallback==='function')
+    requestIdleCallback(run,{timeout:20000});
+   else run();
+  },delay);
+ }
+ start(){
+  if(!this.enabled)return;
+  this.onOnline=()=>this.schedule(400);
+  this.onVisible=()=>{if(!document.hidden)this.schedule(400);};
+  window.addEventListener('online',this.onOnline);
+  document.addEventListener('visibilitychange',this.onVisible);
+  this.schedule(2000);
  }
  async request(path,method='GET',body=null,type='application/json'){
   const token=await this.getToken();
@@ -102,6 +119,7 @@ export class SyncTransport {
  }
  async flush(){
   if(!this.enabled||this.running||!this.account||!navigator.onLine)return false;
+  if(this.isBusy()){this.schedule(6500);return false;}
   this.running=true;
   try{
    // Handle uploads and incoming changes outside capture/scoring path.
@@ -125,5 +143,7 @@ export class SyncTransport {
  stop(){
   this.enabled=false;
   if(this.scheduleId!==null){clearTimeout(this.scheduleId);this.scheduleId=null;}
+  if(this.onOnline)window.removeEventListener('online',this.onOnline);
+  if(this.onVisible)document.removeEventListener('visibilitychange',this.onVisible);
  }
 }
