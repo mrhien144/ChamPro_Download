@@ -6,6 +6,7 @@ on:
       - 'platform/sync/**'
       - 'platform/wordpress/champro-sync-device.php'
       - 'platform/worker/src/sync.js'
+      - 'platform/sync-worker/**'
       - 'platform/worker/src/index.js'
       - 'platform/migrations/0003_sync_records.sql'
       - 'platform/tests/sync*'
@@ -29,6 +30,9 @@ jobs:
           node --check platform/sync/legacy-adapter.mjs
           node --check platform/sync/start.mjs
           node --check platform/worker/src/sync.js
+          node --check platform/sync-worker/src/sync.js
+          node --check platform/sync-worker/src/index.js
+          node --check platform/sync/web-token.mjs
           node --check platform/worker/src/index.js
       - name: Check conflict-safe merge
         run: |
@@ -36,5 +40,6 @@ jobs:
           node platform/tests/sync-api.test.mjs
           node platform/tests/sync-legacy-adapter.test.mjs
           node platform/tests/sync-start.test.mjs
+          node platform/tests/sync-worker-auth.test.mjs
       - name: Check account-isolated D1 compare-and-swap
         run: python3 platform/tests/sync-d1-sql-test.py
