@@ -24,6 +24,33 @@ async function session(req,env){
   throw Object.assign(Error('Phiên đăng nhập không hợp lệ hoặc hết hạn'),{status:401});
  return {id:'wp:'+id,wpId:id};
 }
+/**
+ * A device may request sync ONLY with a first-party WordPress proof-of-
+ * possession token (10 minutes), never with its offline grading license.
+ * Browser sessions continue to use the old AUTH_HMAC_SECRET unchanged.
+ */
+async function syncSession(req,env){
+ const bearer=/^Bearer ([A-Za-z0-9._-]+)$/.exec(req.headers.get('Authorization')||'');
+ if(!bearer)throw Object.assign(Error('Đồng bộ yêu cầu đăng nhập'),{status:401});
+ const t=bearer[1].split('.');
+ if(t.length!==3)throw Object.assign(Error('Phiên đồng bộ không hợp lệ'),{status:401});
+ let head,claims;
+ try{head=parse64(t[0]);claims=parse64(t[1]);}
+ catch{throw Object.assign(Error('Phiên đồng bộ bị lỗi'),{status:401});}
+ const now=Math.floor(Date.now()/1000);
+ if(head.alg!=='HS256'||head.typ!=='JWT'||!claims||
+   claims.iss!=='https://mrhien.com'||claims.aud!=='champro-sync'||
+   claims.scope!=='sync'||!/^cp-[0-9a-f-]{36}$/i.test(String(claims.deviceId||''))||
+   !Number.isInteger(claims.iat)||claims.iat>now+60||
+   !Number.isInteger(claims.exp)||claims.exp<=now||claims.exp>now+660||
+   !/^[1-9]\d*$/.test(String(claims.sub||''))||
+   !env.CHAMPRO_SYNC_HMAC_SECRET)
+  throw Object.assign(Error('Phiên đồng bộ đã hết hạn hoặc không hợp lệ'),{status:401});
+ const valid=await crypto.subtle.verify(
+  'HMAC',await hmacKey(env.CHAMPRO_SYNC_HMAC_SECRET),raw64(t[2]),txt.encode(t[0]+'.'+t[1]));
+ if(!valid)throw Object.assign(Error('Chữ ký phiên đồng bộ sai'),{status:401});
+ return {id:'wp:'+claims.sub,wpId:Number(claims.sub),syncDeviceId:claims.deviceId};
+}
 async function body(req){
  const length=Number(req.headers.get('content-length')||0);
  if(length>32768)throw Object.assign(Error('Yêu cầu quá lớn'),{status:413});
@@ -200,7 +227,9 @@ export default {
    if(path==='/health'&&req.method==='GET')res=send({ok:true,service:'champro-platform'});
    else if(path==='/api/internal'&&req.method==='POST')res=await internal(req,env);
    else{
-    const who=await session(req,env);
+    const who=path.startsWith('/api/sync/') ?
+      (await (async()=>{try{return await session(req,env)}catch(e){if(e.status!==401)throw e;return syncSession(req,env)}})()) :
+      await session(req,env);
     if(path==='/api/me'&&req.method==='GET')res=await profile(env,who);
     else if(path.startsWith('/api/sync/'))res=await handleSync(req,env,who,path);
     else if(path.startsWith('/api/admin/'))res=await admin(env,who,path,req);
