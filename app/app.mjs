@@ -1,5 +1,5 @@
-import {grade,parseRows,toCsv,validateForSave} from './grader.mjs';
-import {initFlexibleKeyEditor,setFlexibleCounts,refreshFlexibleKeyEditor} from './answer-flex-editor.mjs';
+import {grade,parseRows,toCsv,validateForSave} from './grader.mjs?v=20261114-compact1';
+import {initFlexibleKeyEditor,setFlexibleCounts,refreshFlexibleKeyEditor} from './answer-flex-editor.mjs?v=20261114-compact1';
 import {readSheet} from './omr-native.mjs';
 import {readVerifiedWithMarkers} from './omr-verified-paper.mjs';
 import {readPrinted120WithMarkers} from './omr-printed-120.mjs';
