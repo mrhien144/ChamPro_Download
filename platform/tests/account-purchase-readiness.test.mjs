@@ -34,6 +34,8 @@ assert.deepEqual([ (await scenario({ready:true,token:true})).annual,(await scena
 assert.deepEqual([ (await scenario({ready:true,token:true,plan:'annual'})).annual,(await scenario({ready:true,token:true,plan:'annual'})).lifetime],[true,false]);
 assert.deepEqual([ (await scenario({ready:true,token:true,plan:'lifetime'})).annual,(await scenario({ready:true,token:true,plan:'lifetime'})).lifetime],[true,true]);
 assert.deepEqual([ (await scenario({ready:true,token:true,plan:'suspended'})).annual,(await scenario({ready:true,token:true,plan:'suspended'})).lifetime],[true,true]);
-assert.deepEqual([ (await scenario({ready:true,token:true,reject:true})).annual,(await scenario({ready:true,token:true,reject:true})).lifetime],[true,true]);
+// A transport/CORS error is not proof that the first-party server checkout is closed.
+// Buttons only navigate; WooCommerce checks authorization and prices again.
+assert.deepEqual([ (await scenario({ready:true,token:true,reject:true})).annual,(await scenario({ready:true,token:true,reject:true})).lifetime],[false,false]);
 assert(!js.includes('PURCHASES_OPEN=true') && js.includes('champro/v1/checkout-readiness'));
-console.log('PASS: purchase controls require verified server readiness + login, reject lifetime/suspended/offline and disable unsafe renewals.');
+console.log('PASS: purchase controls require verified server readiness + login, reject lifetime/suspended/closed and allow first-party verification after network failure.');
