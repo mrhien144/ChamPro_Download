@@ -64,11 +64,13 @@ async function photo(req,env,owner){
  const result=await env.DB.prepare("SELECT record_id FROM sync_records WHERE account_id=? AND kind='result' AND record_id=? AND deleted_at IS NULL").bind(owner,id).first();
  if(!result)return fail('Hãy đồng bộ bài chấm trước khi lưu ảnh',409);
  if(req.method==='GET'){
-  const meta=await env.DB.prepare('SELECT object_key,sha256,byte_size FROM sync_photos WHERE account_id=? AND result_id=?').bind(owner,id).first();
+  const meta=await env.DB.prepare('SELECT object_key,sha256,byte_size,metadata_json FROM sync_photos WHERE account_id=? AND result_id=?').bind(owner,id).first();
   if(!meta)return fail('Chưa có ảnh phiếu',404);
   const obj=await env.BUCKET.get(meta.object_key);
   if(!obj)return fail('Ảnh phiếu chưa có trong kho',404);
-  return new Response(obj.body,{headers:{'content-type':'image/jpeg','cache-control':'private, no-store','x-content-sha256':meta.sha256}});
+  return new Response(obj.body,{headers:{'content-type':'image/jpeg','cache-control':'private, no-store',
+   'x-content-sha256':meta.sha256,
+   'x-champro-photo-meta':btoa(String.fromCharCode(...new TextEncoder().encode(meta.metadata_json||'{}')))}});
  }
  if(req.method!=='POST')return fail('Phương thức không hợp lệ',405);
  if(req.headers.get('content-type')?.split(';')[0].trim().toLowerCase()!=='image/jpeg')return fail('Chỉ chấp nhận JPEG');
@@ -77,6 +79,24 @@ async function photo(req,env,owner){
  const bytes=new Uint8Array(await req.arrayBuffer());
  if(bytes.length<4||bytes.length>MAX_PHOTO||bytes[0]!==0xff||bytes[1]!==0xd8||bytes.at(-2)!==0xff||bytes.at(-1)!==0xd9)
   return fail('Tệp ảnh JPEG không hợp lệ',400);
+ const rawMeta=req.headers.get('x-champro-photo-meta')||'';
+ if(rawMeta.length>4096||!/^[A-Za-z0-9+/=]*$/.test(rawMeta))return fail('Thông tin ảnh không hợp lệ');
+ let parsedMeta,metaJson;
+ try{
+  metaJson=new TextDecoder().decode(Uint8Array.from(atob(rawMeta),c=>c.charCodeAt(0)));
+  parsedMeta=JSON.parse(metaJson);
+ }catch{return fail('Không đọc được thông tin ảnh',400);}
+ if(!parsedMeta||!Array.isArray(parsedMeta.markers)||parsedMeta.markers.length!==4||
+   parsedMeta.markers.some(p=>!Array.isArray(p)||p.length!==2||
+     !p.every(v=>typeof v==='number'&&Number.isFinite(v)))||
+   !['three','120'].includes(parsedMeta.form)||
+   !Number.isInteger(parsedMeta.digits)||![3,4].includes(parsedMeta.digits)||
+   typeof parsedMeta.examId!=='string'||parsedMeta.examId.length>100||
+   !Number.isInteger(parsedMeta.angle||0)||![0,90,180,270].includes(parsedMeta.angle||0)||
+   metaJson.length>2000)return fail('Tọa độ ảnh không hợp lệ');
+ metaJson=JSON.stringify({markers:parsedMeta.markers,form:parsedMeta.form,
+  digits:parsedMeta.digits,examId:parsedMeta.examId,examCode:String(parsedMeta.examCode||'').slice(0,4),
+  angle:parsedMeta.angle||0,createdAt:String(parsedMeta.createdAt||'').slice(0,40)});
  const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(x=>x.toString(16).padStart(2,'0')).join('');
  const base=req.headers.get('x-photo-base-sha256')||'';
  if(base&&!/^[a-f0-9]{64}$/.test(base))return fail('Phiên bản ảnh không hợp lệ',400);
@@ -88,11 +108,11 @@ async function photo(req,env,owner){
  if((old?.sha256||'')!==base)return reply({ok:false,error:'Xung đột ảnh phiếu',currentSha256:old?.sha256||null},409);
  await env.BUCKET.put(key,bytes,{httpMetadata:{contentType:'image/jpeg'}});
  const updated=await env.DB.prepare(
-  'INSERT INTO sync_photos(account_id,result_id,object_key,sha256,byte_size) '+
-  'SELECT ?,?,?,?,? WHERE (?=\'\' OR EXISTS(SELECT 1 FROM sync_photos WHERE account_id=? AND result_id=?)) '+
-  'ON CONFLICT(account_id,result_id) DO UPDATE SET object_key=excluded.object_key,sha256=excluded.sha256,byte_size=excluded.byte_size,updated_at=CURRENT_TIMESTAMP '+
+  'INSERT INTO sync_photos(account_id,result_id,object_key,sha256,metadata_json,byte_size) '+
+  'SELECT ?,?,?,?,?,? WHERE (?=\'\' OR EXISTS(SELECT 1 FROM sync_photos WHERE account_id=? AND result_id=?)) '+
+  'ON CONFLICT(account_id,result_id) DO UPDATE SET object_key=excluded.object_key,sha256=excluded.sha256,metadata_json=excluded.metadata_json,byte_size=excluded.byte_size,updated_at=CURRENT_TIMESTAMP '+
   'WHERE sync_photos.sha256=?'
- ).bind(owner,id,key,hash,bytes.length,base,owner,id,base).run();
+ ).bind(owner,id,key,hash,metaJson,bytes.length,base,owner,id,base).run();
  if(!updated.meta?.changes){
   const current=await env.DB.prepare('SELECT sha256 FROM sync_photos WHERE account_id=? AND result_id=?').bind(owner,id).first();
   return reply({ok:false,error:'Xung đột ảnh phiếu',currentSha256:current?.sha256||null},409);
