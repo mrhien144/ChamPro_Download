@@ -40,8 +40,6 @@ jobs:
           node tests/compact-key-scope-v146.test.mjs
           node tests/visual-answer-ii.test.mjs
           node tests/compact-points-preview.test.mjs
-          node tests/compact-keys-v146.test.mjs
-          node tests/compact-points-preview.test.mjs
           node tests/preview-pending-code.test.mjs
           node tests/offline-account-persistence-v146.test.mjs
       - name: Bundle unchanged ChấmPro v14.6 grading with additive sync QA
