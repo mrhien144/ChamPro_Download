@@ -1,0 +1,40 @@
+name: ChấmPro isolated Worker payment-state regression
+on:
+  push:
+    branches: [fix/champro-paid-order-worker-safe-20261113]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'platform/worker/src/index.js'
+      - 'platform/tests/payment-worker-sql-test.py'
+      - '.github/workflows/champro-worker-paid-order-fix.yml'
+permissions:
+  contents: read
+jobs:
+  verify-paid-order:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: JS syntax
+        run: node --check platform/worker/src/index.js
+      - name: Run payment D1 transaction cases
+        run: python platform/tests/payment-worker-sql-test.py
+      - name: Ensure only authenticated Bridge may issue paid-order
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const s=fs.readFileSync('platform/worker/src/index.js','utf8');
+          assert(s.includes("if(!await secureBridge(req,env))"));
+          assert(s.includes("b.orderStatus!=='paid'"));
+          assert(s.includes("if(previous.processed_at)"));
+          assert(s.includes("Mã đơn hàng đã được sử dụng cho giao dịch khác"));
+          assert(!s.includes("amount!==PRICES[plan]||b.orderStatus!=='completed'"));
+          console.log('PASS paid-order only via authenticated Bridge; duplicates guarded');
+          JS
