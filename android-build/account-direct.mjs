@@ -1,7 +1,7 @@
 /* ChấmPro v14.5 - direct WordPress PKCE login, no Cloudflare Worker for sign-in.
    Camera, OMR, scoring, photo review and offline data unchanged.
    After one successful sign-in, validate signed ES256 license locally on each launch. */
-import {verifyLicense,pinPublicKey} from './offline-license.mjs';
+import {verifyLicense,pinPublicKey,inspectSignedIdentity} from './offline-license.mjs';
 import {parseAuthReturn} from './auth-return.mjs';
 const LOGIN='https://mrhien.com/champro-login-app/';
 const SHOP='https://mrhien.com/champro-connect-app/';
@@ -156,7 +156,17 @@ function buy(plan){
 function boot(){
  deviceId();
  const saved=localStorage.getItem(LICENSE_KEY);
- if(saved)void verifyLicense(saved).then(unlock,()=>lock());
+ if(saved)void verifyLicense(saved).then(unlock,async()=>{
+  // A temporarily unavailable network does not sign the user out. If the
+  // signed entitlement has expired, preserve account identity but keep the
+  // paywalled functions locked until the server issues an updated license.
+  const identity=await inspectSignedIdentity(saved);
+  lock();
+  if(identity){
+   $('cpCurrentPlan').textContent='Tài khoản '+identity.sub+' vẫn được ghi nhớ trên thiết bị.';
+   stamp('Tài khoản vẫn được ghi nhớ. Cần kết nối Internet để gia hạn xác nhận quyền sử dụng. Dữ liệu đã chấm không bị xóa.');
+  }else stamp('Chưa xác minh được giấy phép đã lưu. Dữ liệu chấm trên thiết bị vẫn được giữ nguyên.');
+ });
  else lock();
  loadPending();
  $('cpSignIn').onclick=()=>void startLogin();
