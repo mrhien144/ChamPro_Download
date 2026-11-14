@@ -22,9 +22,12 @@ jobs:
       - name: Validate JS syntax
         run: |
           node --check platform/sync/reconcile.mjs
+          node --check platform/sync/client.mjs
           node --check platform/worker/src/sync.js
           node --check platform/worker/src/index.js
       - name: Check conflict-safe merge
-        run: node platform/tests/sync-reconcile.test.mjs
+        run: |
+          node platform/tests/sync-reconcile.test.mjs
+          node platform/tests/sync-api.test.mjs
       - name: Check account-isolated D1 compare-and-swap
         run: python3 platform/tests/sync-d1-sql-test.py
