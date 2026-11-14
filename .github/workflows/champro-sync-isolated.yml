@@ -1,0 +1,30 @@
+name: ChấmPro sync isolated safety suite
+on:
+  push:
+    branches: [feature/champro-sync-foundation-20261114]
+    paths:
+      - 'platform/sync/**'
+      - 'platform/worker/src/sync.js'
+      - 'platform/worker/src/index.js'
+      - 'platform/migrations/0003_sync_records.sql'
+      - 'platform/tests/sync*'
+      - '.github/workflows/champro-sync-isolated.yml'
+permissions:
+  contents: read
+jobs:
+  isolated-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate JS syntax
+        run: |
+          node --check platform/sync/reconcile.mjs
+          node --check platform/worker/src/sync.js
+          node --check platform/worker/src/index.js
+      - name: Check conflict-safe merge
+        run: node platform/tests/sync-reconcile.test.mjs
+      - name: Check account-isolated D1 compare-and-swap
+        run: python3 platform/tests/sync-d1-sql-test.py
