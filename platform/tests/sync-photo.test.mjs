@@ -33,7 +33,7 @@ const upload=async(owner=who,body=jpeg,base='')=>handleSync(new Request(url,{
  method:'POST',headers:{'Content-Type':'image/jpeg','X-Photo-Metadata':header,
  'X-Photo-Base-Sha256':base},body}),env,owner,'/api/sync/photo');
 let res=await upload();
-assert.equal(res.status,200);
+assert.equal(res.status,200,JSON.stringify(await res.clone().json()));
 let result=await res.json();
 const original=result.sha256;
 assert.match(original,/^[a-f0-9]{64}$/);
