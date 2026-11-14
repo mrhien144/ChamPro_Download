@@ -214,6 +214,11 @@ export default {
  async fetch(req,env){
   const origin=req.headers.get('Origin')||'';
   const whitelist=String(env.ALLOWED_ORIGINS||'https://champro.mrhien.com,https://mrhien.com').split(',').map(x=>x.trim());
+  // Installed Capacitor WebViews use https://localhost. Only the feature-
+  // flagged authenticated SYNC endpoints can receive that origin.
+  const endpoint=new URL(req.url).pathname;
+  if(env.CHAMPRO_SYNC_ENABLED==='1'&&endpoint.startsWith('/api/sync/'))
+   whitelist.push('https://localhost');
   if(origin&&!whitelist.includes(origin))return error('Nguồn bị từ chối',403);
   const cors={'Access-Control-Allow-Origin':origin||'https://champro.mrhien.com',
    'Access-Control-Allow-Headers':'Authorization,Content-Type,X-Bridge-Secret,X-Photo-Metadata,X-Photo-Base-Sha256',
