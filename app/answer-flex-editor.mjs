@@ -16,15 +16,15 @@ function multiRow(p,q){
  const raw=getRow(p,q).toUpperCase(),val=p==='II'?raw.replaceAll('D','Đ'):raw,all=val==='ALL';
  if(p==='I'){
   const values=new Set(val.split(/[|;,/ ]+/));
-  return '<div class="flex-question"><strong>Câu '+(q+1)+'</strong><div class="flex-chips">'+
+  return '<div class="flex-question flex-question--I"><strong>Câu '+(q+1)+'</strong><div class="flex-chips">'+
     ['A','B','C','D'].map(x=>chip(p,q,x,x,!all&&values.has(x))).join('')+
-    chip(p,q,'ALL','Cho điểm toàn câu',all)+'</div></div>';
+    chip(p,q,'ALL','All',all)+'</div></div>';
  }
  const letters=['a','b','c','d'];
- return '<div class="flex-question"><strong>Câu '+(q+1)+'</strong><div class="flex-chips">'+
+ return '<div class="flex-question flex-question--II"><strong>Câu '+(q+1)+'</strong><div class="flex-chips">'+
   letters.map((l,i)=>{
    const v=val[i]||'';
-   return '<div class="flex-sub"><b>Ý '+l+')</b>'+
+   return '<div class="flex-sub"><b>'+l+')</b>'+
     chip(p,q,i+'T','Đúng',!all&&(v==='Đ'||v==='*'))+
     chip(p,q,i+'F','Sai',!all&&(v==='S'||v==='*'))+'</div>';
   }).join('')+chip(p,q,'ALL','Cho điểm toàn câu',all)+'</div></div>';
@@ -32,11 +32,11 @@ function multiRow(p,q){
 function shortRow(q){
  const val=getRow('III',q),all=val.toUpperCase()==='ALL',values=all?['']:val.split('|');
  if(!values.length)values.push('');
- return '<div class="flex-question"><strong>Câu '+(q+1)+'</strong><div class="flex-short" data-short-group="'+q+'">'+
+ return '<div class="flex-question flex-question--III"><strong>Câu '+(q+1)+'</strong><div class="flex-short" data-short-group="'+q+'">'+
   values.map((v,i)=>'<div class="flex-shortline"><label>Đáp án '+(i+1)+'<input type="text" data-short-q="'+q+'" value="'+esc(v)+'"'+(all?' disabled':'')+' placeholder="Ví dụ: 0,35"></label>'+
   (values.length>1?'<button type="button" class="outline" data-short-remove="'+q+'" data-index="'+i+'">Xóa</button>':'')+'</div>').join('')+
   '<div class="flex-short-actions"><button type="button" class="outline" data-short-add="'+q+'"'+(all?' disabled':'')+'>+ Thêm đáp án</button>'+
-  chip('III',q,'ALL','Cho điểm toàn câu',all)+'</div></div></div>';
+  chip('III',q,'ALL','Cho điểm',all)+'</div></div></div>';
 }
 export function refreshFlexibleKeyEditor(){
  const root=byId('flexAnswers');if(!root)return;
