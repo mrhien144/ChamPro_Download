@@ -40,3 +40,18 @@ jobs:
           path: _out/*.zip
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish clearly labeled staging packages (NOT production)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="champro-sync-staging-20261114"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" _out/*.zip --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" _out/*.zip --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" --prerelease \
+              --title "ChấmPro Sync staging — chưa triển khai" \
+              --notes "CHƯA dùng cho dữ liệu học sinh thật. WordPress plugin và Worker mặc định tắt. Yêu cầu sao lưu D1, thử nghiệm hai thiết bị và khóa ký Android tương thích trước khi triển khai. Không thay thế Worker thanh toán."
+          fi
