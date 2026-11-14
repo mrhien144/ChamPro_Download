@@ -473,3 +473,12 @@ initFlexibleKeyEditor();
 render();
 export {getDb,save,toast,spreadsheetRows,loadScript,sendFile};
 function getDb(){return db;}
+// Additive sync bridge. No network call or camera change in the grading path.
+function applySyncDb(next){
+ if(next?.schema!==1||!Array.isArray(next.exams)||!Array.isArray(next.students)||!Array.isArray(next.results))
+  throw Error('Không thể lưu bản đồng bộ không hợp lệ');
+ db=next;save();
+}
+window.champroAppData=Object.freeze({
+ getDb,applySyncDb,isCameraBusy:()=>Boolean(captureBusy||stream)
+});
