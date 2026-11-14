@@ -105,6 +105,18 @@ s = s.replace("</body>", """<section id="cpAccountGate" role="dialog" aria-modal
 # APK-only product copy. No changes to camera, grader or stored records.
 # Use truthful local-storage warnings until production D1/R2 sync is deployed.
 s = s.replace('BẢN THỬ NGHIỆM RIÊNG', 'ỨNG DỤNG CHẤM BÀI')
+s = s.replace('content="ChấmPro Test"', 'content="ChấmPro"')
+s = s.replace(
+ 'Đăng nhập WordPress để kiểm tra kết nối D1/R2. Chỉ kiểm tra tài khoản và trạng thái API; chưa tải học sinh, đề, điểm hay ảnh phiếu lên máy chủ.',
+ 'Quyền sử dụng được quản lý theo tài khoản. Dữ liệu chấm được đồng bộ trong nền chỉ sau khi máy chủ và thiết bị xác thực thành công.'
+)
+s = s.replace('Đồng bộ Cloudflare D1/R2 chưa kích hoạt.',
+ 'Đồng bộ Cloudflare chỉ chạy sau khi máy chủ xác nhận an toàn.')
+s = s.replace('Không tự tải dữ liệu lên máy chủ.',
+ 'Dữ liệu chỉ được tải lên máy chủ khi tính năng đồng bộ và tài khoản được xác minh.')
+s = s.replace('Đồng bộ Cloudflare chưa tự động.',
+ 'Đồng bộ hoạt động khi tài khoản và máy chủ được xác minh.')
+
 s = s.replace(
  'BẢN THỬ NGHIỆM /app-preview/: dữ liệu trong bản này tách riêng khỏi /app/. Không nhập dữ liệu học sinh thật. Hãy sao lưu thường xuyên. Không dùng chế độ ẩn danh hoặc xóa dữ liệu trang web nếu muốn giữ kết quả.',
  'Dữ liệu học sinh, đáp án, kết quả và ảnh phiếu được lưu trên thiết bị để chấm offline. Đồng bộ giữa điện thoại và ChấmPro Web chưa kích hoạt. Hãy sao lưu dữ liệu trước khi gỡ hoặc cài lại ứng dụng.'
