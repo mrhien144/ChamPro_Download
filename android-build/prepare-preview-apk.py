@@ -102,6 +102,32 @@ s = s.replace("</body>", """<section id="cpAccountGate" role="dialog" aria-modal
 </div></section>
 <script type="module" src="./account-direct.mjs"></script><script type="module" src="./update-app.mjs"></script></body>""",1)
 
+# APK-only product copy. No changes to camera, grader or stored records.
+# Use truthful local-storage warnings until production D1/R2 sync is deployed.
+s = s.replace('BẢN THỬ NGHIỆM RIÊNG', 'ỨNG DỤNG CHẤM BÀI')
+s = s.replace(
+ 'BẢN THỬ NGHIỆM /app-preview/: dữ liệu trong bản này tách riêng khỏi /app/. Không nhập dữ liệu học sinh thật. Hãy sao lưu thường xuyên. Không dùng chế độ ẩn danh hoặc xóa dữ liệu trang web nếu muốn giữ kết quả.',
+ 'Dữ liệu học sinh, đáp án, kết quả và ảnh phiếu được lưu trên thiết bị để chấm offline. Đồng bộ giữa điện thoại và ChấmPro Web chưa kích hoạt. Hãy sao lưu dữ liệu trước khi gỡ hoặc cài lại ứng dụng.'
+)
+s = s.replace('Kết nối tài khoản ChấmPro (thử nghiệm)', 'Tài khoản ChấmPro')
+s = s.replace(
+ 'Phiên bản thử nghiệm chưa có tài khoản, phân quyền, đồng bộ đa thiết bị, thanh toán hoặc hệ thống cấp phép. Những thành phần đó cần máy chủ bảo mật riêng, không thể triển khai an toàn bằng GitHub Pages tĩnh.',
+ 'Tài khoản, gói sử dụng và thanh toán ChấmPro được xác minh qua mrhien.com. Dữ liệu chấm trên thiết bị chưa tự động đồng bộ với ChấmPro Web. Tính năng đó cần kết nối bảo mật riêng và sẽ chỉ được bật sau khi kiểm thử.'
+)
+s = s.replace(
+ 'Phiên đăng nhập chỉ được giữ trong bộ nhớ của trang này, không ghi vào localStorage. Đóng trang sẽ cần đăng nhập lại.',
+ 'Tài khoản ứng dụng đã xác thực được ghi nhớ trên thiết bị; khi offline, giấy phép đã ký còn hiệu lực vẫn dùng được. Trạng thái đồng bộ dữ liệu sẽ được hiển thị riêng khi tính năng được kích hoạt.'
+)
+s = s.replace('<h1>ChấmPro Test v14.5</h1>', '<h1>ChấmPro</h1>')
+s = s.replace(
+ 'Phiên bản thử nghiệm hiện tại v14.5. Ứng dụng vẫn chấm hoàn toàn offline.',
+ 'Ứng dụng vẫn hỗ trợ chấm bài offline.'
+)
+s = s.replace(
+ '<small>Chỉ tính điểm trên thiết bị. Không truyền ảnh phiếu và dữ liệu học sinh lên máy chủ để chấm bài.</small>',
+ '<small>Chấm và lưu dữ liệu trên thiết bị ngay cả khi offline. Chỉ đồng bộ dữ liệu khi tính năng bảo mật đã được triển khai và kích hoạt.</small>'
+)
+
 html.write_text(s, encoding="utf-8")
 # Ensure the bundled libraries needed for offline QR and Excel are present.
 for filename in ["app.mjs", "advanced.mjs", "qr-compatible.mjs",
