@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS sync_photos (
  result_id TEXT NOT NULL,
  object_key TEXT NOT NULL,
  sha256 TEXT NOT NULL,
+ metadata_json TEXT NOT NULL DEFAULT '{}',
  byte_size INTEGER NOT NULL CHECK(byte_size > 0 AND byte_size <= 2097152),
  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
  PRIMARY KEY(account_id,result_id)
