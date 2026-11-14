@@ -14,7 +14,7 @@ results:'<path d="M5 20V10m7 10V4m7 16v-8"/><path d="M3 21h18"/>'
 const svg=path=>'<svg viewBox="0 0 24 24" aria-hidden="true">'+path+'</svg>';
 document.body.classList.add('cp-native-app');
 const top=document.createElement('header');top.className='cp-native-topbar';
-top.innerHTML='<div class="cp-native-brand"><img src="./pwa-icon.svg" alt=""><div><strong>ChấmPro</strong><small>Ứng dụng chấm bài · Bản thử nghiệm</small></div></div><div class="cp-native-top-actions"><span class="cp-native-net" id="cpNativeNet" role="status"></span><button class="cp-native-more" id="cpNativeMore" type="button" aria-label="Mở tiện ích">⋯</button></div>';
+top.innerHTML='<div class="cp-native-brand"><img src="./pwa-icon.svg" alt=""><div><strong>ChấmPro</strong><small>Ứng dụng chấm bài · Hoạt động offline</small></div></div><div class="cp-native-top-actions"><span class="cp-native-net" id="cpNativeNet" role="status"></span><button class="cp-native-more" id="cpNativeMore" type="button" aria-label="Mở tiện ích">⋯</button></div>';
 const bottom=document.createElement('nav');bottom.className='cp-native-bottom';bottom.setAttribute('aria-label','Điều hướng ứng dụng');
 bottom.innerHTML=pages.map(p=>'<button type="button" class="cp-native-tab" data-native-page="'+p+'" aria-label="'+labels[p]+'"><span class="cp-native-tab-icon">'+svg(icons[p])+'</span><span>'+labels[p]+'</span></button>').join('');
 const sheet=document.createElement('div');sheet.className='cp-native-sheet-backdrop';sheet.id='cpNativeSheet';sheet.hidden=true;
