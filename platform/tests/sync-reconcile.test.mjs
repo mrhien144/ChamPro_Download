@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {validRecord,resolveRecord,planUpload,syncDecision} from '../sync/reconcile.mjs';
+const r=(revision,score)=>({kind:'result',id:'result-1001',revision,payload:{score}});
+assert(validRecord(r(0,8)));
+assert(!validRecord({...r(0,8),id:'../unsafe'}));
+assert.equal(resolveRecord({local:r(1,8),remote:r(2,9)}).action,'download');
+assert.equal(resolveRecord({local:r(1,8),remote:r(2,9),dirty:true}).action,'conflict');
+assert.equal(resolveRecord({local:r(2,10),remote:r(2,9),dirty:true}).action,'retain-local');
+assert.equal(resolveRecord({local:r(2,10),remote:r(2,9)}).action,'unchanged');
+assert.equal(resolveRecord({local:r(3,10),remote:r(2,9)}).action,'retain-local');
+assert.deepEqual(planUpload({record:r(2,10),baseRevision:2}),{kind:'result',id:'result-1001',baseRevision:2,payload:{score:10}});
+assert.throws(()=>planUpload({record:r(2,10),baseRevision:1}));
+assert.equal(syncDecision(409),'conflict');
+assert.equal(syncDecision(401),'reauth-required');
+assert.equal(syncDecision(502),'retry-later');
+assert.equal(syncDecision(200),'ok');
+console.log('PASS: sync reconciliation never overwrites dirty edits or trusts client revisions.');
