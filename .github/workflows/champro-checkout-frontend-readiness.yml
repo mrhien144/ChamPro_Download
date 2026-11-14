@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feature/champro-checkout-frontend-readiness-20261113
+      - fix/champro-account-official-purchase-20261114
     paths:
       - 'platform/account/account.js'
       - 'platform/tests/account-purchase-readiness.test.mjs'
