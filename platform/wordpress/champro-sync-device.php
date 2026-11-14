@@ -38,7 +38,8 @@ function cpsync_key_meta($device){
 function cpsync_valid_jwk($jwk){
   if (!is_array($jwk) || ($jwk['kty']??null)!=='EC' ||
      ($jwk['crv']??null)!=='P-256') return false;
-  $x=cpsync_un64($jwk['x']??''), $y=cpsync_un64($jwk['y']??'');
+  $x=cpsync_un64($jwk['x']??'');
+  $y=cpsync_un64($jwk['y']??'');
   if ($x===false||$y===false||strlen($x)!==32||strlen($y)!==32) return false;
   $pub=hex2bin('3059301306072A8648CE3D020106082A8648CE3D03010703420004').$x.$y;
   $pem="-----BEGIN PUBLIC KEY-----\n".chunk_split(base64_encode($pub),64,"\n")."-----END PUBLIC KEY-----\n";
