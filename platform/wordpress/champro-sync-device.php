@@ -96,7 +96,49 @@ add_filter('rest_post_dispatch',function($response,$server,$request){
   $response->set_data($data);
   return $response;
 },10,3);
+function cpsync_validate_platform_token($jwt){
+ if (!defined('CHAMPRO_AUTH_SECRET')||!is_string(CHAMPRO_AUTH_SECRET)||
+     strlen(CHAMPRO_AUTH_SECRET)<32||!is_string($jwt)||strlen($jwt)>4096) return 0;
+ $t=explode('.',$jwt);
+ if (count($t)!==3) return 0;
+ $header=json_decode(cpsync_un64($t[0]),true);
+ $p=json_decode(cpsync_un64($t[1]),true);
+ $sig=cpsync_un64($t[2]);
+ if (!is_array($header)||!is_array($p)||$sig===false||
+    ($header['alg']??'')!=='HS256'||($header['typ']??'')!=='JWT'||
+    ($p['iss']??'')!=='https://mrhien.com'||
+    ($p['aud']??'')!=='champro-platform'||!preg_match('/^[1-9][0-9]*$/D',(string)($p['sub']??'')))
+    return 0;
+ $now=time();
+ if (!is_numeric($p['iat']??null)||!is_numeric($p['exp']??null)||
+     (int)$p['iat']>$now+60||(int)$p['exp']<=$now||
+     (int)$p['exp']>$now+1200) return 0;
+ $actual=hash_hmac('sha256',$t[0].'.'.$t[1],CHAMPRO_AUTH_SECRET,true);
+ if (!hash_equals($actual,$sig)) return 0;
+ $uid=(int)$p['sub'];
+ return get_userdata($uid)?$uid:0;
+}
+function cpsync_issue_token($uid,$device){
+ $now=time();
+ $head=cpsync_b64url(wp_json_encode(array('alg'=>'HS256','typ'=>'JWT')));
+ $p=cpsync_b64url(wp_json_encode(array(
+  'iss'=>'https://mrhien.com','aud'=>'champro-sync',
+  'sub'=>(string)$uid,'deviceId'=>$device,'scope'=>'sync',
+  'iat'=>$now,'exp'=>$now+600,'jti'=>bin2hex(random_bytes(12))
+ )));
+ $msg=$head.'.'.$p;
+ return $msg.'.'.cpsync_b64url(hash_hmac('sha256',$msg,CHAMPRO_SYNC_HMAC_SECRET,true));
+}
 add_action('rest_api_init',function(){
+  register_rest_route('champro/sync/v1','/web-token',array(
+   'methods'=>'POST','permission_callback'=>'__return_true',
+   'callback'=>function(WP_REST_Request $req){
+     if(!cpsync_enabled())return cpsync_failure('Đồng bộ chưa kích hoạt',503);
+     $b=$req->get_json_params();
+     $uid=cpsync_validate_platform_token(is_array($b)?($b['platformToken']??null):null);
+     if(!$uid)return cpsync_failure('Phiên web không hợp lệ; vui lòng đăng nhập lại',401);
+     return rest_ensure_response(array('ok'=>true,'token'=>cpsync_issue_token($uid,'web'),'expiresIn'=>600));
+   }));
   register_rest_route('champro/sync/v1','/challenge',array(
     'methods'=>'POST','permission_callback'=>'__return_true',
     'callback'=>function(WP_REST_Request $req){
@@ -133,22 +175,13 @@ add_action('rest_api_init',function(){
       $der=cpsync_es256_to_der($sig);
       if (!$der||openssl_verify($message,$der,$key['pem'],OPENSSL_ALGO_SHA256)!==1)
         return cpsync_failure('Chữ ký thiết bị không đúng',403);
-      $now=time();
-      $head=cpsync_b64url(wp_json_encode(array('alg'=>'HS256','typ'=>'JWT')));
-      $claims=cpsync_b64url(wp_json_encode(array(
-        'iss'=>'https://mrhien.com','aud'=>'champro-sync',
-        'sub'=>(string)$uid,'deviceId'=>$device,'scope'=>'sync',
-        'iat'=>$now,'exp'=>$now+600,'jti'=>bin2hex(random_bytes(12))
-      )));
-      $msg=$head.'.'.$claims;
-      $jwt=$msg.'.'.cpsync_b64url(hash_hmac('sha256',$msg,CHAMPRO_SYNC_HMAC_SECRET,true));
-      return rest_ensure_response(array('ok'=>true,'token'=>$jwt,'expiresIn'=>600));
+      return rest_ensure_response(array('ok'=>true,'token'=>cpsync_issue_token($uid,$device),'expiresIn'=>600));
     }));
 });
 add_filter('rest_pre_serve_request',function($served,$result,$request){
   if (strpos($request->get_route(),'/champro/sync/v1/')!==0) return $served;
-  if (($_SERVER['HTTP_ORIGIN']??'')==='https://localhost') {
-    header('Access-Control-Allow-Origin: https://localhost');
+  if (in_array(($_SERVER['HTTP_ORIGIN']??''),array('https://localhost','https://champro.mrhien.com'),true)) {
+    header('Access-Control-Allow-Origin: '.($_SERVER['HTTP_ORIGIN']??''));
     header('Access-Control-Allow-Headers: Content-Type');
     header('Access-Control-Allow-Methods: POST, OPTIONS');
     header('Vary: Origin',false);
