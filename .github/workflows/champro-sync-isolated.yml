@@ -41,5 +41,6 @@ jobs:
           node platform/tests/sync-legacy-adapter.test.mjs
           node platform/tests/sync-start.test.mjs
           node platform/tests/sync-worker-auth.test.mjs
+          node platform/tests/sync-photo.test.mjs
       - name: Check account-isolated D1 compare-and-swap
         run: python3 platform/tests/sync-d1-sql-test.py
