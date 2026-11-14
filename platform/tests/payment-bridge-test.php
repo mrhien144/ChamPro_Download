@@ -10,6 +10,9 @@ define('CHAMPRO_LIFETIME_PRODUCT_ID', 8920);
 define('CHAMPRO_ALLOWED_GATEWAY_IDS', 'sepay');
 // Enable only inside isolated fake WooCommerce contract tests.
 define('CHAMPRO_LIVE_GRANTS_ENABLED', true);
+// Only in this isolated fixture: simulate a fully verified public checkout.
+define('CHAMPRO_LIVE_CHECKOUT_ENABLED', true);
+define('CHAMPRO_PAYMENT_E2E_VERIFIED', true);
 $GLOBALS['hooks'] = [];
 $GLOBALS['requests'] = [];
 function add_action($name, $callback, $priority=10, $argc=1) { $GLOBALS['hooks'][$name][] = $callback; }
