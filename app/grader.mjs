@@ -27,7 +27,7 @@ export function grade(exam,answers) {
     let n=0;
     for(let j=0;j<4;j++){
       const response=value[j],accepted=correct[j];
-      if('ĐS'.includes(response)&&(accepted===response||accepted==='*'))n++;
+      if((response==='Đ'||response==='S')&&(accepted===response||accepted==='*'))n++;
     }
     const got=correct==='ALL'?Number(sII[4]):Number(sII[n]??0);const mx=Number(sII[4]??1);
     points.II+=got;max+=mx;detail.push({part:'II',q:i+1,response:value,key:correct,got,max:mx});
