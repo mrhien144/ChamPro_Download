@@ -95,11 +95,11 @@ function questionRows(part,arr,count){
    if(part==='I'){
     const parsed=parseChoiceI(raw);
     body='<div class="flex-chips">'+['A','B','C','D'].map(c=>chip(part,q,c,c,parsed.choices.includes(c))).join('')+
-     chip(part,q,'ALL','Cho điểm toàn câu',parsed.all)+'</div>';
+     chip(part,q,'ALL','All',parsed.all)+'</div>';
    }else if(part==='II'){
     const parsed=parseChoiceII(raw);
     body='<div class="cp-visual-ii-grid">'+['a','b','c','d'].map((letter,i)=>
-      '<div class="flex-sub cp-ii-answer-row"><b>Ý '+letter+')</b><div class="cp-ii-answer-options">'+chip(part,q,i+'T','Đúng',parsed.columns[i].trueValue)+
+      '<div class="flex-sub cp-ii-answer-row"><b>'+letter+')</b><div class="cp-ii-answer-options">'+chip(part,q,i+'T','Đúng',parsed.columns[i].trueValue)+
       chip(part,q,i+'F','Sai',parsed.columns[i].falseValue)+'</div></div>').join('')+
       '</div><div class="cp-visual-all">'+chip(part,q,'ALL','Cho điểm toàn câu',parsed.all)+'</div>';
    }else{
@@ -107,9 +107,9 @@ function questionRows(part,arr,count){
     body='<div class="flex-short" data-cp-short-group="'+q+'">'+
      parsed.values.map((v,i)=>shortLine(q,i,v,parsed.all)).join('')+
      '<div class="flex-short-actions"><button type="button" class="outline" data-cp-short-add="'+q+'"'+(!editing||parsed.all?' disabled':'')+
-     '>+ Thêm đáp án</button>'+chip(part,q,'ALL','Cho điểm toàn câu',parsed.all)+'</div></div>';
+     '>+ Thêm đáp án</button>'+chip(part,q,'ALL','Cho điểm',parsed.all)+'</div></div>';
    }
-   return '<div class="flex-question cp-visual-question" data-cp-question="'+part+':'+q+'"><strong>Câu '+(q+1)+'</strong>'+body+'</div>';
+   return '<div class="flex-question cp-visual-question cp-key-part-'+part+'" data-cp-question="'+part+':'+q+'"><strong>Câu '+(q+1)+'</strong>'+body+'</div>';
   }).join('')+'</div></details>';
 }
 function shortLine(q,i,value,all){
