@@ -123,6 +123,7 @@ export async function handleSync(req,env,who,path){
  if(env.CHAMPRO_SYNC_ENABLED!=='1')return fail('Đồng bộ đang được kiểm thử; chưa kích hoạt',503);
  const owner=await account(env,who);
  if(!owner)return fail('Tài khoản chưa được phép đồng bộ',403);
+ if(path==='/api/sync/status'&&req.method==='GET')return reply({ok:true,enabled:true,owner});
  if(path==='/api/sync/records')return records(req,env,owner);
  if(path==='/api/sync/photo')return photo(req,env,owner);
  return fail('Không tìm thấy API',404);
