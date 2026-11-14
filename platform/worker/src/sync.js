@@ -45,14 +45,12 @@ async function records(req,env,owner){
  if(data.length>MAX_JSON-400)return fail('Bản ghi quá lớn',413);
  // Atomic CAS: a concurrent edit cannot silently replace another device's edit.
  const updated=await env.DB.prepare(
-  'INSERT INTO sync_records(account_id,kind,record_id,revision,payload_json,deleted_at) VALUES(?,?,?,?,?,?) '+
+  'INSERT INTO sync_records(account_id,kind,record_id,revision,payload_json,deleted_at) '+
+  'SELECT ?,?,?,?,?,? WHERE (?=0 OR EXISTS (SELECT 1 FROM sync_records WHERE account_id=? AND kind=? AND record_id=?)) '+
   'ON CONFLICT(account_id,kind,record_id) DO UPDATE SET '+
   'revision=excluded.revision,payload_json=excluded.payload_json,deleted_at=excluded.deleted_at,updated_at=CURRENT_TIMESTAMP '+
   'WHERE sync_records.revision=?'
- ).bind(owner,kind,id,baseRevision+1,data,deleted?new Date().toISOString():null,baseRevision).run();
- // A new row is permitted only with baseRevision=0. The preceding insert may
- // succeed with baseRevision>0 when no row exists; reject by explicit precheck
- // in a later hardened API before enabling for production.
+ ).bind(owner,kind,id,baseRevision+1,data,deleted?new Date().toISOString():null,baseRevision,owner,kind,id,baseRevision).run();
  if(!updated.meta?.changes){
   const prior=await env.DB.prepare('SELECT kind,record_id,revision,payload_json,updated_at,deleted_at FROM sync_records WHERE account_id=? AND kind=? AND record_id=?').bind(owner,kind,id).first();
   return reply({ok:false,error:'Xung đột dữ liệu; không ghi đè',current:prior?reader(prior):null},409);
