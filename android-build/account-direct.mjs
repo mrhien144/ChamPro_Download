@@ -39,6 +39,12 @@ function planLabel(claim){
  const names={free:'Dùng thử',annual:'Gói 1 năm',lifetime:'Gói trọn đời'};
  return names[claim.plan]+(claim.plan!=='lifetime'?' · Đến '+new Date(claim.exp*1000).toLocaleDateString('vi-VN'):'');
 }
+function announceIdentity(claim){
+ const uid=Number(String(claim.sub||'').replace(/^wp:/,''));
+ if(!Number.isSafeInteger(uid)||uid<1)return;
+ window.champroAccountIdentity=Object.freeze({wpUserId:uid,deviceId:deviceId()});
+ window.dispatchEvent(new CustomEvent('champro-account-verified',{detail:window.champroAccountIdentity}));
+}
 function unlock(claim){
  verified=claim;
  document.documentElement.classList.remove('cp-license-pending');
@@ -173,6 +179,7 @@ function boot(){
   const identity=await inspectSignedIdentity(saved);
   lock();
   if(identity){
+   announceIdentity(identity);
    $('cpCurrentPlan').textContent='Tài khoản '+identity.sub+' vẫn được ghi nhớ trên thiết bị.';
    stamp('Tài khoản vẫn được ghi nhớ. Cần kết nối Internet để gia hạn xác nhận quyền sử dụng. Dữ liệu đã chấm không bị xóa.');
   }else stamp('Chưa xác minh được giấy phép đã lưu. Dữ liệu chấm trên thiết bị vẫn được giữ nguyên.');
@@ -190,7 +197,8 @@ function boot(){
  $('cpAccountClose').onclick=()=>{if(verified)$('cpAccountGate').hidden=true;};
  $('cpAccountLogout').onclick=()=>{
   if(!confirm('Đăng xuất trên thiết bị này? Dữ liệu chấm bài vẫn được giữ nguyên.'))return;
-  clearSyncToken();
+  clearSyncToken();delete window.champroAccountIdentity;
+  window.dispatchEvent(new Event('champro-account-logout'));
   localStorage.removeItem(LICENSE_KEY);verified=null;lock();stamp('Đã đăng xuất. Dữ liệu chấm trên máy vẫn còn.');
  };
  void registerLinks().catch(e=>stamp(describe(e)));
