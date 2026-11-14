@@ -4,13 +4,14 @@ import {readSheet} from './omr-native.mjs';
 import {readVerifiedWithMarkers} from './omr-verified-paper.mjs';
 import {readPrinted120WithMarkers} from './omr-printed-120.mjs';
 import {preserveSbd,canonicalSbd,validSbd,findStudentForSbd} from './student-identity.mjs';
+import {enqueueSheetPhoto,showSheetPhoto} from './sheet-photo-store.mjs';
 const $=id=>document.getElementById(id);
 // Canvas-only OMR: no heavy OpenCV startup on Samsung browsers.
 
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const storedKey='champro-web-beta-v1';
 const fresh=()=>({schema:1,exams:[],students:[],results:[]});
-let db=fresh(),layouts=null,cvPromise=null,stream=null,autoTimer=null,captureBusy=false,review=null,lastAuto=null,lastSaved='',installPrompt=null,lastReviewImage='',cameraRotation=0;
+let db=fresh(),layouts=null,cvPromise=null,stream=null,autoTimer=null,captureBusy=false,review=null,lastAuto=null,lastSaved='',installPrompt=null,lastReviewImage='',lastReviewCanvas=null,cameraRotation=0;
 try{const old=JSON.parse(localStorage.getItem(storedKey)||'null');if(old&&Array.isArray(old.exams)&&Array.isArray(old.students)&&Array.isArray(old.results))db=old;}catch(e){console.warn('localStorage invalid',e)}
 const id=()=>globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random().toString(16).slice(2);
 function save(){try{localStorage.setItem(storedKey,JSON.stringify(db));}catch(e){toast('Không lưu được: bộ nhớ trình duyệt đầy. Hãy xuất bản sao lưu.');throw e;}render();window.dispatchEvent(new Event('champro-db-updated'));}
@@ -142,6 +143,10 @@ $('resultsTable').addEventListener('click',ev=>{
   '<label>SBD cần gán <input id="assignSbd" value="'+esc(r.sbd||'')+'" inputmode="numeric" placeholder="Nhập SBD đúng"></label>'+
   '<label>Chọn học sinh <select id="assignStudent">'+choices+'</select></label></div>'+
   '<button type="button" class="primary" data-assign-result="'+esc(r.id)+'">Lưu SBD / học sinh (giữ nguyên điểm)</button>';
+ const photo=document.createElement('section');
+ photo.className='champro-photo-review';photo.setAttribute('aria-label','Ảnh phiếu đã chấm');
+ $('reviewBody').prepend(photo);
+ void showSheetPhoto(photo,r,ex);
  $('saveReview').hidden=true;dlg.showModal();
 });
 $('reviewBody').addEventListener('click',ev=>{
@@ -325,7 +330,7 @@ async function trySheetOrientations(c,layout,cv,exam,manual=false){
 async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;const exam=selectedExam();if(!exam){$('scanStatus').textContent='Chưa chọn môn/kỳ kiểm tra. Hãy tạo đề, nhập đáp án và chọn kỳ kiểm tra trước khi chấm.';if(manual)toast('Hãy tạo và chọn kỳ kiểm tra trước');return;}
  // Roster can be attached after scoring.
  if(!manual&&!Object.keys(exam.keys||{}).length){$('scanStatus').textContent='Chưa có bộ đáp án cho '+(exam.subject||exam.name)+'. Vào Đề & đáp án để nhập mã đề trước khi chấm.';return;}
- captureBusy=true;if(manual)lastReviewImage=c.toDataURL('image/jpeg',.65);const t0=performance.now();$('scanStatus').textContent='Đang phân tích phiếu…';await new Promise(resolve=>requestAnimationFrame(resolve));try{
+ captureBusy=true;if(manual){lastReviewCanvas=c;lastReviewImage=c.toDataURL('image/jpeg',.65);}const t0=performance.now();$('scanStatus').textContent='Đang phân tích phiếu…';await new Promise(resolve=>requestAnimationFrame(resolve));try{
   const geometry=await ensureLayouts(),cv=null;
   const key='ChamPro_Phieu_'+(exam.form==='120'?'120Cau':'3Phan')+'_MaDe'+exam.digits;
   if(!geometry[key])throw Error('Không có tọa độ mẫu phiếu '+key);
@@ -360,6 +365,8 @@ async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;
   if(lastAuto?.fingerprint!==fingerprint||Date.now()-lastAuto.time>7000){lastAuto={fingerprint,time:Date.now()};$('scanStatus').textContent='Đã đọc mã đề và đáp án. Giữ yên để xác nhận lần hai…';return;}
   if(lastSaved===fingerprint){$('scanStatus').textContent='Phiếu này vừa chấm, hãy đổi phiếu tiếp theo';return;}
   const done=saveResult(exam,student,result,true);lastSaved=fingerprint;lastAuto=null;lastGoodOrientation=match.deg;
+  // Image queue is optional, bounded and never awaited by recognition.
+  if(done)queueSheetArchive(done.id,c,result,exam,match.deg||0);
   $('scanStatus').textContent='Đã chấm: '+done.score+'/'+done.max+' điểm'+(student?'':' · Chưa xác định học sinh; gán SBD trong Kết quả');
  }catch(e){if(manual)toast('Không nhận diện được: '+e.message+'; có thể nhập thủ công.');$('scanStatus').textContent='Không nhận diện: '+e.message;$('scanInfo').textContent='Lỗi nhận diện: '+e.message;lastAuto=null;if(manual){openReview(exam,{sbd:'',examCode:'',I:[],II:[],III:[],confidence:0,uncertain:['Chưa đọc được ảnh – nhập tay']});}}
  finally{captureBusy=false;}}
@@ -371,6 +378,18 @@ function openReview(exam,omr){review={exam,omr};const student=findStudentForSbd(
  const field=(p,num,val,opts)=>`<label>${p} ${num}<input data-p="${p}" data-q="${num-1}" ${opts||''} value="${esc(val)}"></label>`;
  $('reviewBody').innerHTML=info+(lastReviewImage?`<details><summary>Ảnh phiếu đang kiểm tra (không lưu vào kết quả)</summary><img src="${lastReviewImage}" alt="Ảnh phiếu để đối chiếu" style="display:block;width:100%;max-height:460px;object-fit:contain;background:#0b1724;margin:8px 0 15px"></details>`:'')+`<div class="review-data"><label>Học sinh<select id="reviewStudent"><option value="">-- Chọn học sinh --</option>${db.students.map(s=>`<option value="${esc(s.id)}" ${student?.id===s.id?'selected':''}>${esc(s.sbd)} - ${esc(s.name)}</option>`).join('')}</select></label><label>SBD đọc từ phiếu<input id="reviewSbd" value="${esc(omr.sbd)}" maxlength="12" inputmode="numeric"></label><label>Mã đề<input id="reviewCode" value="${esc(omr.examCode)}" maxlength="4" inputmode="numeric"></label></div><h3>Phần I</h3><div class="answeredit">${Array.from({length:exam.counts.I},(_,i)=>field('I',i+1,omr.I?.[i]||'', 'maxlength="3"')).join('')}</div>${exam.counts.II?'<h3>Phần II (Đ/S, 4 ý)</h3><div class="answeredit">'+Array.from({length:exam.counts.II},(_,i)=>field('II',i+1,omr.II?.[i]||'', 'maxlength="4"')).join('')+'</div>':''}${exam.counts.III?'<h3>Phần III</h3><div class="answeredit">'+Array.from({length:exam.counts.III},(_,i)=>field('III',i+1,omr.III?.[i]||'', '')).join('')+'</div>':''}`;
  $('saveReview').hidden=false;$('reviewDialog').showModal();}
+function queueSheetArchive(resultId,canvas,omr,exam,angle=0){
+ if(!resultId||!canvas?.width)return;
+ const create=()=>{
+  try{
+   const added=enqueueSheetPhoto({id:resultId,canvas,markers:omr?.markers||[],
+    angle,form:exam.form,digits:exam.digits,examId:exam.id,examCode:omr?.examCode||''});
+   if(!added)console.warn('Hàng đợi ảnh phiếu bận; bài chấm vẫn được lưu');
+  }catch(e){console.warn('Lưu ảnh chờ đồng bộ lỗi, không ảnh hưởng điểm',e);}
+ };
+ if(typeof requestIdleCallback==='function')requestIdleCallback(create,{timeout:2200});
+ else setTimeout(create,30);
+}
 function saveResult(exam,student,ans,fromAuto=false){
  const value=grade(exam,{examCode:ans.examCode,I:ans.I,II:ans.II,III:ans.III});
  const exists=student?db.results.find(x=>x.examId===exam.id&&x.studentId===student.id):null;
@@ -390,7 +409,9 @@ $('saveReview').onclick=()=>{try{if(!review)return;const student=db.students.fin
  if(!Object.values({I:answers.I,II:answers.II,III:answers.III}).flat().some(Boolean))throw Error('Chưa có câu trả lời nào');
  if(answers.I.some(x=>x&&!/^[ABCD]$/.test(x)))throw Error('Phần I chỉ chọn A/B/C/D');
  if(answers.II.some(x=>x&&!/^[ĐSD? ]{0,4}$/.test(x)))throw Error('Phần II chỉ nhập 4 ký tự Đ/S');
- const done=saveResult(exam,student,answers,false);if(!done)return;$('reviewDialog').close();toast('Đã chấm và lưu: '+done.score+'/'+done.max+' điểm');
+ const done=saveResult(exam,student,answers,false);if(!done)return;
+ if(lastReviewCanvas)queueSheetArchive(done.id,lastReviewCanvas,review.omr,exam,0);
+ lastReviewCanvas=null;$('reviewDialog').close();toast('Đã chấm và lưu: '+done.score+'/'+done.max+' điểm');
  }catch(e){toast('Không lưu được: '+e.message);}};
 $('closeReview').onclick=()=>$('reviewDialog').close();
 // Offline PWA install prompt
@@ -403,3 +424,11 @@ initFlexibleKeyEditor();
 render();
 export {getDb,save,toast,spreadsheetRows,loadScript,sendFile};
 function getDb(){return db;}
+function applySyncDb(next){
+ if(next?.schema!==1||!Array.isArray(next.exams)||!Array.isArray(next.students)||!Array.isArray(next.results))
+  throw Error('Bản ghi đồng bộ không hợp lệ');
+ db=next;save();
+}
+window.champroAppData=Object.freeze({
+ getDb,applySyncDb,isCameraBusy:()=>Boolean(captureBusy||stream)
+});
