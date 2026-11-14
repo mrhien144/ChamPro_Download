@@ -79,7 +79,7 @@ async function photo(req,env,owner){
  const bytes=new Uint8Array(await req.arrayBuffer());
  if(bytes.length<4||bytes.length>MAX_PHOTO||bytes[0]!==0xff||bytes[1]!==0xd8||bytes.at(-2)!==0xff||bytes.at(-1)!==0xd9)
   return fail('Tệp ảnh JPEG không hợp lệ',400);
- const rawMeta=req.headers.get('x-champro-photo-meta')||'';
+ const rawMeta=req.headers.get('x-photo-metadata')||'';
  if(rawMeta.length>4096||!/^[A-Za-z0-9+/=]*$/.test(rawMeta))return fail('Thông tin ảnh không hợp lệ');
  let parsedMeta,metaJson;
  try{
