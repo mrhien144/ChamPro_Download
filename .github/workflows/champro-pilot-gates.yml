@@ -1,0 +1,25 @@
+name: ChấmPro single-customer pilot checkout guards
+on:
+  push:
+    branches: [feature/champro-pilot-checkout-wp-user8-20261114]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  isolated-php:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax - two isolated plugin files
+        run: |
+          php -l platform/wordpress/champro-bridge.php
+          php -l platform/wordpress/champro-checkout-gate.php
+      - name: One-customer pilot and public readiness disabled
+        run: php platform/tests/checkout-pilot-test.php
+      - name: Legacy public readiness regression
+        run: php platform/tests/checkout-readiness-test.php
+      - name: SePay callback grant rejection / acceptance fixture
+        run: php platform/tests/payment-bridge-test.php
+      - name: SQLite D1 idempotent payment updates
+        run: python3 platform/tests/payment-worker-sql-test.py
