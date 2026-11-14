@@ -6,7 +6,7 @@
 import {startSync} from './sync/start.mjs';
 import {isSyncRegistered,shortLivedSyncToken} from './sync-device.mjs';
 import {getSheetPhoto,putSheetPhoto,listSheetPhotoIds} from './sheet-photo-store.mjs';
-const API='https://champro-platform-staging.luckylove1404.workers.dev';
+const API='https://champro-sync-staging.luckylove1404.workers.dev';
 let active=null,starting=false,identity=null;
 function status(message){
  let el=document.getElementById('cpCloudSyncStatus');
@@ -42,7 +42,7 @@ async function maybeStart(){
   if(!app)return status('Ứng dụng đang khởi tạo kho bài chấm.');
   status('Đang xác minh máy chủ và khóa thiết bị…');
   const token=()=>shortLivedSyncToken(deviceId,wpUserId);
-  active=await startSync({
+  const started=await startSync({
    api:API,owner:'wp:'+wpUserId,getToken:token,getDb:app.getDb,saveDb:app.applySyncDb,
    getPhoto:getSheetPhoto,putPhoto:putSheetPhoto,listPhotoIds:listSheetPhotoIds,
    isBusy:app.isCameraBusy,
@@ -51,7 +51,7 @@ async function maybeStart(){
     ' bản ghi hiện có trên điện thoại thuộc tài khoản đang đăng nhập. Dữ liệu không bị xóa và được lưu cục bộ ngay cả khi mất mạng. Tiếp tục?'),
    onEvent:eventLabel
   });
-  if(active?.started)status('Đã kết nối an toàn. Chấm bài offline; đồng bộ khi máy rảnh và có mạng.');
+  if(started?.started){active=started;status('Đã kết nối an toàn. Chấm bài offline; đồng bộ khi máy rảnh và có mạng.');}
   else status('Chưa liên kết dữ liệu hiện có; sẽ không tải lên máy chủ khi chưa xác nhận.');
  }catch(e){status(e?.message||'Tạm hoãn: chưa kết nối được máy chủ đồng bộ.');}
  finally{starting=false;}
