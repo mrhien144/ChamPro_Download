@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+import {webcrypto} from 'node:crypto';
+import {LegacySyncAdapter} from '../sync/legacy-adapter.mjs';
+globalThis.crypto=webcrypto;
+const storage=new Map();
+const ls={getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)};
+let state={schema:1,exams:[{id:'exam-101',name:'HK1',keys:{'101':{I:['A']}}}],students:[{id:'stu-1',sbd:'0001'}],results:[]};
+const adapter=new LegacySyncAdapter({storage:ls,getState:()=>state,saveState:async next=>{state=next;}});
+assert.equal(await adapter.bindOwner('wp:8',{consent:async()=>false}),false);
+assert.equal(await adapter.bindOwner('wp:8',{consent:async()=>true}),true);
+const first=await adapter.changed('wp:8');
+assert.equal(first.length,2,'legacy local data should be upload candidates only after owner confirms');
+assert(first.some(x=>x.kind==='exam'&&x.payload.keys['101'].I[0]==='A'));
+await adapter.uploaded('wp:8','exam','exam-101',1,first.find(x=>x.kind==='exam').hash);
+await adapter.uploaded('wp:8','student','stu-1',1,first.find(x=>x.kind==='student').hash);
+assert.equal((await adapter.changed('wp:8')).length,0,'confirmed records are not re-uploaded');
+state.students[0].sbd='0002';
+assert.equal((await adapter.changed('wp:8')).length,1,'local edit must remain dirty');
+await assert.rejects(()=>adapter.applyRemote('wp:8',{
+ kind:'student',id:'stu-1',revision:2,payload:{id:'stu-1',sbd:'9999'}}),/Xung đột/);
+assert.equal(state.students[0].sbd,'0002','remote must not overwrite unsent edit');
+await assert.rejects(()=>adapter.bindOwner('wp:9'),/tài khoản khác/);
+assert.equal(adapter.meta.owner,'wp:8');
+const updates=await adapter.changed('wp:8');
+await adapter.uploaded('wp:8','student','stu-1',2,updates[0].hash);
+assert.equal((await adapter.changed('wp:8')).length,0);
+await adapter.applyRemote('wp:8',{
+ kind:'student',id:'stu-1',revision:3,payload:{id:'stu-1',sbd:'0003'},deletedAt:null});
+assert.equal(state.students[0].sbd,'0003');
+assert.equal((await adapter.changed('wp:8')).length,0,'downloaded data must not bounce back');
+state.students.splice(0,1);
+const tombstones=await adapter.changed('wp:8');
+assert(tombstones.some(x=>x.kind==='student'&&x.deleted));
+assert.equal(tombstones.find(x=>x.kind==='student').revision,3);
+console.log('PASS: owner consent, legacy data, answer keys, local edits, remote conflict, tombstones, account isolation');
