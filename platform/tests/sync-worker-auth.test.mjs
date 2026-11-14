@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import worker from '../sync-worker/src/index.js';
 const secret='unit-test-only-abcdefghijklmnopqrstuvwxyz-0123456789-abcdef';
-const b64=x=>Buffer.from(typeof x==='string'?x:JSON.stringify(x)).toString('base64url');
+const b64=x=>Buffer.isBuffer(x)||x instanceof Uint8Array?Buffer.from(x).toString('base64url'):
+ Buffer.from(typeof x==='string'?x:JSON.stringify(x)).toString('base64url');
 const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
 const now=Math.floor(Date.now()/1000);
 async function jwt(sub='8',deviceId='web',overrides={}){
