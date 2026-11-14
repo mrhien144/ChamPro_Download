@@ -15,10 +15,11 @@ export async function startSync({
  // local private data. Never trust an unauthenticated user name or UI state.
  const token=await getToken();
  if(!token)throw Error('Chưa có phiên bảo mật để đồng bộ');
- const check=await fetch(api+'/api/sync/records?limit=1',{headers:{Authorization:'Bearer '+token},
+ const check=await fetch(api+'/api/sync/status',{headers:{Authorization:'Bearer '+token},
   mode:'cors',credentials:'omit',cache:'no-store'});
  const result=await check.json().catch(()=>({}));
  if(!check.ok||!result.ok)throw Error(result.error||'Máy chủ chưa cho phép đồng bộ');
+ if(result.owner!==owner||result.enabled!==true)throw Error('Phiên đăng nhập không thuộc tài khoản đang lưu trên thiết bị');
  const approved=await adapter.bindOwner(owner,{consent});
  if(!approved)return {started:false,reason:'consent-rejected'};
  let active=true,scanning=false,scanAgain=false;
@@ -39,7 +40,8 @@ export async function startSync({
   onStatus:async event=>{
    if(event.kind==='uploaded'){
     const i=event.record.indexOf(':'),kind=event.record.slice(0,i),id=event.record.slice(i+1);
-    await adapter.uploaded(owner,kind,id,event.revision,event.hash,event.deleted);
+    const changedWhileUploading=await adapter.uploaded(owner,kind,id,event.revision,event.hash,event.deleted);
+    if(changedWhileUploading)setTimeout(()=>void scan(),0);
    }
    if(event.kind==='photo-uploaded'){
     adapter.meta.photos[event.record]={sha:event.sha256,updatedAt:new Date().toISOString()};
@@ -52,7 +54,7 @@ export async function startSync({
  const scan=async()=>{
   if(!active)return;
   if(scanning){scanAgain=true;return;}
-  if(isBusy()){transport.schedule(5000);return;}
+  if(isBusy()){setTimeout(()=>void scan(),5000);return;}
   scanning=true;
   try{
    do{
