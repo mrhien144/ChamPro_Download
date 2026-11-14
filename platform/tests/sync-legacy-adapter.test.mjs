@@ -1,7 +1,5 @@
 import assert from 'node:assert/strict';
-import {webcrypto} from 'node:crypto';
 import {LegacySyncAdapter} from '../sync/legacy-adapter.mjs';
-globalThis.crypto=webcrypto;
 const storage=new Map();
 const ls={getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)};
 let state={schema:1,exams:[{id:'exam-101',name:'HK1',keys:{'101':{I:['A']}}}],students:[{id:'stu-1',sbd:'0001'}],results:[]};
