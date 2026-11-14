@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import {startSync} from '../sync/start.mjs';
 let mutated=false,approved=false,requests=0;
+const savedLocal=globalThis.localStorage;
+const temp=new Map();globalThis.localStorage={getItem:k=>temp.get(k)||null,setItem:(k,v)=>temp.set(k,v)};
 const before=globalThis.fetch;
 globalThis.fetch=async ()=>{
  requests++;
@@ -17,5 +19,5 @@ try{
  assert.equal(requests,1);
  assert.equal(mutated,false);
  assert.equal(approved,false,'should refuse before consent when server account differs');
-}finally{globalThis.fetch=before;}
+}finally{globalThis.fetch=before;globalThis.localStorage=savedLocal;}
 console.log('PASS: cross-account token cannot authorize adoption of legacy data');
