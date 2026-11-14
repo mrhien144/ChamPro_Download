@@ -19,9 +19,20 @@ if 'android:scheme="champrotest145"' not in s:
     s = s.replace('</activity>', deep_link + '\n        </activity>', 1)
 manifest.write_text(s, encoding="utf-8")
 # Capacitor WebView requires explicit permission for getUserMedia camera.
-activity = android / "app/src/main/java/com/champro/nativepreview/v145/MainActivity.java"
-assert activity.exists(), activity
-activity.write_text("""package com.champro.nativepreview.v145;
+# Capacitor places the generated activity under the package of appId.
+# Derive that path instead of assuming the older v14.5 package. Do not
+# change the camera/WebChromeClient implementation.
+java_root = android / "app/src/main/java"
+activity_candidates = sorted(java_root.rglob("MainActivity.java"))
+assert len(activity_candidates) == 1, (
+    f"Expected exactly one generated MainActivity.java; found {activity_candidates}"
+)
+activity = activity_candidates[0]
+package_name = ".".join(activity.relative_to(java_root).parts[:-1])
+assert package_name in (
+    "com.champro.nativepreview.v145", "com.champro.nativepreview.v146"
+), f"Unexpected Android package: {package_name}"
+activity_code = """package com.champro.nativepreview.v145;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
@@ -64,5 +75,11 @@ public class MainActivity extends BridgeActivity {
         });
     }
 }
-""", encoding="utf-8")
-print("PASS: preview-only Android camera permission configured")
+"""
+activity_code = activity_code.replace(
+    "package com.champro.nativepreview.v145;",
+    f"package {package_name};",
+    1
+)
+activity.write_text(activity_code, encoding="utf-8")
+print(f"PASS: preview-only Android camera permission configured for {package_name}")
