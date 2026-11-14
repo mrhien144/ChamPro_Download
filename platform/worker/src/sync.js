@@ -78,12 +78,25 @@ async function photo(req,env,owner){
  if(bytes.length<4||bytes.length>MAX_PHOTO||bytes[0]!==0xff||bytes[1]!==0xd8||bytes.at(-2)!==0xff||bytes.at(-1)!==0xd9)
   return fail('Tệp ảnh JPEG không hợp lệ',400);
  const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(x=>x.toString(16).padStart(2,'0')).join('');
- const key='champro-sync/'+owner+'/photos/'+id+'.jpg';
+ const base=req.headers.get('x-photo-base-sha256')||'';
+ if(base&&!/^[a-f0-9]{64}$/.test(base))return fail('Phiên bản ảnh không hợp lệ',400);
+ // Content-addressed immutable objects prevent concurrent writes replacing
+ // bytes that another phone uploaded. D1 CAS decides the winning revision.
+ const key='champro-sync/'+owner+'/photos/'+id+'/'+hash+'.jpg';
+ const old=await env.DB.prepare('SELECT sha256 FROM sync_photos WHERE account_id=? AND result_id=?').bind(owner,id).first();
+ if(old?.sha256===hash)return reply({ok:true,duplicate:true,resultId:id,sha256:hash,byteSize:bytes.length});
+ if((old?.sha256||'')!==base)return reply({ok:false,error:'Xung đột ảnh phiếu',currentSha256:old?.sha256||null},409);
  await env.BUCKET.put(key,bytes,{httpMetadata:{contentType:'image/jpeg'}});
- await env.DB.prepare(
-  'INSERT INTO sync_photos(account_id,result_id,object_key,sha256,byte_size) VALUES(?,?,?,?,?) '+
-  'ON CONFLICT(account_id,result_id) DO UPDATE SET object_key=excluded.object_key,sha256=excluded.sha256,byte_size=excluded.byte_size,updated_at=CURRENT_TIMESTAMP'
- ).bind(owner,id,key,hash,bytes.length).run();
+ const updated=await env.DB.prepare(
+  'INSERT INTO sync_photos(account_id,result_id,object_key,sha256,byte_size) '+
+  'SELECT ?,?,?,?,? WHERE (?=\'\' OR EXISTS(SELECT 1 FROM sync_photos WHERE account_id=? AND result_id=?)) '+
+  'ON CONFLICT(account_id,result_id) DO UPDATE SET object_key=excluded.object_key,sha256=excluded.sha256,byte_size=excluded.byte_size,updated_at=CURRENT_TIMESTAMP '+
+  'WHERE sync_photos.sha256=?'
+ ).bind(owner,id,key,hash,bytes.length,base,owner,id,base).run();
+ if(!updated.meta?.changes){
+  const current=await env.DB.prepare('SELECT sha256 FROM sync_photos WHERE account_id=? AND result_id=?').bind(owner,id).first();
+  return reply({ok:false,error:'Xung đột ảnh phiếu',currentSha256:current?.sha256||null},409);
+ }
  return reply({ok:true,resultId:id,sha256:hash,byteSize:bytes.length});
 }
 export async function handleSync(req,env,who,path){
