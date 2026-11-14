@@ -20,7 +20,7 @@ export function validRecord(r){
 export function resolveRecord({local,remote,dirty=false}={}){
  if(!remote) return {action:'retain-local',record:local??null};
  if(!validRecord(remote)) throw Error('Bản ghi máy chủ không hợp lệ');
- if(!local) return {action:'download',record:remote};
+ if(!local) return dirty?{action:'conflict',local:null,remote}:{action:'download',record:remote};
  if(!validRecord(local)||local.id!==remote.id||local.kind!==remote.kind)
    throw Error('Không khớp định danh bản ghi');
  // The client might have a queued correction, independent of version.
@@ -41,7 +41,7 @@ export function planUpload({record,baseRevision}){
   throw Error('Dữ liệu đồng bộ không hợp lệ');
  if(record.revision!==baseRevision)
   throw Error('Bản ghi đã thay đổi: cần tải dữ liệu và giải quyết xung đột');
- return {kind:record.kind,id:record.id,baseRevision,payload:record.payload};
+ return {kind:record.kind,id:record.id,baseRevision,payload:record.payload,deleted:record.deleted===true};
 }
 export function syncDecision(status){
  if(status===401||status===403)return 'reauth-required';
