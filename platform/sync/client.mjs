@@ -84,7 +84,7 @@ export class SyncTransport {
     else if(current)this.dirty.set(key,{...current,revision:answer.revision});
     // Even when a student was edited while HTTP was in flight, acknowledge
     // the confirmed old revision so the next upload uses the right base.
-    this.onStatus({kind:'uploaded',record:key,revision:answer.revision,
+    await this.onStatus({kind:'uploaded',record:key,revision:answer.revision,
       hash:record.hash||null,deleted:record.deleted===true,
       stillDirty:current!==record});
    }catch(e){
@@ -145,7 +145,7 @@ export class SyncTransport {
      'POST',file.blob,'image/jpeg',{'X-Photo-Metadata':header,
      'X-Photo-Base-Sha256':file.syncedSha256||''});
     this.photos.delete(id);
-    this.onStatus({kind:'photo-uploaded',record:id,sha256:answer.sha256});
+    await this.onStatus({kind:'photo-uploaded',record:id,sha256:answer.sha256});
    }catch(e){
     if(e.status===409){
      this.photos.delete(id);
@@ -167,7 +167,7 @@ export class SyncTransport {
       response.blob.type!=='image/jpeg'||response.blob.size>PHOTO_LIMIT)
       throw Error('Ảnh phiếu đã tải không hợp lệ');
     await this.putPhoto(id,{...meta,blob:response.blob,syncedSha256:response.sha256});
-    this.onStatus({kind:'photo-downloaded',record:id});
+    await this.onStatus({kind:'photo-downloaded',record:id});
    }catch(e){if(e.status!==404)throw e;}
   }
  }
