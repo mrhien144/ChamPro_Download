@@ -13,7 +13,7 @@ export class SyncTransport {
    throw Error('Thiếu kết nối dữ liệu an toàn');
   this.api=api.replace(/\/$/,'');this.getToken=getToken;this.getLocal=getLocal;
   this.applyRemote=applyRemote;this.getPhoto=getPhoto;this.onStatus=onStatus;this.isBusy=isBusy;
-  this.enabled=Boolean(enabled);this.dirty=new Map();this.photos=new Set();
+  this.enabled=Boolean(enabled);this.dirty=new Map();this.photos=new Set();this.blocked=new Set();
   this.running=false;this.lastError=null;this.account=null;this.retry=0;
   this.scheduleId=null;
  }
@@ -24,11 +24,13 @@ export class SyncTransport {
   // login. Refuse switch until it has been safely backed up/reconciled.
   if(this.dirty.size||this.photos.size)
    throw Error('Dữ liệu chưa đồng bộ của tài khoản cũ phải được sao lưu hoặc xử lý trước khi đổi tài khoản');
-  this.account=account;this.lastError=null;this.retry=0;
+  this.account=account;this.blocked.clear();this.lastError=null;this.retry=0;
  }
  enqueueRecord(record){
   if(!this.enabled||!validRecord(record))return false;
-  this.dirty.set(this.key(record.kind,record.id),{...record});
+  const key=this.key(record.kind,record.id);
+  if(this.blocked.has(key))return false;
+  this.dirty.set(key,{...record});
   this.schedule();return true;
  }
  enqueuePhoto(id){
@@ -68,6 +70,7 @@ export class SyncTransport {
  }
  async uploadRecords(){
   for(const [key,record] of [...this.dirty]){
+   if(this.blocked.has(key))continue;
    // A remote edit is never overwritten; a conflict stays pending.
    const plan=planUpload({record,baseRevision:record.revision});
    try{
@@ -82,6 +85,7 @@ export class SyncTransport {
       stillDirty:current!==record});
    }catch(e){
     if(e.status===409){
+     this.blocked.add(key);
      this.onStatus({kind:'conflict',record:key,remote:e.data?.current||null});
      // Stop safely rather than loop/overwrite; retains original dirty data.
      return false;
@@ -99,7 +103,8 @@ export class SyncTransport {
     const dirty=this.dirty.has(this.key(remote.kind,remote.id));
     const decision=resolveRecord({local,remote,dirty});
     if(decision.action==='conflict'){
-     this.onStatus({kind:'conflict',record:this.key(remote.kind,remote.id),remote});
+     this.blocked.add(this.key(remote.kind,remote.id));
+    this.onStatus({kind:'conflict',record:this.key(remote.kind,remote.id),remote});
      continue;
     }
     if(decision.action==='download')
@@ -108,6 +113,12 @@ export class SyncTransport {
    if(page.nextOffset===null)return true;
   }
   throw Error('Quá nhiều bản ghi; cần phân trang an toàn hơn');
+ }
+ // Conflict resolution is deliberately explicit; no implicit last-write-wins.
+ clearResolvedConflict(kind,id){
+  const key=this.key(kind,id);
+  this.blocked.delete(key);
+  this.schedule();
  }
  async uploadPhotos(){
   if(typeof this.getPhoto!=='function')return;
@@ -143,7 +154,10 @@ export class SyncTransport {
     this.schedule(delay);
    }
    return false;
-  }finally{this.running=false;}
+  }finally{
+   this.running=false;
+   if([...this.dirty.keys()].some(key=>!this.blocked.has(key))||this.photos.size)this.schedule(2500);
+  }
  }
  stop(){
   this.enabled=false;
