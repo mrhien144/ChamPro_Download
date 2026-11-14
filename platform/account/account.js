@@ -3,29 +3,46 @@ const API='https://champro-platform-staging.luckylove1404.workers.dev';
 // The two purchase buttons stay disabled unless the first-party WordPress
 // checkout endpoint explicitly confirms the verified backend is ready.
 const PURCHASE_READY_API='https://mrhien.com/wp-json/champro/v1/checkout-readiness';
-let purchasesOpen=false;
+// The WordPress checkout gate enforces all purchase permissions server-side.
+// 'unknown' covers cross-origin/network failures on this static frontend.
+let purchaseReadiness='unknown';
 const PURCHASE_PAGE='https://mrhien.com/champro-mua-goi/';
 async function checkPurchaseReadiness(){
- purchasesOpen=false;
+ purchaseReadiness='unknown';
  updatePurchaseControls(state.plan||'free');
  try{
   const response=await fetch(PURCHASE_READY_API,{method:'GET',cache:'no-store',credentials:'omit',mode:'cors'});
   const data=await response.json().catch(()=>({}));
-  purchasesOpen=response.ok && data.ok===true && data.ready===true;
- }catch(e){purchasesOpen=false;}
+  purchaseReadiness=response.ok && data.ok===true && data.ready===true?'open':'closed';
+ }catch(e){
+  // The endpoint may be inaccessible across origins even while the first-party
+  // WordPress checkout is operational. Do not mislabel a network failure "closed".
+  purchaseReadiness='unknown';
+ }
  updatePurchaseControls(state.plan||'free');
- return purchasesOpen;
+ return purchaseReadiness==='open';
 }
 function updatePurchaseControls(plan='free'){
  const lifetime=plan==='lifetime',suspended=plan==='suspended';
+ const authenticated=Boolean(state.token);
  for(const [id,pkg] of [['buyAnnual','annual'],['buyLifetime','lifetime']]){
   const btn=el(id);if(!btn)continue;
-  btn.disabled=!purchasesOpen||!state.token||lifetime||suspended||(pkg==='annual'&&plan==='annual');
+  const planDenied=lifetime||suspended||(pkg==='annual'&&plan==='annual');
+  // On unknown readiness allow navigation only: this NEVER creates an order.
+  // The first-party WordPress plugin independently denies requests if closed.
+  btn.disabled=!authenticated||planDenied||purchaseReadiness==='closed';
   btn.onclick=()=>{if(!btn.disabled)window.location.assign(PURCHASE_PAGE+'?plan='+encodeURIComponent(pkg));};
  }
  for(const id of ['annualStatus','lifetimeStatus']){
-  const node=el(id);if(node)node.textContent=purchasesOpen?'Chọn gói để thanh toán':'Chưa mở thanh toán';
+  const node=el(id);
+  if(node)node.textContent=purchaseReadiness==='open'?'Sẵn sàng thanh toán'
+    :purchaseReadiness==='closed'?'Chưa mở thanh toán'
+    :'Kiểm tra tại trang thanh toán';
  }
+ const note=el('purchaseSafetyNotice');
+ if(note)note.textContent=purchaseReadiness==='closed'
+  ?'Cổng thanh toán hiện chưa mở. Không chuyển khoản theo thông tin bên ngoài đơn hàng ChấmPro.'
+  :'Mọi quyền mua gói, giá tiền và điều kiện cấp quyền đều được WordPress xác minh trước khi tạo đơn hàng. Chỉ thanh toán theo VietQR được hiển thị cho đúng mã đơn.';
 }
 
 const el=id=>document.getElementById(id);
@@ -67,7 +84,7 @@ function setInfo(o){
  el('name').textContent=a.name||'Giáo viên';
  el('email').textContent=a.email||'';
  el('plan').textContent=plans[plan]||plan;
- el('upgradeCurrent').textContent=plan==='lifetime'?'Tài khoản đã có gói Trọn đời: không cần mua thêm.':plan==='annual'?'Tài khoản đang dùng gói 1 năm. Vui lòng kiểm tra hạn dùng bên trên trước khi gia hạn.':plan==='suspended'?'Tài khoản tạm khóa; liên hệ hỗ trợ trước khi mua gói.':'Tài khoản đang dùng gói Miễn phí. Hiện trang nâng cấp chưa mở thanh toán.';
+ el('upgradeCurrent').textContent=plan==='lifetime'?'Tài khoản đã có gói Trọn đời: không cần mua thêm.':plan==='annual'?'Tài khoản đang dùng gói 1 năm. Vui lòng kiểm tra hạn dùng bên trên trước khi gia hạn.':plan==='suspended'?'Tài khoản tạm khóa; liên hệ hỗ trợ trước khi mua gói.' :'Tài khoản đang dùng gói Miễn phí. Hãy chọn gói để xem điều kiện thanh toán tại mrhien.com.';
  el('expiration').textContent=plan==='annual'
   ?'Hết hạn: '+(a.expiresAt||'chưa xác định')
   :plan==='lifetime'?'Quyền trọn đời, không giới hạn số lần sử dụng'
