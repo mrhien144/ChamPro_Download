@@ -47,6 +47,7 @@ function announceIdentity(claim){
 }
 function unlock(claim){
  verified=claim;
+ announceIdentity(claim);
  document.documentElement.classList.remove('cp-license-pending');
  $('cpAccountGate').hidden=true;
  $('cpAccountClose').disabled=false;
