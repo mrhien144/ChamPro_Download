@@ -1,0 +1,47 @@
+name: ChấmPro sync isolated safety suite
+on:
+  push:
+    branches: [feature/champro-sync-foundation-20261114]
+    paths:
+      - 'platform/sync/**'
+      - 'platform/wordpress/champro-sync-device.php'
+      - 'platform/worker/src/sync.js'
+      - 'platform/sync-worker/**'
+      - 'platform/worker/src/index.js'
+      - 'platform/migrations/0003_sync_records.sql'
+      - 'platform/tests/sync*'
+      - '.github/workflows/champro-sync-isolated.yml'
+permissions:
+  contents: read
+jobs:
+  isolated-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate PHP device enrollment syntax
+        run: php -l platform/wordpress/champro-sync-device.php
+      - name: Validate JS syntax
+        run: |
+          node --check platform/sync/reconcile.mjs
+          node --check platform/sync/client.mjs
+          node --check platform/sync/legacy-adapter.mjs
+          node --check platform/sync/start.mjs
+          node --check platform/worker/src/sync.js
+          node --check platform/sync-worker/src/sync.js
+          node --check platform/sync-worker/src/index.js
+          node --check platform/sync/web-token.mjs
+          node --check platform/worker/src/index.js
+      - name: Check conflict-safe merge
+        run: |
+          node platform/tests/sync-reconcile.test.mjs
+          node platform/tests/sync-api.test.mjs
+          node platform/tests/sync-two-devices.test.mjs
+          node platform/tests/sync-legacy-adapter.test.mjs
+          node platform/tests/sync-start.test.mjs
+          node platform/tests/sync-worker-auth.test.mjs
+          node platform/tests/sync-photo.test.mjs
+      - name: Check account-isolated D1 compare-and-swap
+        run: python3 platform/tests/sync-d1-sql-test.py
