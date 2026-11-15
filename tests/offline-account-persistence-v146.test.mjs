@@ -5,7 +5,7 @@ const account=f('android-build/account-direct.mjs');
 const license=f('android-build/offline-license.mjs');
 const native=f('android-build/native-app.js');
 const builder=f('android-build/prepare-preview-apk.py');
-assert(account.includes("verifyLicense(saved).then(unlock"),'active offline signed license must work without fetch');
+assert(account.includes("verifyLicense(saved).then(claim=>{") && account.includes("unlock(claim);"),'active offline signed license must work without fetch');
 assert(account.includes("inspectSignedIdentity(saved)"),'verified identity must be retained when license expires');
 assert(/function unlock\(claim\)\{\s*verified=claim;\s*announceIdentity\(claim\);/.test(account),'verified account must be announced to the sync controller on unlock');
 assert(account.includes("if(identity)"),'offline account identity shown separately from entitlement');
