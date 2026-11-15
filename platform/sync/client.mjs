@@ -181,7 +181,9 @@ export class SyncTransport {
    if(uploaded===false)return false;
    await this.downloadRecords();
    await this.uploadPhotos();
-   this.retry=0;this.lastError=null;this.onStatus({kind:'synced'});
+   this.retry=0;this.lastError=null;
+   if(this.blocked.size)this.onStatus({kind:'conflict-pending',count:this.blocked.size});
+   else this.onStatus({kind:'synced'});
    return true;
   }catch(e){
    this.lastError=String(e.message||e);this.onStatus({kind:'error',status:e.status||0,message:this.lastError});
