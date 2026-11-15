@@ -38,6 +38,7 @@ jobs:
         run: |
           node platform/tests/sync-reconcile.test.mjs
           node platform/tests/sync-api.test.mjs
+          node platform/tests/sync-two-devices.test.mjs
           node platform/tests/sync-legacy-adapter.test.mjs
           node platform/tests/sync-start.test.mjs
           node platform/tests/sync-worker-auth.test.mjs
