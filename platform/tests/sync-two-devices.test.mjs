@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {SyncTransport} from '../sync/client.mjs';
 // Offline-first two-device simulation. No production D1/R2, no student PII.
-globalThis.navigator={onLine:true};
+Object.defineProperty(globalThis,'navigator',{value:{onLine:true},configurable:true});
 const cloud=new Map(),events=[],owner='wp:8';
 globalThis.fetch=async (url,init)=>{
  const method=init?.method||'GET',p=new URL(url);
