@@ -1,0 +1,33 @@
+name: ChấmPro v14.6 offline account safe-build verification
+on:
+  push:
+    branches: [feature/champro-v146-offline-account-clean-ui-20261114]
+    paths:
+      - 'android-build/**'
+      - 'tests/offline-account-persistence-v146.test.mjs'
+      - '.github/workflows/champro-v146-offline-account-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify exact v14.6 modifications
+        run: |
+          node --check android-build/native-app.js
+          node --check android-build/offline-license.mjs
+          node --check android-build/account-direct.mjs
+          python3 -m py_compile android-build/prepare-preview-apk.py
+          node tests/offline-account-persistence-v146.test.mjs
+      - name: Verify unchanged grading engine
+        run: |
+          node --check app-preview/app.mjs
+          node --check app-preview/grader.mjs
+          node --test tests/offline-license.test.mjs
+          node --test tests/champro-auto-login.test.mjs
+          node --test tests/native-network-indicator.test.mjs

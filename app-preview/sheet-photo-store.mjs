@@ -29,6 +29,18 @@ async function transaction(mode,operation){
 }
 export const getSheetPhoto=id=>transaction('readonly',s=>s.get(id));
 export const removeSheetPhoto=id=>transaction('readwrite',s=>s.delete(id));
+export const listSheetPhotoIds=()=>transaction('readonly',s=>s.getAllKeys());
+export async function putSheetPhoto(id,record){
+ if(typeof id!=='string'||!/^[a-zA-Z0-9:_-]{1,100}$/.test(id)||
+   !(record?.blob instanceof Blob)||record.blob.type!=='image/jpeg'||
+   record.blob.size>2*1024*1024||!Array.isArray(record.markers)||record.markers.length!==4)
+  throw Error('Ảnh phiếu tải về không hợp lệ');
+ return transaction('readwrite',s=>s.put({id,blob:record.blob,
+  markers:record.markers,angle:record.angle||0,form:record.form||'three',
+  digits:record.digits||3,examId:record.examId||'',
+  examCode:record.examCode||'',createdAt:record.createdAt||new Date().toISOString()}));
+}
+
 export async function pruneSheetPhotos(retentionDays=365){
  const cutoff=Date.now()-retentionDays*86400000,db=await openPhotoDb();
  return new Promise((resolve,reject)=>{

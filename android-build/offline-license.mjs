@@ -96,4 +96,22 @@ async function pinPublicKey(jwk){
  }else localStorage.setItem(PUBLIC_KEY_KEY,JSON.stringify(clean));
  return clean;
 }
-export {verifyLicense,pinPublicKey};
+// Read ONLY an already signed and device-bound account identity after the
+// purchased entitlement expires. This NEVER grants offline grading rights.
+async function inspectSignedIdentity(saved){
+ const token=String(saved||'').split('.');
+ if(token.length!==3||String(saved).length>8192)return null;
+ try{
+  const header=parse(token[0]),body=parse(token[1]);
+  if(header.alg!=='ES256'||header.typ!=='JWT')return null;
+  const jwk=JSON.parse(localStorage.getItem(PUBLIC_KEY_KEY)||'null');
+  if(!jwk)return null;
+  const pub=await crypto.subtle.importKey('jwk',jwk,{name:'ECDSA',namedCurve:'P-256'},false,['verify']);
+  const okay=await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},pub,decode64(token[2]),enc.encode(token[0]+'.'+token[1]));
+  if(!okay||body.iss!==ISSUER||body.aud!==AUDIENCE||
+    !/^wp:[1-9]\d*$/.test(body.sub||'')||body.deviceId!==getInstallId()||
+    !['free','annual','lifetime'].includes(body.plan))return null;
+  return {sub:body.sub,plan:body.plan,expiresAt:Number(body.exp)||null};
+ }catch{return null;}
+}
+export {verifyLicense,pinPublicKey,inspectSignedIdentity};

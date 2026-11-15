@@ -1,0 +1,41 @@
+name: ChấmPro Android v14.6-to-QA signature compatibility
+on:
+  push:
+    branches: [feature/champro-v146-offline-account-clean-ui-20261114]
+    paths: ['.github/workflows/champro-signature-compatibility.yml']
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: read
+jobs:
+  signing-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download exact installed-version release and QA build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p old new
+          gh release download champro-v14.6-compact-keys-20261114 \
+            --repo "$GITHUB_REPOSITORY" --pattern "ChamPro-Test-v14.6.apk" --dir old
+          gh run download 43615579301 --repo "$GITHUB_REPOSITORY" \
+            --name "ChamPro-Sync-QA-v14_7-debug-APK-DO-NOT-OVERWRITE" --dir new
+          test -s old/ChamPro-Test-v14.6.apk
+          test -s new/app-debug.apk
+      - name: Compare Android app ID and signing certificates
+        run: |
+          set -euo pipefail
+          APK_SIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          "$APK_SIGNER" verify --print-certs old/ChamPro-Test-v14.6.apk > old.txt
+          "$APK_SIGNER" verify --print-certs new/app-debug.apk > new.txt
+          OLD="$(grep '^Signer #1 certificate SHA-256 digest:' old.txt | head -n 1 | cut -d: -f2- | xargs)"
+          NEW="$(grep '^Signer #1 certificate SHA-256 digest:' new.txt | head -n 1 | cut -d: -f2- | xargs)"
+          test -n "$OLD" && test -n "$NEW"
+          echo "v14.6 certificate SHA-256: $OLD"
+          echo "QA certificate SHA-256: $NEW"
+          if [ "$OLD" = "$NEW" ]; then
+            echo "SIGNATURE MATCH: a same-package newer version may be eligible for in-place upgrade after further QA."
+          else
+            echo "::warning::SIGNATURE MISMATCH: DO NOT install this QA APK over v14.6; Android will reject it and user data must not be erased."
+          fi

@@ -1,8 +1,9 @@
 /* ChấmPro v14.5 - direct WordPress PKCE login, no Cloudflare Worker for sign-in.
    Camera, OMR, scoring, photo review and offline data unchanged.
    After one successful sign-in, validate signed ES256 license locally on each launch. */
-import {verifyLicense,pinPublicKey} from './offline-license.mjs';
+import {verifyLicense,pinPublicKey,inspectSignedIdentity} from './offline-license.mjs';
 import {parseAuthReturn} from './auth-return.mjs';
+import {publicSyncKey,markSyncRegistered,clearSyncToken} from './sync-device.mjs';
 const LOGIN='https://mrhien.com/champro-login-app/';
 const SHOP='https://mrhien.com/champro-connect-app/';
 const EXCHANGE='https://mrhien.com/wp-json/champro/v2/exchange';
@@ -38,8 +39,15 @@ function planLabel(claim){
  const names={free:'Dùng thử',annual:'Gói 1 năm',lifetime:'Gói trọn đời'};
  return names[claim.plan]+(claim.plan!=='lifetime'?' · Đến '+new Date(claim.exp*1000).toLocaleDateString('vi-VN'):'');
 }
+function announceIdentity(claim){
+ const uid=Number(String(claim.sub||'').replace(/^wp:/,''));
+ if(!Number.isSafeInteger(uid)||uid<1)return;
+ window.champroAccountIdentity=Object.freeze({wpUserId:uid,deviceId:deviceId()});
+ window.dispatchEvent(new CustomEvent('champro-account-verified',{detail:window.champroAccountIdentity}));
+}
 function unlock(claim){
  verified=claim;
+ announceIdentity(claim);
  document.documentElement.classList.remove('cp-license-pending');
  $('cpAccountGate').hidden=true;
  $('cpAccountClose').disabled=false;
@@ -103,14 +111,23 @@ async function exchange(ticket,state){
     throw Error('Máy chủ cấp khóa chưa đúng phiên bản ứng dụng.');
   await pinPublicKey(keyResponse.publicKey);
   stamp('Đang xác thực tài khoản và nhận quyền sử dụng ChấmPro…');
+  // Enrollment is opportunistic and cannot block an otherwise valid login.
+  // The public JWK is registered only when the one-use PKCE exchange succeeds.
+  let publicKey=null;
+  try{publicKey=await publicSyncKey(pending.device);}catch(e){console.warn('Không thể tạo khóa đồng bộ; đăng nhập offline vẫn được hỗ trợ');}
   const res=await fetch(EXCHANGE,{method:'POST',headers:{'Content-Type':'application/json'},
     credentials:'omit',cache:'no-store',signal:ctrl.signal,
-    body:JSON.stringify({ticket,state,deviceId:pending.device,verifier:pending.verifier})});
+    body:JSON.stringify({ticket,state,deviceId:pending.device,verifier:pending.verifier,
+      ...(publicKey?{syncPublicKey:publicKey}:{})})});
   const j=await res.json().catch(()=>({}));
   if(!res.ok||!j.ok||!j.license)throw Error(j.message||'Máy chủ chưa cấp quyền (HTTP '+res.status+').');
   const claim=await verifyLicense(j.license);
   if(claim.deviceId!==pending.device)throw Error('Giấy phép không thuộc về thiết bị này.');
   localStorage.setItem(LICENSE_KEY,j.license);
+  if(j.syncDeviceRegistered===true){
+   try{await markSyncRegistered(pending.device,Number(claim.sub.split(':')[1]));}
+   catch(e){console.warn('Chưa lưu được thông tin đăng ký đồng bộ; cần đăng nhập lại để kích hoạt');}
+  }
   clearPending();
   try{await window.Capacitor?.Plugins?.Browser?.close?.();}catch{}
   unlock(claim);
@@ -156,7 +173,18 @@ function buy(plan){
 function boot(){
  deviceId();
  const saved=localStorage.getItem(LICENSE_KEY);
- if(saved)void verifyLicense(saved).then(unlock,()=>lock());
+ if(saved)void verifyLicense(saved).then(unlock,async()=>{
+  // A temporarily unavailable network does not sign the user out. If the
+  // signed entitlement has expired, preserve account identity but keep the
+  // paywalled functions locked until the server issues an updated license.
+  const identity=await inspectSignedIdentity(saved);
+  lock();
+  if(identity){
+   announceIdentity(identity);
+   $('cpCurrentPlan').textContent='Tài khoản '+identity.sub+' vẫn được ghi nhớ trên thiết bị.';
+   stamp('Tài khoản vẫn được ghi nhớ. Cần kết nối Internet để gia hạn xác nhận quyền sử dụng. Dữ liệu đã chấm không bị xóa.');
+  }else stamp('Chưa xác minh được giấy phép đã lưu. Dữ liệu chấm trên thiết bị vẫn được giữ nguyên.');
+ });
  else lock();
  loadPending();
  $('cpSignIn').onclick=()=>void startLogin();
@@ -170,6 +198,8 @@ function boot(){
  $('cpAccountClose').onclick=()=>{if(verified)$('cpAccountGate').hidden=true;};
  $('cpAccountLogout').onclick=()=>{
   if(!confirm('Đăng xuất trên thiết bị này? Dữ liệu chấm bài vẫn được giữ nguyên.'))return;
+  clearSyncToken();delete window.champroAccountIdentity;
+  window.dispatchEvent(new Event('champro-account-logout'));
   localStorage.removeItem(LICENSE_KEY);verified=null;lock();stamp('Đã đăng xuất. Dữ liệu chấm trên máy vẫn còn.');
  };
  void registerLinks().catch(e=>stamp(describe(e)));
