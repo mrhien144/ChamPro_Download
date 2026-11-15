@@ -59,7 +59,7 @@ jobs:
           import json
           p=Path('_qa/capacitor.config.json')
           j=json.loads(p.read_text())
-          j['appId']='com.champro.nativepreview.v146'
+          j['appId']='com.champro.syncqa.v147'
           j['appName']='ChấmPro Sync QA v14.7'
           p.write_text(json.dumps(j,ensure_ascii=False))
           PY
@@ -99,6 +99,23 @@ jobs:
         run: |
           test -s _qa/android/app/build/outputs/apk/debug/app-debug.apk
           sha256sum _qa/android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Publish separate QA-only APK (direct download, never overwrite v14.6)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="champro-sync-qa-v14.7-20261115"
+          mkdir -p _qa_release
+          cp _qa/android/app/build/outputs/apk/debug/app-debug.apk _qa_release/ChamPro-Sync-QA-v14.7.apk
+          sha256sum _qa_release/ChamPro-Sync-QA-v14.7.apk
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" _qa_release/ChamPro-Sync-QA-v14.7.apk --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" _qa_release/ChamPro-Sync-QA-v14.7.apk --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" --prerelease \
+              --title "ChấmPro Sync v14.7 QA ONLY – không phải bản cập nhật" \
+              --notes "APK ký debug, app ID riêng, KHÔNG chứa dữ liệu cũ. KHÔNG cài đè hoặc gỡ APK v14.6. Đồng bộ Cloudflare chưa mở cho dữ liệu thật. Chỉ thử trên máy sạch/dữ liệu giả."
+          fi
       - name: Upload debug APK artifact for isolated QA
         uses: actions/upload-artifact@v4
         with:
