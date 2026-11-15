@@ -3,7 +3,7 @@
    After one successful sign-in, validate signed ES256 license locally on each launch. */
 import {verifyLicense,pinPublicKey,inspectSignedIdentity} from './offline-license.mjs';
 import {parseAuthReturn} from './auth-return.mjs';
-import {publicSyncKey,markSyncRegistered,clearSyncToken} from './sync-device.mjs';
+import {publicSyncKey,markSyncRegistered,refreshSignedLicense,markRefreshRegistered,clearSyncToken} from './sync-device.mjs';
 const LOGIN='https://mrhien.com/champro-login-app/';
 const SHOP='https://mrhien.com/champro-connect-app/';
 const EXCHANGE='https://mrhien.com/wp-json/champro/v2/exchange';
@@ -13,7 +13,7 @@ const LICENSE_KEY='cp-v14-signed-license';
 const PENDING_KEY='cp-v144-pkce-pending';
 const PENDING_PAYMENT='cp-v14-payment-pending';
 const $=id=>document.getElementById(id);
-let pending=null,verified=null;
+let pending=null,verified=null,refreshing=null,lastRefreshAt=0;
 // Authentication messages are neutral by default. Only real authentication
 // failures are shown in red; offline / previously verified account is NOT an error.
 const stamp=(s,level='info')=>{
@@ -60,7 +60,7 @@ function unlock(claim){
  $('cpAccountGate').hidden=true;
  $('cpAccountClose').disabled=false;
  $('cpAccountLogout').hidden=false;
- $('cpCurrentPlan').textContent=planLabel(claim);
+ $('cpCurrentPlan').textContent=(localStorage.getItem('cp-v14-account-name')||claim.sub||'Tài khoản')+' · '+planLabel(claim);
  setTimeout(addAccountMenu,150);
 }
 function lock(){
@@ -103,6 +103,36 @@ async function startLogin(){
  }catch(e){fail(describe(e));}
  finally{button.disabled=false;}
 }
+async function refreshPlan(force=false){
+ // Network failures never delete an offline license or any student data.
+ if(!navigator.onLine)return stamp('Ngoại tuyến: tài khoản và dữ liệu chấm vẫn được giữ trên máy.');
+ if(refreshing)return refreshing;
+ if(!force&&Date.now()-lastRefreshAt<300000)return;
+ const saved=localStorage.getItem(LICENSE_KEY);
+ if(!saved)return stamp('Cần đăng nhập tài khoản mrhien.com lần đầu.');
+ refreshing=(async()=>{
+  try{
+   const claim=await inspectSignedIdentity(saved);
+   if(!claim)throw Error('Giấy phép thiết bị chưa được xác minh. Vui lòng đăng nhập lại một lần.');
+   const uid=Number(String(claim.sub).replace(/^wp:/,''));
+   if(!uid)throw Error('Không xác định được tài khoản cần cập nhật.');
+   stamp('Đang kiểm tra gói sử dụng trên Cloudflare D1…');
+   const fresh=await refreshSignedLicense(deviceId(),uid);
+   const checked=await verifyLicense(fresh.license);
+   if(checked.sub!==claim.sub||checked.deviceId!==deviceId())
+    throw Error('Máy chủ trả giấy phép không đúng tài khoản hoặc thiết bị.');
+   localStorage.setItem(LICENSE_KEY,fresh.license);
+   if(fresh.username)localStorage.setItem('cp-v14-account-name',String(fresh.username).slice(0,80));
+   unlock(checked);lastRefreshAt=Date.now();
+   stamp('Đã đồng bộ tài khoản và gói sử dụng từ Cloudflare D1.');
+   return true;
+  }catch(e){
+   stamp('Chưa cập nhật được gói: '+describe(e)+' Giấy phép và dữ liệu cũ được giữ nguyên.');
+   return false;
+  }finally{refreshing=null;}
+ })();
+ return refreshing;
+}
 async function exchange(ticket,state){
  if(!pending&&!loadPending())return fail('Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.');
  if(state!==pending.state)return fail('Mã xác thực không khớp, hãy đăng nhập lại.');
@@ -136,9 +166,14 @@ async function exchange(ticket,state){
    try{await markSyncRegistered(pending.device,Number(claim.sub.split(':')[1]));}
    catch(e){console.warn('Chưa lưu được thông tin đăng ký đồng bộ; cần đăng nhập lại để kích hoạt');}
   }
+  if(j.refreshDeviceRegistered===true){
+   try{await markRefreshRegistered(pending.device,Number(claim.sub.split(':')[1]));}
+   catch(e){console.warn('Chưa lưu được khóa làm mới giấy phép');}
+  }
+  if(j.username)localStorage.setItem('cp-v14-account-name',String(j.username).slice(0,80));
   clearPending();
   try{await window.Capacitor?.Plugins?.Browser?.close?.();}catch{}
-  unlock(claim);
+  unlock(claim);lastRefreshAt=Date.now();
  }catch(e){fail(describe(e));}
  finally{clearTimeout(timer);}
 }
@@ -181,7 +216,10 @@ function buy(plan){
 function boot(){
  deviceId();
  const saved=localStorage.getItem(LICENSE_KEY);
- if(saved)void verifyLicense(saved).then(unlock,async()=>{
+ if(saved)void verifyLicense(saved).then(claim=>{
+  unlock(claim);
+  if(navigator.onLine)void refreshPlan(false);
+ },async()=>{
   // A temporarily unavailable network does not sign the user out. If the
   // signed entitlement has expired, preserve account identity but keep the
   // paywalled functions locked until the server issues an updated license.
@@ -189,6 +227,7 @@ function boot(){
   lock();
   if(identity){
    announceIdentity(identity);
+   if(navigator.onLine)void refreshPlan(false);
    $('cpCurrentPlan').textContent='Tài khoản '+identity.sub+' vẫn được ghi nhớ trên thiết bị.';
    stamp('Tài khoản vẫn được ghi nhớ. Cần kết nối Internet để gia hạn xác nhận quyền sử dụng. Dữ liệu đã chấm không bị xóa.');
   }else fail('Chưa xác minh được giấy phép đã lưu. Dữ liệu chấm trên thiết bị vẫn được giữ nguyên.');
@@ -202,15 +241,18 @@ function boot(){
  $('cpPairCheck').onclick=()=>stamp('Chờ trang mrhien.com xác thực. Trình duyệt sẽ tự quay về ChấmPro.');
  $('cpBuyAnnual').onclick=()=>buy('annual');
  $('cpBuyLifetime').onclick=()=>buy('lifetime');
- $('cpRefreshPlan').onclick=()=>stamp('Để cập nhật quyền đã thanh toán, hãy đăng nhập lại khi có Internet.');
+ $('cpRefreshPlan').onclick=()=>void refreshPlan(true);
  $('cpAccountClose').onclick=()=>{if(verified)$('cpAccountGate').hidden=true;};
  $('cpAccountLogout').onclick=()=>{
   if(!confirm('Đăng xuất trên thiết bị này? Dữ liệu chấm bài vẫn được giữ nguyên.'))return;
   clearSyncToken();delete window.champroAccountIdentity;
   window.dispatchEvent(new Event('champro-account-logout'));
-  localStorage.removeItem(LICENSE_KEY);verified=null;lock();stamp('Đã đăng xuất. Dữ liệu chấm trên máy vẫn còn.');
+  localStorage.removeItem(LICENSE_KEY);localStorage.removeItem('cp-v14-account-name');
+  verified=null;lastRefreshAt=0;lock();stamp('Đã đăng xuất. Dữ liệu chấm trên máy vẫn còn.');
  };
  void registerLinks().catch(e=>fail(describe(e)));
+ window.addEventListener('online',()=>void refreshPlan(false));
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refreshPlan(false)});
  setTimeout(addAccountMenu,250);
  if(!saved)stamp('Đăng nhập tài khoản mrhien.com một lần để kích hoạt ChấmPro offline.');
 }
