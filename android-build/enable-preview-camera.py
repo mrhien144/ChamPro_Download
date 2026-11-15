@@ -30,7 +30,8 @@ assert len(activity_candidates) == 1, (
 activity = activity_candidates[0]
 package_name = ".".join(activity.relative_to(java_root).parts[:-1])
 assert package_name in (
-    "com.champro.nativepreview.v145", "com.champro.nativepreview.v146"
+    "com.champro.nativepreview.v145", "com.champro.nativepreview.v146",
+    "com.champro.syncqa.v147"
 ), f"Unexpected Android package: {package_name}"
 activity_code = """package com.champro.nativepreview.v145;
 
