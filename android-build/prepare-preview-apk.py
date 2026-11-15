@@ -62,7 +62,9 @@ html.cp-license-pending body > :not(#cpAccountGate){display:none!important}
 .cp-account-card .cp-plan{border:1px solid #d9e4f0;padding:14px;border-radius:13px;margin:10px 0}
 .cp-account-card .cp-tag{background:#e7f2ff;padding:8px 10px;border-radius:8px;font-size:13px}
 .cp-account-card [hidden]{display:none!important}
-#cpAuthStatus{color:#aa452b;min-height:20px;font-size:13px;overflow-wrap:anywhere}
+#cpAuthStatus{color:#30557f;min-height:20px;font-size:13px;overflow-wrap:anywhere}
+#cpAuthStatus[data-level="error"]{color:#b42318}
+#cpAuthStatus[data-level="success"]{color:#087443}
 #cpAccountClose{background:#edf2f9;color:#26476d}
 </style><script>document.documentElement.classList.add('cp-license-pending')</script></head>""", 1)
 s = s.replace("</body>", """<section id="cpAccountGate" role="dialog" aria-modal="true" aria-label="Tài khoản ChấmPro">
