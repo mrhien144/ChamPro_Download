@@ -14,7 +14,15 @@ const PENDING_KEY='cp-v144-pkce-pending';
 const PENDING_PAYMENT='cp-v14-payment-pending';
 const $=id=>document.getElementById(id);
 let pending=null,verified=null;
-const stamp=s=>{const e=$('cpAuthStatus');if(e)e.textContent=s;};
+// Authentication messages are neutral by default. Only real authentication
+// failures are shown in red; offline / previously verified account is NOT an error.
+const stamp=(s,level='info')=>{
+ const e=$('cpAuthStatus');
+ if(!e)return;
+ e.textContent=s;
+ e.dataset.level=level;
+};
+const fail=s=>stamp(s,'error');
 function deviceId(){
  let x=localStorage.getItem(INSTALL_KEY);
  if(!x){x='cp-'+crypto.randomUUID();localStorage.setItem(INSTALL_KEY,x);}
@@ -75,7 +83,7 @@ function describe(error){
  return m||'Đăng nhập chưa hoàn tất.';
 }
 async function startLogin(){
- if(!navigator.onLine)return stamp('Cần Internet khi đăng nhập lần đầu. Sau kích hoạt, việc chấm bài không cần mạng.');
+ if(!navigator.onLine)return stamp('Đang ngoại tuyến. Chỉ cần Internet để đăng nhập lần đầu; tài khoản đã kích hoạt vẫn dùng được offline.');
  const button=$('cpSignIn');button.disabled=true;
  try{
   // The app owns its PKCE verifier; only the SHA256 challenge goes to WordPress.
@@ -92,12 +100,12 @@ async function startLogin(){
   setView('waiting');
   stamp('Đã mở trang đăng nhập mrhien.com. Sau khi đăng nhập, trình duyệt sẽ tự quay lại ChấmPro.');
   await openFirstParty(url.toString());
- }catch(e){stamp(describe(e));}
+ }catch(e){fail(describe(e));}
  finally{button.disabled=false;}
 }
 async function exchange(ticket,state){
- if(!pending&&!loadPending())return stamp('Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.');
- if(state!==pending.state)return stamp('Mã xác thực không khớp, hãy đăng nhập lại.');
+ if(!pending&&!loadPending())return fail('Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.');
+ if(state!==pending.state)return fail('Mã xác thực không khớp, hãy đăng nhập lại.');
  if(!navigator.onLine)return stamp('Cần Internet để hoàn tất xác thực lần đầu.');
  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),15000);
  try{
@@ -131,7 +139,7 @@ async function exchange(ticket,state){
   clearPending();
   try{await window.Capacitor?.Plugins?.Browser?.close?.();}catch{}
   unlock(claim);
- }catch(e){stamp(describe(e));}
+ }catch(e){fail(describe(e));}
  finally{clearTimeout(timer);}
 }
 async function acceptLink(url){
@@ -183,7 +191,7 @@ function boot(){
    announceIdentity(identity);
    $('cpCurrentPlan').textContent='Tài khoản '+identity.sub+' vẫn được ghi nhớ trên thiết bị.';
    stamp('Tài khoản vẫn được ghi nhớ. Cần kết nối Internet để gia hạn xác nhận quyền sử dụng. Dữ liệu đã chấm không bị xóa.');
-  }else stamp('Chưa xác minh được giấy phép đã lưu. Dữ liệu chấm trên thiết bị vẫn được giữ nguyên.');
+  }else fail('Chưa xác minh được giấy phép đã lưu. Dữ liệu chấm trên thiết bị vẫn được giữ nguyên.');
  });
  else lock();
  loadPending();
@@ -202,7 +210,7 @@ function boot(){
   window.dispatchEvent(new Event('champro-account-logout'));
   localStorage.removeItem(LICENSE_KEY);verified=null;lock();stamp('Đã đăng xuất. Dữ liệu chấm trên máy vẫn còn.');
  };
- void registerLinks().catch(e=>stamp(describe(e)));
+ void registerLinks().catch(e=>fail(describe(e)));
  setTimeout(addAccountMenu,250);
  if(!saved)stamp('Đăng nhập tài khoản mrhien.com một lần để kích hoạt ChấmPro offline.');
 }
