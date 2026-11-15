@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const get=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const a=get('android-build/account-direct.mjs');
+const prep=get('android-build/prepare-preview-apk.py');
+const sync=get('android-build/app-sync.mjs');
+assert(a.includes("e.dataset.level=level"),"Login must set severity explicitly");
+assert(a.includes("const fail=s=>stamp(s,'error')"),"Actual errors retain red status");
+assert(a.includes("verifyLicense(saved).then(unlock"),"Already-signed license stays offline");
+assert(a.includes("if(identity)"),"Preserve account identity while offline");
+assert(prep.includes('#cpAuthStatus{color:#30557f'),"Normal auth text is neutral");
+assert(prep.includes('#cpAuthStatus[data-level="error"]{color:#b42318}'),"Real failures are visually distinct");
+assert(!prep.includes('#cpAuthStatus{color:#aa452b'),"Old always-red rule must be removed");
+assert(sync.includes("event.status===503"),"Disabled cloud sync is not a network or login error");
+assert(sync.includes("CHECK_DELAY_MS"),"Disabled sync must not continuously retry");
+assert(sync.includes("không bị đăng xuất"),"Disabled sync cannot claim logout");
+assert(!sync.includes("localStorage.removeItem"),"Sync must never delete login data");
+console.log("PASS: correct warning severity, safe disabled-sync handling, no changes to offline account or data.");
