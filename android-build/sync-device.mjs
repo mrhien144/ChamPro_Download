@@ -103,3 +103,47 @@ export async function shortLivedSyncToken(device,uid){
  cachedToken={device,uid:userId,token:response.token,exp:expiry};
  return cachedToken.token;
 }
+
+/** Separate entitlement refresh from document/sheet synchronization.
+ * The challenge is signed with the same non-exportable install key, not
+ * with the offline license. Refresh never erases the stored offline token.
+ */
+const REFRESH='https://mrhien.com/wp-json/champro/v2';
+export async function markRefreshRegistered(device,uid){
+ const item=await entry(device);
+ const owner=Number(uid);
+ if(!item?.privateKey||!Number.isSafeInteger(owner)||owner<=0)return false;
+ await store(device,{...item,refreshRegisteredUid:owner});
+ return true;
+}
+export async function refreshSignedLicense(device,uid){
+ const userId=Number(uid);
+ if(!Number.isSafeInteger(userId)||userId<1||!navigator.onLine)
+  throw Error('Cần Internet để kiểm tra quyền; tài khoản vẫn lưu trên điện thoại.');
+ const saved=await entry(device);
+ if(!saved?.privateKey||saved.refreshRegisteredUid!==userId)
+  throw Error('Cần đăng nhập lại một lần để liên kết thiết bị với cổng quyền D1.');
+ const postRefresh=async(path,body)=>{
+  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),12000);
+  try{
+   const response=await fetch(REFRESH+path,{method:'POST',mode:'cors',credentials:'omit',
+    cache:'no-store',signal:ctrl.signal,headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)});
+   const parsed=await response.json().catch(()=>({}));
+   if(!response.ok||!parsed.ok)
+    throw Object.assign(Error(parsed.message||'Không lấy được quyền mới từ máy chủ.'),{status:response.status});
+   return parsed;
+  }finally{clearTimeout(timer);}
+ };
+ const challenge=await postRefresh('/refresh-challenge',{wpUserId:userId,deviceId:device});
+ if(!/^[a-f0-9]{48}$/.test(String(challenge.nonce||'')))throw Error('Thử thách không hợp lệ.');
+ const input=`champro-license-refresh-v1\n${userId}\n${device}\n${challenge.nonce}`;
+ const signature=new Uint8Array(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},
+  saved.privateKey,encoder.encode(input)));
+ if(signature.length!==64)throw Error('Chữ ký quyền thiết bị không hợp lệ.');
+ const result=await postRefresh('/refresh-license',{wpUserId:userId,deviceId:device,
+  nonce:challenge.nonce,signature:encode(signature)});
+ if(typeof result.license!=='string'||!result.license)
+  throw Error('Máy chủ không trả về giấy phép đã ký.');
+ return result;
+}
