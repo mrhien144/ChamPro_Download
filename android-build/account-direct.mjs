@@ -53,14 +53,14 @@ function announceIdentity(claim){
  window.champroAccountIdentity=Object.freeze({wpUserId:uid,deviceId:deviceId()});
  window.dispatchEvent(new CustomEvent('champro-account-verified',{detail:window.champroAccountIdentity}));
 }
-function unlock(claim){
+function unlock(claim,onlineConfirmed=false){
  verified=claim;
  announceIdentity(claim);
  document.documentElement.classList.remove('cp-license-pending');
  $('cpAccountGate').hidden=true;
  $('cpAccountClose').disabled=false;
  $('cpAccountLogout').hidden=false;
- $('cpCurrentPlan').textContent=(localStorage.getItem('cp-v14-account-name')||claim.sub||'Tài khoản')+' · '+planLabel(claim);
+ $('cpCurrentPlan').textContent=(localStorage.getItem('cp-v14-account-name')||claim.sub||'Tài khoản')+' · '+(onlineConfirmed?planLabel(claim):navigator.onLine?'Đang xác minh gói với máy chủ…':'Gói đã lưu trên máy: '+planLabel(claim));
  setTimeout(addAccountMenu,150);
 }
 function lock(){
@@ -116,18 +116,18 @@ async function refreshPlan(force=false){
    if(!claim)throw Error('Giấy phép thiết bị chưa được xác minh. Vui lòng đăng nhập lại một lần.');
    const uid=Number(String(claim.sub).replace(/^wp:/,''));
    if(!uid)throw Error('Không xác định được tài khoản cần cập nhật.');
-   stamp('Đang kiểm tra gói sử dụng trên Cloudflare D1…');
+   stamp('Đang kiểm tra quyền sử dụng trên máy chủ…');
    const fresh=await refreshSignedLicense(deviceId(),uid);
    const checked=await verifyLicense(fresh.license);
    if(checked.sub!==claim.sub||checked.deviceId!==deviceId())
     throw Error('Máy chủ trả giấy phép không đúng tài khoản hoặc thiết bị.');
    localStorage.setItem(LICENSE_KEY,fresh.license);
    if(fresh.username)localStorage.setItem('cp-v14-account-name',String(fresh.username).slice(0,80));
-   unlock(checked);lastRefreshAt=Date.now();
-   stamp('Đã đồng bộ tài khoản và gói sử dụng từ Cloudflare D1.');
+   unlock(checked,true);lastRefreshAt=Date.now();
+   stamp('Đã xác minh tài khoản và cập nhật gói sử dụng.','success');
    return true;
   }catch(e){
-   stamp('Chưa cập nhật được gói: '+describe(e)+' Giấy phép và dữ liệu cũ được giữ nguyên.');
+   stamp('Chưa cập nhật được gói: '+describe(e)+' Giấy phép và dữ liệu cũ được giữ nguyên.', 'error');
    return false;
   }finally{refreshing=null;}
  })();
@@ -171,9 +171,10 @@ async function exchange(ticket,state){
    catch(e){console.warn('Chưa lưu được khóa làm mới giấy phép');}
   }
   if(j.username)localStorage.setItem('cp-v14-account-name',String(j.username).slice(0,80));
+  else localStorage.removeItem('cp-v14-account-name');
   clearPending();
   try{await window.Capacitor?.Plugins?.Browser?.close?.();}catch{}
-  unlock(claim);lastRefreshAt=Date.now();
+  unlock(claim,true);lastRefreshAt=Date.now();
  }catch(e){fail(describe(e));}
  finally{clearTimeout(timer);}
 }
@@ -196,6 +197,44 @@ function showAccount(){
  $('cpAccountClose').disabled=!verified;
  $('cpAccountLogout').hidden=!verified;
  setView(verified?'plans':'login');
+ if(verified&&navigator.onLine)void refreshPlan(true);
+}
+// Hardware Back closes account the same way as the visible Back button.
+// Never dismiss an unverified first-use license gate or delete local data.
+function closeAccount(){
+ const gate=$('cpAccountGate');
+ if(!gate||gate.hidden)return false;
+ if(verified){
+  gate.hidden=true;
+  return true;
+ }
+ if(!$('cpViewWaiting')?.hidden){
+  setView('login');
+  stamp('Bạn có thể thử đăng nhập lại. Dữ liệu chấm vẫn được giữ nguyên.');
+  return true;
+ }
+ return false;
+}
+function registerAndroidBack(){
+ const app=window.Capacitor?.Plugins?.App;
+ if(!app?.addListener)return;
+ void Promise.resolve(app.addListener('backButton',event=>{
+  // Android Back must close an existing native HTML dialog before navigating;
+  // never discard an open review/QR dialog by switching the underlying page.
+  const dialog=document.querySelector('dialog[open]');
+  if(dialog){dialog.close();return;}
+  const sheet=$('cpNativeSheet');
+  if(sheet&&!sheet.hidden){
+   $('cpNativeClose')?.click();
+   return;
+  }
+  if(closeAccount())return;
+  if(!$('cpAccountGate')?.hidden)return;
+  if(event?.canGoBack){window.history.back();return;}
+  if(document.querySelector('.page.shown')?.id!=='page-home'){
+   document.querySelector('[data-page="home"]')?.click();
+  }else app.exitApp?.();
+ })).catch(e=>console.warn('Android Back listener unavailable',e));
 }
 function addAccountMenu(){
  if($('cpOpenAccount'))return;
@@ -242,7 +281,7 @@ function boot(){
  $('cpBuyAnnual').onclick=()=>buy('annual');
  $('cpBuyLifetime').onclick=()=>buy('lifetime');
  $('cpRefreshPlan').onclick=()=>void refreshPlan(true);
- $('cpAccountClose').onclick=()=>{if(verified)$('cpAccountGate').hidden=true;};
+ $('cpAccountClose').onclick=()=>{closeAccount();};
  $('cpAccountLogout').onclick=()=>{
   if(!confirm('Đăng xuất trên thiết bị này? Dữ liệu chấm bài vẫn được giữ nguyên.'))return;
   clearSyncToken();delete window.champroAccountIdentity;
@@ -250,6 +289,7 @@ function boot(){
   localStorage.removeItem(LICENSE_KEY);localStorage.removeItem('cp-v14-account-name');
   verified=null;lastRefreshAt=0;lock();stamp('Đã đăng xuất. Dữ liệu chấm trên máy vẫn còn.');
  };
+ registerAndroidBack();
  void registerLinks().catch(e=>fail(describe(e)));
  window.addEventListener('online',()=>void refreshPlan(false));
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refreshPlan(false)});

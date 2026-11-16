@@ -59,6 +59,25 @@ async function internal(req,env){
  const uid=Number(b.wpUserId);
  if(!Number.isSafeInteger(uid)||uid<1)return error('Tài khoản không hợp lệ');
  const aid='wp:'+uid;
+ // WordPress Direct Login reads the same D1 entitlement as ChấmPro Web.
+ // Only the secret-authenticated internal bridge can request it; never trust
+ // a client-submitted plan or an unauthenticated public query.
+ if(b.action==='entitlement'){
+  const account=await env.DB.prepare(
+   'SELECT wp_user_id,plan,status,expires_at,created_at FROM accounts WHERE wp_user_id=?'
+  ).bind(uid).first();
+  if(!account)return error('Tài khoản WordPress chưa được đồng bộ lên ChấmPro',404);
+  if(account.status!=='active')return error('Tài khoản ChấmPro đang bị khóa',403);
+  const plan=String(account.plan||'free');
+  if(!['free','annual','lifetime'].includes(plan))return error('Dữ liệu gói sử dụng không hợp lệ',503);
+  const paidUntil=account.expires_at?String(account.expires_at):null;
+  if(plan==='annual'&&!paidUntil)return error('Gói 1 năm thiếu ngày hết hạn trên máy chủ',503);
+  const expiry=paidUntil?Date.parse(/[Zz]|[+-]\\d{2}:?\\d{2}$/.test(paidUntil)?paidUntil:paidUntil.replace(' ','T')+'Z'):NaN;
+  if(plan==='annual'&&!Number.isFinite(expiry))return error('Ngày hết hạn gói 1 năm không hợp lệ',503);
+  return send({ok:true,wpUserId:uid,
+   plan:plan==='annual'&&expiry<=Date.now()?'expired':plan,
+   expiresAt:paidUntil,trialStartedAt:account.created_at||null});
+ }
  if(b.action==='offline-license')return issueOfflineLicense(env,uid,b.deviceId);
  if(b.action==='approve-pair')return approvePair(env,uid,b);
  if(b.action==='account'){

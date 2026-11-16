@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ChấmPro Direct Login (v14.5 STAGING)
  * Description: WordPress account -> one-time PKCE ticket -> signed offline device license. No Cloudflare Worker required for LOGIN.
- * Version: 0.5.1
+ * Version: 0.5.3
  * Requires PHP: 7.4
  */
 defined('ABSPATH') || exit;
@@ -91,22 +91,49 @@ function cpd_sign($claims){
     if(!$raw)return cpd_fail('Chữ ký máy chủ không đúng định dạng',503);
     return $message.'.'.cpd_b64e($raw);
 }
+/**
+ * D1 is the single source of truth for ChấmPro subscriptions paid on web.
+ * Never turn a failed entitlement lookup into a new trial/free license.
+ * The Bridge secret remains server-side; the device never selects its plan.
+ */
+function cpd_authoritative_entitlement($uid) {
+    if (!function_exists('champro_bridge_ready') ||
+        !function_exists('champro_bridge_request') ||
+        !champro_bridge_ready())
+        return cpd_fail('Máy chủ chưa kết nối dịch vụ quyền sử dụng ChấmPro. Giấy phép cũ trên điện thoại vẫn được giữ.', 503);
+    $result=champro_bridge_request(array('action'=>'entitlement','wpUserId'=>(int)$uid));
+    if(is_wp_error($result)||!is_array($result)||empty($result['ok'])||
+       (int)($result['wpUserId']??0)!==(int)$uid)
+        return cpd_fail('Chưa xác minh được gói ChấmPro từ máy chủ. Không tự chuyển về dùng thử.', 503);
+    return $result;
+}
+function cpd_utc_timestamp($s) {
+    if(!is_string($s)||!preg_match('/^\\d{4}-\\d{2}-\\d{2}[ T]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z)?$/D',$s))return false;
+    // D1 stores UTC SQLite DATETIME. Do not use local server timezone.
+    $normal=str_replace('T',' ',rtrim($s,'Z'));
+    return strtotime($normal.' UTC');
+}
 function cpd_license($user_id,$device) {
     $user=get_userdata($user_id);
     if(!$user||!cpd_device($device))return cpd_fail('Không nhận diện được tài khoản hoặc thiết bị',403);
-    $now=time();$plan='free';
-    $configured=get_user_meta($user_id,'cpd_verified_plan',true);
-    $expiry=(int)get_user_meta($user_id,'cpd_verified_expires',true);
-    if($configured==='lifetime'){$plan='lifetime';$exp=4102444800;}
-    elseif($configured==='annual'&&$expiry>$now){$plan='annual';$exp=$expiry;}
-    else{
-        $first=(int)get_user_meta($user_id,'cpd_trial_started',true);
-        if(!$first){
-            if(!add_user_meta($user_id,'cpd_trial_started',$now,true))$first=(int)get_user_meta($user_id,'cpd_trial_started',true);
-            else $first=$now;
-        }
-        $exp=$first+CPD_TRIAL_DAYS*86400;
+    $entitlement=cpd_authoritative_entitlement($user_id);
+    if(is_wp_error($entitlement))return $entitlement;
+    $now=time();$plan=(string)($entitlement['plan']??'');
+    if($plan==='lifetime'){$exp=4102444800;}
+    elseif($plan==='annual'){
+        $exp=cpd_utc_timestamp($entitlement['expiresAt']??null);
+        if(!$exp||$exp<=$now)return cpd_fail('Ngày hết hạn gói 1 năm chưa hợp lệ hoặc đã hết hạn.', 402);
+    }elseif($plan==='free'){
+        // Trial is anchored to the original D1 account creation date, never
+        // restarted by reinstalling or logging in on another device.
+        $started=cpd_utc_timestamp($entitlement['trialStartedAt']??null);
+        if(!$started)return cpd_fail('Chưa xác minh được ngày bắt đầu dùng thử trên máy chủ.',503);
+        $exp=$started+CPD_TRIAL_DAYS*86400;
         if($exp<=$now)return cpd_fail('Đã hết thời gian dùng thử. Hãy mua gói ChấmPro.',402);
+    }elseif($plan==='expired'){
+        return cpd_fail('Gói ChấmPro đã hết hạn. Hãy gia hạn trên website.',402);
+    }else{
+        return cpd_fail('Máy chủ trả trạng thái gói không hợp lệ.',503);
     }
     $claims=array('iss'=>CPD_ISSUER,'aud'=>CPD_AUDIENCE,'sub'=>'wp:'.$user_id,
        'deviceId'=>$device,'plan'=>$plan,'iat'=>$now,'exp'=>$exp);
@@ -200,11 +227,113 @@ add_action('rest_api_init',function(){
               return cpd_fail('Không xác minh được thiết bị đăng nhập',403);
           $license=cpd_license((int)$record['user_id'],$device);
           if(is_wp_error($license))return $license;
+          // The exchange is one-use and PKCE-bound. Register the public device
+          // key only AFTER WordPress has proved account + app ownership.
+          $registered=false;
+          if(isset($b['syncPublicKey'])&&cpd_valid_device_jwk($b['syncPublicKey'])){
+              $registered=cpd_register_device_key((int)$record['user_id'],$device,$b['syncPublicKey']);
+          }
+          $user=get_userdata((int)$record['user_id']);
+          $license['username']=$user ? $user->user_login : '';
+          $license['refreshDeviceRegistered']=$registered;
+          // Data sync has its own backend and must not be claimed enabled here.
+          $license['syncDeviceRegistered']=false;
           return rest_ensure_response($license);
        }));
 });
+
+// Device-bound entitlement refresh. Never accepts a client-supplied plan.
+function cpd_valid_device_jwk($k) {
+    return is_array($k)&&($k['kty']??'')==='EC'&&($k['crv']??'')==='P-256'&&
+      preg_match('/^[A-Za-z0-9_-]{43}$/D',(string)($k['x']??''))&&
+      preg_match('/^[A-Za-z0-9_-]{43}$/D',(string)($k['y']??''));
+}
+function cpd_device_option($device){return 'cpd_device_key_'.hash('sha256',$device);}
+function cpd_register_device_key($uid,$device,$jwk){
+    if(!cpd_device($device)||!cpd_valid_device_jwk($jwk))return false;
+    $key=cpd_device_option($device);
+    $value=array('uid'=>$uid,'device'=>$device,'jwk'=>array(
+        'kty'=>'EC','crv'=>'P-256','x'=>$jwk['x'],'y'=>$jwk['y']));
+    // Only a verified, successful PKCE ticket can call this function.
+    if(get_option($key,false)===false)return add_option($key,$value,'','no');
+    return update_option($key,$value,false)||get_option($key) === $value;
+}
+function cpd_device_key($uid,$device){
+    $entry=get_option(cpd_device_option($device),false);
+    return is_array($entry)&&(int)($entry['uid']??0)===$uid&&
+      ($entry['device']??'')===$device&&cpd_valid_device_jwk($entry['jwk']??null)
+      ?$entry['jwk']:false;
+}
+function cpd_signed_payload($uid,$device,$nonce){
+    return "champro-license-refresh-v1\n".$uid."\n".$device."\n".$nonce;
+}
+function cpd_sig_der($raw) {
+    if(!is_string($raw)||strlen($raw)!==64)return false;
+    $parts=array();
+    foreach(array(substr($raw,0,32),substr($raw,32,32)) as $value){
+        $value=ltrim($value,"\x00");
+        if($value==='')$value="\x00";
+        if(ord($value[0])&0x80)$value="\x00".$value;
+        $parts[]="\x02".chr(strlen($value)).$value;
+    }
+    $body=implode('',$parts);
+    return "\x30".chr(strlen($body)).$body;
+}
+function cpd_verify_device_signature($jwk,$data,$signature){
+    if(!cpd_valid_device_jwk($jwk)||!is_string($signature)||
+       !preg_match('/^[A-Za-z0-9_-]{86}$/D',$signature))return false;
+    $x=cpd_b64d($jwk['x']);$y=cpd_b64d($jwk['y']);$raw=cpd_b64d($signature);
+    if(strlen((string)$x)!==32||strlen((string)$y)!==32)return false;
+    $der=cpd_sig_der($raw);if(!$der)return false;
+    $spki="\x30\x59\x30\x13\x06\x07\x2a\x86\x48\xce\x3d\x02\x01".
+          "\x06\x08\x2a\x86\x48\xce\x3d\x03\x01\x07\x03\x42\x00\x04".$x.$y;
+    $pem="-----BEGIN PUBLIC KEY-----\n".chunk_split(base64_encode($spki),64,"\n").
+         "-----END PUBLIC KEY-----\n";
+    return openssl_verify($data,$der,$pem,OPENSSL_ALGO_SHA256)===1;
+}
+function cpd_refresh_request($request){
+    $b=$request->get_json_params();
+    $uid=(int)($b['wpUserId']??0);
+    $device=(string)($b['deviceId']??'');
+    if($uid<1||!cpd_device($device)||!cpd_device_key($uid,$device))
+       return cpd_fail('Thiết bị chưa được liên kết. Đăng nhập lại trên ứng dụng.',403);
+    return array($b,$uid,$device);
+}
+add_action('rest_api_init',function(){
+    register_rest_route('champro/v2','/refresh-challenge',array(
+      'methods'=>'POST','permission_callback'=>'__return_true',
+      'callback'=>function(WP_REST_Request $request){
+        $args=cpd_refresh_request($request);if(is_wp_error($args))return $args;
+        list($b,$uid,$device)=$args;
+        $nonce=bin2hex(random_bytes(24));
+        set_transient('cpd_refresh_'.hash('sha256',$uid.'|'.$device.'|'.$nonce),1,120);
+        return rest_ensure_response(array('ok'=>true,'nonce'=>$nonce));
+      }
+    ));
+    register_rest_route('champro/v2','/refresh-license',array(
+      'methods'=>'POST','permission_callback'=>'__return_true',
+      'callback'=>function(WP_REST_Request $request){
+        $args=cpd_refresh_request($request);if(is_wp_error($args))return $args;
+        list($b,$uid,$device)=$args;
+        $nonce=(string)($b['nonce']??'');
+        if(!preg_match('/^[a-f0-9]{48}$/D',$nonce))
+            return cpd_fail('Mã thử thách không hợp lệ',400);
+        $key='cpd_refresh_'.hash('sha256',$uid.'|'.$device.'|'.$nonce);
+        if(!get_transient($key))return cpd_fail('Mã thử thách đã hết hạn hoặc được sử dụng',401);
+        delete_transient($key); // single use, including failed signatures
+        $jwk=cpd_device_key($uid,$device);
+        if(!cpd_verify_device_signature($jwk,cpd_signed_payload($uid,$device,$nonce),$b['signature']??''))
+            return cpd_fail('Không xác minh được chữ ký của điện thoại',403);
+        $result=cpd_license($uid,$device);
+        if(is_wp_error($result))return $result;
+        $user=get_userdata($uid);
+        $result['username']=$user ? $user->user_login : '';
+        return rest_ensure_response($result);
+      }
+    ));
+});
 add_filter('rest_pre_serve_request',function($served,$result,$request){
-    if(in_array($request->get_route(),array('/champro/v2/exchange','/champro/v2/public-key'),true)){
+    if(in_array($request->get_route(),array('/champro/v2/exchange','/champro/v2/public-key','/champro/v2/refresh-challenge','/champro/v2/refresh-license'),true)){
         $origin=$_SERVER['HTTP_ORIGIN']??'';
         if($origin==='https://localhost'){
             header('Access-Control-Allow-Origin: https://localhost');

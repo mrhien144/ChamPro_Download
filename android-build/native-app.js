@@ -20,6 +20,27 @@ bottom.innerHTML=pages.map(p=>'<button type="button" class="cp-native-tab" data-
 const sheet=document.createElement('div');sheet.className='cp-native-sheet-backdrop';sheet.id='cpNativeSheet';sheet.hidden=true;
 sheet.innerHTML='<section class="cp-native-sheet" role="dialog" aria-modal="true" aria-label="Tiện ích ChấmPro"><div class="cp-native-sheet-handle"></div><h2>Tiện ích</h2><button type="button" data-native-page="backup">◇ Sao lưu & dữ liệu</button><button type="button" data-native-page="exams">▤ Quản lý đáp án</button><button type="button" data-native-page="students">♙ Danh sách học sinh</button><button type="button" id="cpNativeClose">Đóng</button><p>Điểm và ảnh phiếu được lưu trên thiết bị này. Sao lưu trước khi gỡ ứng dụng hoặc xóa dữ liệu.</p></section>';
 document.body.prepend(top);document.body.append(bottom,sheet);
+// A verified WordPress identity is displayed on the home header. Never infer
+// ownership from an arbitrary text field or reveal an old account after logout.
+const identityBadge=document.createElement('span');
+identityBadge.id='cpNativeAccountName';
+identityBadge.className='cp-native-account-name';
+identityBadge.hidden=true;
+identityBadge.setAttribute('aria-label','Tài khoản đang sử dụng');
+top.querySelector('.cp-native-top-actions')?.prepend(identityBadge);
+function renderAccountIdentity(){
+ const identity=window.champroAccountIdentity;
+ const name=identity?.wpUserId?String(localStorage.getItem('cp-v14-account-name')||'').trim():'';
+ identityBadge.textContent=name.slice(0,80);
+ identityBadge.hidden=!name;
+}
+window.addEventListener('champro-account-verified',renderAccountIdentity);
+window.addEventListener('champro-account-logout',()=>{
+ identityBadge.textContent='';identityBadge.hidden=true;
+});
+window.addEventListener('focus',renderAccountIdentity);
+setTimeout(renderAccountIdentity,300);
+
 const menu=$('nav');
 function currentPage(){return document.querySelector('.page.shown')?.id?.replace(/^page-/,'')||'home';}
 function sync(){
