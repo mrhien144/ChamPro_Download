@@ -9,6 +9,14 @@
 const WP_ORIGIN='https://mrhien.com';
 const WORKER='https://champro-platform-staging.luckylove1404.workers.dev';
 let popup=null,token=null,account=null;
+/* Short-lived session stays in memory. Only modules on this same origin may
+ * request a scoped web-sync token through the WordPress gateway. */
+window.champroAuthSession=Object.freeze({getToken:()=>token,getAccount:()=>account});
+function emitAuth(kind){
+ window.dispatchEvent(new CustomEvent('champro-web-auth-'+kind,{
+  detail:{accountId:account?.id||null}}));
+}
+
 const byId=id=>document.getElementById(id);
 const status=text=>{const el=byId('cpAccountStatus');if(el)el.textContent=text;};
 function safeClose(){
@@ -96,7 +104,7 @@ export function initAccountBridge(){
  };
  setConnected(false);
  connect.addEventListener('click',()=>{
-  safeClose();token=null;account=null;setConnected(false);
+  safeClose();token=null;account=null;setConnected(false);emitAuth('disconnected');emitAuth('disconnected');
   // Call window.open directly in this user gesture to support mobile browsers.
   popup=window.open(WP_ORIGIN+'/champro-connect/','champro-wordpress-login',
    'popup=yes,width=620,height=710');
@@ -116,15 +124,16 @@ export function initAccountBridge(){
   try{
    const result=await query('/api/me',candidate);
    token=candidate;account=result.account;
+   emitAuth('verified');
    status('Đã kết nối tài khoản: '+(account?.name||'WordPress')+'. Không có dữ liệu học sinh nào được tải lên.');
    setConnected(true);
   }catch(error){
-   token=null;account=null;setConnected(false);
+   token=null;account=null;setConnected(false);emitAuth('disconnected');
    status('Chưa kết nối được: '+error.message);
   }finally{safeClose();}
  });
  disconnect.addEventListener('click',()=>{
-  token=null;account=null;safeClose();setConnected(false);
+  token=null;account=null;safeClose();setConnected(false);emitAuth('disconnected');
   status('Đã ngắt kết nối trong phiên làm việc này. Dữ liệu trên thiết bị được giữ nguyên.');
  });
  smokeButton.addEventListener('click',async()=>{
@@ -150,7 +159,7 @@ export function initAccountBridge(){
    status('Kết nối API thành công. Chế độ đồng bộ: '+result.mode+
     '. Chưa tải dữ liệu hoặc ảnh phiếu lên máy chủ.');
   }catch(error){
-   token=null;account=null;setConnected(false);
+   token=null;account=null;setConnected(false);emitAuth('disconnected');
    status('Không thể kiểm tra kết nối: '+error.message+'. Hãy đăng nhập lại.');
   }
  });
