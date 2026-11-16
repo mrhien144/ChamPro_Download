@@ -15,7 +15,7 @@ export class SyncTransport {
   this.applyRemote=applyRemote;this.getPhoto=getPhoto;this.putPhoto=putPhoto;this.onStatus=onStatus;this.isBusy=isBusy;
   this.enabled=Boolean(enabled);this.dirty=new Map();this.photos=new Set();this.blocked=new Set();
   this.running=false;this.lastError=null;this.account=null;this.retry=0;
-  this.scheduleId=null;
+  this.scheduleId=null;this.pollTimer=null;
  }
  key(kind,id){return kind+':'+id;}
  setAccount(account){
