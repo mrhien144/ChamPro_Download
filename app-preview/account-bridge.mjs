@@ -8,6 +8,8 @@
  */
 const WP_ORIGIN='https://mrhien.com';
 const WORKER='https://champro-platform-staging.luckylove1404.workers.dev';
+const SYNC_WORKER='https://champro-sync-staging.luckylove1404.workers.dev';
+import {getWebSyncToken} from './sync/web-token.mjs';
 let popup=null,token=null,account=null;
 /* Short-lived session stays in memory. Only modules on this same origin may
  * request a scoped web-sync token through the WordPress gateway. */
@@ -23,10 +25,10 @@ function safeClose(){
  try{if(popup&&!popup.closed)popup.close();}catch{}
  popup=null;
 }
-async function smokeRequest(path,method,activeToken,body,contentType){
- const response=await fetch(WORKER+path,{
+async function smokeRequest(path,method,activeToken,body,contentType,extraHeaders={}){
+ const response=await fetch(SYNC_WORKER+path,{
   method,mode:'cors',credentials:'omit',cache:'no-store',
-  headers:{Authorization:'Bearer '+activeToken,'Content-Type':contentType},
+  headers:{Authorization:'Bearer '+activeToken,'Content-Type':contentType,...extraHeaders},
   body
  });
  const payload=await response.json().catch(()=>null);
@@ -51,22 +53,25 @@ async function runCloudSmoke(activeToken){
  const payload={id,testOnly:true,kind:'champro-staging-smoke',score:0,
   createdAt:new Date().toISOString(),studentName:'SYNTHETIC TEST ONLY'};
  const saved=await smokeRequest('/api/sync/records','POST',activeToken,
-  JSON.stringify({type:'result',id,baseRevision:0,payload}),'application/json');
+  JSON.stringify({kind:'result',id,baseRevision:0,payload}),'application/json');
  if(saved.revision!==1)throw Error('D1 không trả về phiên bản bản ghi mới');
- const page=await query('/api/sync/records?limit=100&offset=0',activeToken);
+ const page=await query('/api/sync/records?limit=100&offset=0',activeToken,SYNC_WORKER);
  // The API uses bounded pages; D1 may contain records from earlier tests.
- let found=page.records.some(x=>x.record_id===id&&x.payload?.testOnly===true);
+ let found=page.records.some(x=>x.kind==='result'&&x.id===id&&x.payload?.testOnly===true);
  for(let offset=100;!found&&page.records.length>=100&&offset<=10000;offset+=100){
-  const next=await query('/api/sync/records?limit=100&offset='+offset,activeToken);
-  found=next.records.some(x=>x.record_id===id&&x.payload?.testOnly===true);
+  const next=await query('/api/sync/records?limit=100&offset='+offset,activeToken,SYNC_WORKER);
+  found=next.records.some(x=>x.kind==='result'&&x.id===id&&x.payload?.testOnly===true);
   if(next.records.length<100)break;
  }
  if(!found)throw Error('D1 đã ghi nhưng chưa đọc lại được bản ghi thử nghiệm');
  const blob=await demoPhoto();
  if(blob.size>2*1024*1024)throw Error('Ảnh thử nghiệm vượt giới hạn');
+ const syntheticMeta={markers:[[1,1],[479,1],[479,319],[1,319]],form:'three',digits:3,
+  examId:'synthetic-exam',examCode:'101',angle:0,createdAt:new Date().toISOString()};
+ const header=btoa(JSON.stringify(syntheticMeta));
  const uploaded=await smokeRequest('/api/sync/photo?resultId='+encodeURIComponent(id),
-  'POST',activeToken,blob,'image/jpeg');
- const response=await fetch(WORKER+'/api/sync/photo?resultId='+encodeURIComponent(id),{
+  'POST',activeToken,blob,'image/jpeg',{'X-Photo-Metadata':header});
+ const response=await fetch(SYNC_WORKER+'/api/sync/photo?resultId='+encodeURIComponent(id),{
   method:'GET',mode:'cors',credentials:'omit',cache:'no-store',
   headers:{Authorization:'Bearer '+activeToken}
  });
@@ -82,8 +87,8 @@ async function runCloudSmoke(activeToken){
  }
  return id;
 }
-async function query(path,activeToken){
- const response=await fetch(WORKER+path,{
+async function query(path,activeToken,origin=WORKER){
+ const response=await fetch(origin+path,{
   method:'GET',
   mode:'cors',
   credentials:'omit',
@@ -104,7 +109,7 @@ export function initAccountBridge(){
  };
  setConnected(false);
  connect.addEventListener('click',()=>{
-  safeClose();token=null;account=null;setConnected(false);emitAuth('disconnected');emitAuth('disconnected');
+  safeClose();token=null;account=null;setConnected(false);emitAuth('disconnected');
   // Call window.open directly in this user gesture to support mobile browsers.
   popup=window.open(WP_ORIGIN+'/champro-connect/','champro-wordpress-login',
    'popup=yes,width=620,height=710');
@@ -143,7 +148,9 @@ export function initAccountBridge(){
   smokeButton.disabled=true;statusButton.disabled=true;
   status('Đang ghi và đọc lại 1 bản ghi + 1 ảnh giả lập trên D1/R2…');
   try{
-   const testId=await runCloudSmoke(currentToken);
+   const syncToken=await getWebSyncToken();
+   if(token!==currentToken)throw Error('Phiên tài khoản đã thay đổi');
+   const testId=await runCloudSmoke(syncToken);
    status('ĐÃ KIỂM TRA THÀNH CÔNG: ghi/đọc D1 và R2, ảnh đúng nội dung. Mã thử: '+testId+
     '. Dữ liệu học sinh thực tế vẫn chỉ lưu trên thiết bị.');
   }catch(error){
@@ -155,8 +162,9 @@ export function initAccountBridge(){
   if(!token)return;
   status('Đang kiểm tra D1/R2…');
   try{
-   const result=await query('/api/sync/status',token);
-   status('Kết nối API thành công. Chế độ đồng bộ: '+result.mode+
+   const syncToken=await getWebSyncToken();
+   const result=await query('/api/sync/status',syncToken,SYNC_WORKER);
+   status('Kết nối API thành công. Chế độ đồng bộ: '+(result.enabled?'Sẵn sàng':'Chưa kích hoạt')+
     '. Chưa tải dữ liệu hoặc ảnh phiếu lên máy chủ.');
   }catch(error){
    token=null;account=null;setConnected(false);emitAuth('disconnected');
