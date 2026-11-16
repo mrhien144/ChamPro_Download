@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ChấmPro Direct Login (v14.5 STAGING)
  * Description: WordPress account -> one-time PKCE ticket -> signed offline device license. No Cloudflare Worker required for LOGIN.
- * Version: 0.5.2
+ * Version: 0.5.3
  * Requires PHP: 7.4
  */
 defined('ABSPATH') || exit;
