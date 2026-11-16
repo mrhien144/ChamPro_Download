@@ -15,7 +15,7 @@ test('account is compact and truthful',()=>{
  assert.match(prep,/Mua gói \/ Nâng cấp/);
  assert.match(prep,/Cập nhật ứng dụng/);
  assert.match(prep,/id="cpCurrentPlan"/);
- assert.doesNotMatch(prep,/<h1>ChấmPro Test v14\.5<\/h1>/);
+ assert.match(prep,/<h1>Tài khoản ChấmPro<\/h1>/);
 });
 test('verified WordPress exchange returns login and device refresh enrollment',()=>{
  const php=read('platform/wordpress/champro-direct-login.php');
