@@ -1,0 +1,66 @@
+name: ChấmPro — staging D1/R2 deployment (MANUAL, sync OFF)
+on:
+  workflow_dispatch:
+    inputs:
+      backup_verified:
+        description: 'Type D1_BACKUP_VERIFIED only after testing a private D1 export and checking WordPress backup'
+        type: string
+        required: true
+      staging_only:
+        description: 'Deploy dedicated staging Worker with sync DISABLED'
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+jobs:
+  deploy:
+    if: ${{ inputs.backup_verified == 'D1_BACKUP_VERIFIED' && inputs.staging_only == true }}
+    runs-on: ubuntu-latest
+    environment: champro-sync-staging-qa
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CHAMPRO_SYNC_HMAC_SECRET: ${{ secrets.CHAMPRO_SYNC_HMAC_SECRET }}
+    steps:
+      - name: Checkout approved ChấmPro staging sync source, NOT main application code
+        uses: actions/checkout@v4
+        with:
+          ref: feature/champro-sync-server-integration-20261116
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify secrets, target, disabled feature and local D1 regression
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test "${#CHAMPRO_SYNC_HMAC_SECRET}" -ge 32
+          grep -F '"name": "champro-sync-staging"' platform/sync-worker/wrangler.jsonc
+          grep -F '"database_name": "champro-platform-staging"' platform/sync-worker/wrangler.jsonc
+          grep -F '"bucket_name": "champro-photos-staging"' platform/sync-worker/wrangler.jsonc
+          grep -F '"CHAMPRO_SYNC_ENABLED": "0"' platform/sync-worker/wrangler.jsonc
+          python3 platform/tests/sync-d1-sql-test.py
+      - name: Check PHP/JS and account isolation before database migration
+        run: |
+          php -l platform/wordpress/champro-sync-device.php
+          node --check platform/sync-worker/src/index.js
+          node --check platform/sync-worker/src/sync.js
+          node platform/tests/sync-worker-auth.test.mjs
+          node platform/tests/sync-two-devices.test.mjs
+          node platform/tests/sync-photo.test.mjs
+      - name: Apply schema-only additive migration 0004 to STAGING D1
+        run: |
+          npx --yes wrangler@4 d1 execute champro-platform-staging --remote --yes \\
+            --config platform/sync-worker/wrangler.jsonc \\
+            --file platform/migrations/0004_sync_records.sql
+      - name: Deploy separate sync Worker - still OFF
+        run: npx --yes wrangler@4 deploy --config platform/sync-worker/wrangler.jsonc
+      - name: Set Worker scoped authentication secret (no stdout of its value)
+        run: |
+          printf '%s' "$CHAMPRO_SYNC_HMAC_SECRET" | npx --yes wrangler@4 secret put CHAMPRO_SYNC_HMAC_SECRET \\
+            --config platform/sync-worker/wrangler.jsonc
+      - name: Report staging-only result
+        run: |
+          echo 'Deployed champro-sync-staging (CHAMPRO_SYNC_ENABLED=0).'
+          echo 'Production sync is NOT enabled and WordPress is unchanged.'
+          echo 'Do not turn on sync until separate synthetic two-account and offline tests pass.'
