@@ -1,0 +1,40 @@
+name: ChấmPro paid Processing order recovery QA (server only)
+on:
+  push:
+    branches: [fix/champro-processing-paid-order-8943-20261116]
+    paths:
+      - 'platform/wordpress/champro-entitlement-recovery.php'
+      - 'tests/champro-woocommerce-entitlement-recovery.test.mjs'
+      - '.github/workflows/champro-entitlement-recovery-processing-qa.yml'
+  pull_request:
+    branches: [fix/champro-server-woocommerce-entitlement-v054-20261116]
+permissions:
+  contents: write
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test PHP before package
+        run: |
+          php -l platform/wordpress/champro-entitlement-recovery.php
+          node --test tests/champro-woocommerce-entitlement-recovery.test.mjs
+      - name: Create installable WordPress ZIP
+        run: |
+          mkdir -p release/champro-entitlement-recovery
+          cp platform/wordpress/champro-entitlement-recovery.php release/champro-entitlement-recovery/champro-entitlement-recovery.php
+          (cd release && zip -q ChamPro-Entitlement-Recovery-QA-v0.1.1.zip champro-entitlement-recovery/champro-entitlement-recovery.php)
+          sha256sum release/ChamPro-Entitlement-Recovery-QA-v0.1.1.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChấmPro-WooCommerce-entitlement-recovery-QA
+          path: release/ChamPro-Entitlement-Recovery-QA-v0.1.1.zip
+      - name: Publish QA-only server package
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "champro-entitlement-recovery-qa-v0.1.1-processing-20261116" release/ChamPro-Entitlement-Recovery-QA-v0.1.1.zip --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title "ChấmPro WooCommerce entitlement recovery (QA)" --notes "Install only after confirming CHAMPRO product IDs and existing WooCommerce order ownership/payment. Companion to legacy Direct Login 0.5.2. Does not synchronize D1/R2 exam data. No APK reinstall required."
