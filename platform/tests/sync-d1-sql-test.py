@@ -3,7 +3,7 @@ import sqlite3
 from pathlib import Path
 db=sqlite3.connect(':memory:')
 db.row_factory=sqlite3.Row
-db.executescript(Path(__file__).resolve().parents[1].joinpath('migrations/0003_sync_records.sql').read_text())
+db.executescript(Path(__file__).resolve().parents[1].joinpath('migrations/0004_sync_records.sql').read_text())
 sql=(
  "INSERT INTO sync_records(account_id,kind,record_id,revision,payload_json,deleted_at) "
  "SELECT ?,?,?,?,?,? WHERE (?=0 OR EXISTS(SELECT 1 FROM sync_records WHERE account_id=? AND kind=? AND record_id=?)) "
