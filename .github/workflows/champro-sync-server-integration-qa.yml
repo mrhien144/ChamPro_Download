@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -44,10 +46,13 @@ jobs:
           node platform/tests/sync-start.test.mjs
           node platform/tests/sync-worker-auth.test.mjs
           node platform/tests/sync-photo.test.mjs
+          node --test platform/tests/sync-photo-browser.test.mjs
           python3 platform/tests/sync-d1-sql-test.py
       - name: Verify zero modifications to grading engine
         run: |
-          git diff --exit-code origin/main -- app-preview/grader.mjs app-preview/omr-native.mjs app-preview/omr-verified-paper.mjs || {
-            echo 'Branch grading differs from main historically; compare only changed paths in PR before deployment.'
-            exit 0
-          }
+          # PR #35's verified base; fail if the base cannot be read or if a
+          # protected module changes. Do not turn a failed check into success.
+          git cat-file -e fda5e1af8ab30eb62d1144aaabce7099aefc947e^{commit}
+          git diff --exit-code fda5e1af8ab30eb62d1144aaabce7099aefc947e HEAD -- \
+            app-preview/grader.mjs app-preview/omr-native.mjs \
+            app-preview/omr-verified-paper.mjs platform/worker/

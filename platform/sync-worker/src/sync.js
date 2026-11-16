@@ -1,7 +1,7 @@
 /* ChấmPro authenticated D1/R2 sync API. ISOLATED FEATURE, NOT ENABLED BY DEFAULT.
  * Designed for offline-first consumers: no grading, camera or scoring code here.
  *
- * Requires migration 0003_sync_records.sql and env.BUCKET (R2). The Worker
+ * Requires migration 0004_sync_records.sql and env.BUCKET (R2). The Worker
  * must verify a short-lived first-party session BEFORE calling this module.
  * Never accept wpUserId, account_id, owner, R2 key, or paid plan from client.
  */

@@ -43,7 +43,7 @@ export default {
    'Access-Control-Allow-Origin':origin||'https://champro.mrhien.com',
    'Access-Control-Allow-Methods':'GET,POST,OPTIONS',
    'Access-Control-Allow-Headers':'Authorization,Content-Type,X-Photo-Metadata,X-Photo-Base-Sha256',
-   'Access-Control-Expose-Headers':'X-Photo-Metadata,X-Content-Sha256',
+   'Access-Control-Expose-Headers':'X-Champro-Photo-Meta,X-Photo-Metadata,X-Content-Sha256',
    'Vary':'Origin','Cache-Control':'no-store'
   };
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:cors});

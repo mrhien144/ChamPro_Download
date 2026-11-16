@@ -171,6 +171,13 @@ export class SyncTransport {
     if(!meta||!Array.isArray(meta.markers)||meta.markers.length!==4||
       response.blob.type!=='image/jpeg'||response.blob.size>PHOTO_LIMIT)
       throw Error('Ảnh phiếu đã tải không hợp lệ');
+    // Verify the downloaded bytes before persisting the photo or acknowledging
+    // its cloud revision. This runs in background sync, never in the grader.
+    if(!/^[a-f0-9]{64}$/.test(response.sha256))
+      throw Error('Ảnh phiếu thiếu checksum toàn vẹn hợp lệ');
+    const digest=await crypto.subtle.digest('SHA-256',await response.blob.arrayBuffer());
+    const actual=[...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');
+    if(actual!==response.sha256)throw Error('Ảnh phiếu không khớp checksum toàn vẹn');
     await this.putPhoto(id,{...meta,blob:response.blob,syncedSha256:response.sha256});
     await this.onStatus({kind:'photo-downloaded',record:id});
    }catch(e){if(e.status!==404)throw e;}
