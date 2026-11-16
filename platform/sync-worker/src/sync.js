@@ -6,7 +6,10 @@
  * Never accept wpUserId, account_id, owner, R2 key, or paid plan from client.
  */
 const LIMIT=100,MAX_JSON=32768,MAX_PHOTO=2097152;
-const kinds=new Set(['exam','student','answer','result']);
+// Answer keys and grading rules are persisted INSIDE the exam payload; the
+// legacy client has no standalone 'answer' collection. Reject that unsupported
+// record type instead of returning a record the client cannot safely apply.
+const kinds=new Set(['exam','student','result']);
 const reply=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 const fail=(error,status=400)=>reply({ok:false,error},status);
 const validId=id=>typeof id==='string'&&/^[a-zA-Z0-9:_-]{1,100}$/.test(id);
