@@ -24,9 +24,9 @@ function run(src){
  return JSON.parse(p.stdout);
 }
 test('a paid annual order grants annual entitlement without device reinstall',()=>{
- const x=run("$GLOBALS['orders']=[new Order(301,42,1760000000,8919)]; cper_reconcile_user(42);echo json_encode($GLOBALS['meta'][42]);");
+ const x=run("$GLOBALS['orders']=[new Order(301,42,time()-86400,8919)]; cper_reconcile_user(42);echo json_encode($GLOBALS['meta'][42]);");
  assert.equal(x.cpd_verified_plan,'annual');
- assert.ok(Number(x.cpd_verified_expires)>1760000000);
+ assert.ok(Number(x.cpd_verified_expires)>Math.floor(Date.now()/1000));
 });
 test('no paid completed order, no grant; another WordPress user cannot claim payment',()=>{
  const x=run("$GLOBALS['orders']=[new Order(302,18,1760000000,8919),new Order(303,42,0,8919),new Order(304,42,1760000000,8919,'cancelled')]; cper_reconcile_user(42);echo json_encode($GLOBALS['meta']);");
