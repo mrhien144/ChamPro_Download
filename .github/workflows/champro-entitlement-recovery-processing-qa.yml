@@ -1,4 +1,4 @@
-name: ChấmPro paid Processing order recovery QA (server only)
+name: ChấmPro paid Processing order recovery QA v0.1.1 (server only)
 on:
   push:
     branches: [fix/champro-processing-paid-order-8943-20261116]
