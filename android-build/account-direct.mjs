@@ -217,7 +217,11 @@ function closeAccount(){
 function registerAndroidBack(){
  const app=window.Capacitor?.Plugins?.App;
  if(!app?.addListener)return;
- void Promise.resolve(app.addListener('backButton',()=>{
+ void Promise.resolve(app.addListener('backButton',event=>{
+  // Android Back must close an existing native HTML dialog before navigating;
+  // never discard an open review/QR dialog by switching the underlying page.
+  const dialog=document.querySelector('dialog[open]');
+  if(dialog){dialog.close();return;}
   const sheet=$('cpNativeSheet');
   if(sheet&&!sheet.hidden){
    $('cpNativeClose')?.click();
@@ -225,6 +229,7 @@ function registerAndroidBack(){
   }
   if(closeAccount())return;
   if(!$('cpAccountGate')?.hidden)return;
+  if(event?.canGoBack){window.history.back();return;}
   if(document.querySelector('.page.shown')?.id!=='page-home'){
    document.querySelector('[data-page="home"]')?.click();
   }else app.exitApp?.();
