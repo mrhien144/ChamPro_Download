@@ -44,3 +44,26 @@ test('two annual paid orders extend, not shorten, entitlements',()=>{
  const x=run("$GLOBALS['orders']=[new Order(307,42,1700000000,8919),new Order(308,42,1730000000,8919)];$p=cper_verified_order_entitlement(42);echo json_encode($p);");
  assert.equal(x.plan,'annual');assert.ok(x.expires>1760000000);
 });
+
+
+test('SePay processing order 8943 with verified paid timestamp activates annual',()=>{
+ const x=run("$GLOBALS['orders']=[new Order(8943,42,1763100000,8919,'processing','VND',99000)];$p=cper_verified_order_entitlement(42);echo json_encode($p);");
+ assert.equal(x.plan,'annual'); assert.equal(x.evidence,8943);
+ assert.ok(x.expires>1763100000);
+});
+test('processing without a paid timestamp cannot activate a plan',()=>{
+ const x=run("$GLOBALS['orders']=[new Order(8943,42,0,8919,'processing','VND',99000)];echo json_encode(cper_verified_order_entitlement(42));");
+ assert.equal(x,null);
+});
+test('processing order with incorrect amount cannot activate a plan',()=>{
+ const x=run("$GLOBALS['orders']=[new Order(8943,42,1763100000,8919,'processing','VND',98000)];echo json_encode(cper_verified_order_entitlement(42));");
+ assert.equal(x,null);
+});
+test('processing order belonging to different user cannot activate a plan',()=>{
+ const x=run("$GLOBALS['orders']=[new Order(8943,41,1763100000,8919,'processing','VND',99000)];echo json_encode(cper_verified_order_entitlement(42));");
+ assert.equal(x,null);
+});
+test('pending order does not activate even if it carries an old paid timestamp',()=>{
+ const x=run("$GLOBALS['orders']=[new Order(8943,42,1763100000,8919,'pending','VND',99000)];echo json_encode(cper_verified_order_entitlement(42));");
+ assert.equal(x,null);
+});
