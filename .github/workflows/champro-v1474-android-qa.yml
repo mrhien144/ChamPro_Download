@@ -1,10 +1,9 @@
 name: ChấmPro v14.7.4 – Android account QA build
 on:
   push:
-    branches: [fix/champro-v1474-auth-back-clean-account-20261116]
+    branches: [fix/champro-v1474-android-qa-20261116]
     paths:
       - 'android-build/**'
-      - '.github/workflows/champro-v1474-android-qa.yml'
       - 'platform/wordpress/champro-direct-login.php'
       - 'platform/worker/src/index.js'
       - 'tests/champro-v1473-authoritative-annual.test.mjs'
