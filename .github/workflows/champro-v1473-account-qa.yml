@@ -5,6 +5,8 @@ on:
     paths:
       - 'android-build/**'
       - 'platform/wordpress/champro-direct-login.php'
+      - 'platform/worker/src/index.js'
+      - 'tests/champro-v1473-authoritative-annual.test.mjs'
       - 'tests/champro-v1473-account-back-and-refresh.test.mjs'
       - '.github/workflows/champro-v1473-account-qa.yml'
   workflow_dispatch:
@@ -27,6 +29,8 @@ jobs:
         run: |
           php -l platform/wordpress/champro-direct-login.php
           node --check android-build/account-direct.mjs
+          node --check platform/worker/src/index.js
+          node --test tests/champro-v1473-authoritative-annual.test.mjs
           node --check android-build/native-app.js
           node --check android-build/sync-device.mjs
           node --test tests/champro-v1473-account-back-and-refresh.test.mjs
