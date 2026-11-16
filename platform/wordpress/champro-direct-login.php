@@ -91,22 +91,49 @@ function cpd_sign($claims){
     if(!$raw)return cpd_fail('Chữ ký máy chủ không đúng định dạng',503);
     return $message.'.'.cpd_b64e($raw);
 }
+/**
+ * D1 is the single source of truth for ChấmPro subscriptions paid on web.
+ * Never turn a failed entitlement lookup into a new trial/free license.
+ * The Bridge secret remains server-side; the device never selects its plan.
+ */
+function cpd_authoritative_entitlement($uid) {
+    if (!function_exists('champro_bridge_ready') ||
+        !function_exists('champro_bridge_request') ||
+        !champro_bridge_ready())
+        return cpd_fail('Máy chủ chưa kết nối dịch vụ quyền sử dụng ChấmPro. Giấy phép cũ trên điện thoại vẫn được giữ.', 503);
+    $result=champro_bridge_request(array('action'=>'entitlement','wpUserId'=>(int)$uid));
+    if(is_wp_error($result)||!is_array($result)||empty($result['ok'])||
+       (int)($result['wpUserId']??0)!==(int)$uid)
+        return cpd_fail('Chưa xác minh được gói ChấmPro từ máy chủ. Không tự chuyển về dùng thử.', 503);
+    return $result;
+}
+function cpd_utc_timestamp($s) {
+    if(!is_string($s)||!preg_match('/^\\d{4}-\\d{2}-\\d{2}[ T]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z)?$/D',$s))return false;
+    // D1 stores UTC SQLite DATETIME. Do not use local server timezone.
+    $normal=str_replace('T',' ',rtrim($s,'Z'));
+    return strtotime($normal.' UTC');
+}
 function cpd_license($user_id,$device) {
     $user=get_userdata($user_id);
     if(!$user||!cpd_device($device))return cpd_fail('Không nhận diện được tài khoản hoặc thiết bị',403);
-    $now=time();$plan='free';
-    $configured=get_user_meta($user_id,'cpd_verified_plan',true);
-    $expiry=(int)get_user_meta($user_id,'cpd_verified_expires',true);
-    if($configured==='lifetime'){$plan='lifetime';$exp=4102444800;}
-    elseif($configured==='annual'&&$expiry>$now){$plan='annual';$exp=$expiry;}
-    else{
-        $first=(int)get_user_meta($user_id,'cpd_trial_started',true);
-        if(!$first){
-            if(!add_user_meta($user_id,'cpd_trial_started',$now,true))$first=(int)get_user_meta($user_id,'cpd_trial_started',true);
-            else $first=$now;
-        }
-        $exp=$first+CPD_TRIAL_DAYS*86400;
+    $entitlement=cpd_authoritative_entitlement($user_id);
+    if(is_wp_error($entitlement))return $entitlement;
+    $now=time();$plan=(string)($entitlement['plan']??'');
+    if($plan==='lifetime'){$exp=4102444800;}
+    elseif($plan==='annual'){
+        $exp=cpd_utc_timestamp($entitlement['expiresAt']??null);
+        if(!$exp||$exp<=$now)return cpd_fail('Ngày hết hạn gói 1 năm chưa hợp lệ hoặc đã hết hạn.', 402);
+    }elseif($plan==='free'){
+        // Trial is anchored to the original D1 account creation date, never
+        // restarted by reinstalling or logging in on another device.
+        $started=cpd_utc_timestamp($entitlement['trialStartedAt']??null);
+        if(!$started)return cpd_fail('Chưa xác minh được ngày bắt đầu dùng thử trên máy chủ.',503);
+        $exp=$started+CPD_TRIAL_DAYS*86400;
         if($exp<=$now)return cpd_fail('Đã hết thời gian dùng thử. Hãy mua gói ChấmPro.',402);
+    }elseif($plan==='expired'){
+        return cpd_fail('Gói ChấmPro đã hết hạn. Hãy gia hạn trên website.',402);
+    }else{
+        return cpd_fail('Máy chủ trả trạng thái gói không hợp lệ.',503);
     }
     $claims=array('iss'=>CPD_ISSUER,'aud'=>CPD_AUDIENCE,'sub'=>'wp:'.$user_id,
        'deviceId'=>$device,'plan'=>$plan,'iat'=>$now,'exp'=>$exp);
