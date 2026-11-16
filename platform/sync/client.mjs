@@ -55,6 +55,11 @@ export class SyncTransport {
   this.onVisible=()=>{if(!document.hidden)this.schedule(400);};
   window.addEventListener('online',this.onOnline);
   document.addEventListener('visibilitychange',this.onVisible);
+  // Push-only synchronization misses edits made on the OTHER device while
+  // this app remains open. Poll only when visible and idle, never in OMR.
+  this.pollTimer=setInterval(()=>{
+   if(navigator.onLine&&!document.hidden&&!this.isBusy())this.schedule(500);
+  },30000);
   this.schedule(2000);
  }
  async request(path,method='GET',body=null,type='application/json',extraHeaders={}){
@@ -181,9 +186,7 @@ export class SyncTransport {
    if(uploaded===false)return false;
    await this.downloadRecords();
    await this.uploadPhotos();
-   this.retry=0;this.lastError=null;
-   if(this.blocked.size)this.onStatus({kind:'conflict-pending',count:this.blocked.size});
-   else this.onStatus({kind:'synced'});
+   this.retry=0;this.lastError=null;this.onStatus({kind:'synced'});
    return true;
   }catch(e){
    this.lastError=String(e.message||e);this.onStatus({kind:'error',status:e.status||0,message:this.lastError});
@@ -201,6 +204,7 @@ export class SyncTransport {
  }
  stop(){
   this.enabled=false;
+  if(this.pollTimer!==null){clearInterval(this.pollTimer);this.pollTimer=null;}
   if(this.scheduleId!==null){clearTimeout(this.scheduleId);this.scheduleId=null;}
   if(this.onOnline)window.removeEventListener('online',this.onOnline);
   if(this.onVisible)document.removeEventListener('visibilitychange',this.onVisible);
