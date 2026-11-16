@@ -34,6 +34,7 @@ jobs:
           node --check app-preview/web-app-sync.mjs
           node --check app-preview/account-bridge.mjs
           node --check app-preview/sync/web-token.mjs
+          node --check app-preview/sync/web-token.mjs
           node --check app-preview/sync/client.mjs
           node --check android-build/app-sync.mjs
       - name: Regression tests - no real student data
