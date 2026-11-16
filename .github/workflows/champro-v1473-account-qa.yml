@@ -1,0 +1,114 @@
+name: ChấmPro v14.7.3 – account, Android Back, refresh QA
+on:
+  push:
+    branches: [fix/champro-v1473-auth-back-clean-account-20261116]
+    paths:
+      - 'android-build/**'
+      - 'platform/wordpress/champro-direct-login.php'
+      - 'tests/champro-v1473-account-back-and-refresh.test.mjs'
+      - '.github/workflows/champro-v1473-account-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Check source and PHP syntax
+        run: |
+          php -l platform/wordpress/champro-direct-login.php
+          node --check android-build/account-direct.mjs
+          node --check android-build/native-app.js
+          node --check android-build/sync-device.mjs
+          node --test tests/champro-v1473-account-back-and-refresh.test.mjs
+          node --test tests/champro-direct-php-sign.test.mjs
+          node --test tests/champro-wordpress-auto-key.test.mjs
+          node tests/syncqa-v1472-entitlement.test.mjs
+          node tests/syncqa-v1471-status.test.mjs
+          node --test tests/offline-license.test.mjs
+          node --test tests/native-network-indicator.test.mjs
+          node tests/visual-answer-ii.test.mjs
+      - name: Create isolated offline APK bundle
+        run: |
+          mkdir -p _qa/app
+          cp -a app-preview/. _qa/app/
+          cp android-build/native-app.css android-build/native-app.js \
+             android-build/photo-review-apk.mjs android-build/account-direct.mjs \
+             android-build/offline-license.mjs android-build/update-app.mjs \
+             android-build/auth-return.mjs android-build/app-sync.mjs \
+             android-build/sync-device.mjs _qa/app/
+          cp android-build/package.json _qa/package.json
+          cp android-build/preview-capacitor.config.json _qa/capacitor.config.json
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('_qa/capacitor.config.json')
+          j=json.loads(p.read_text())
+          j['appId']='com.champro.syncqa.v1473'
+          j['appName']='ChấmPro Sync QA v14.7.3'
+          p.write_text(json.dumps(j,ensure_ascii=False))
+          PY
+          python3 android-build/prepare-preview-apk.py _qa/app
+          cmp app-preview/grader.mjs _qa/app/grader.mjs
+          cmp app-preview/omr-native.mjs _qa/app/omr-native.mjs
+          cmp app-preview/omr-verified-paper.mjs _qa/app/omr-verified-paper.mjs
+      - name: Build debug APK
+        working-directory: _qa
+        run: |
+          npm install --no-audit --no-fund
+          npx cap add android
+          npx cap sync android
+      - name: Configure camera permissions and version
+        run: |
+          python3 android-build/enable-preview-camera.py _qa/android
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('_qa/android/app/build.gradle')
+          s=p.read_text()
+          s,n1=re.subn(r'versionCode\s+\d+','versionCode 14703',s,count=1)
+          s,n2=re.subn(r'versionName\s+"[^"]+"','versionName "14.7.3-syncqa"',s,count=1)
+          assert n1==1 and n2==1
+          p.write_text(s)
+          PY
+      - name: Compile APK
+        working-directory: _qa/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+      - name: Publish QA artifacts after successful checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p _qa_release
+          cp _qa/android/app/build/outputs/apk/debug/app-debug.apk _qa_release/ChamPro-Sync-QA-v14.7.3.apk
+          sha256sum _qa_release/ChamPro-Sync-QA-v14.7.3.apk
+          mkdir -p _qa_release/plugin
+          cp platform/wordpress/champro-direct-login.php _qa_release/plugin/champro-direct-login.php
+          (cd _qa_release && zip -q ChấmPro-Direct-Login-v0.5.2.zip plugin/champro-direct-login.php)
+          TAG="champro-sync-qa-v14.7.3-20261116"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" _qa_release/ChamPro-Sync-QA-v14.7.3.apk --clobber --repo "$GITHUB_REPOSITORY"
+            gh release upload "$TAG" _qa_release/ChấmPro-Direct-Login-v0.5.2.zip --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" _qa_release/ChamPro-Sync-QA-v14.7.3.apk _qa_release/ChấmPro-Direct-Login-v0.5.2.zip \
+              --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+              --title "ChấmPro Sync QA v14.7.3 – account & Android Back" \
+              --notes "Separate debug QA appId/signature. Does not replace installed ChấmPro APK. Sign-in and refresh require the matching WordPress Direct Login plugin to be installed. Does not enable D1/R2 data sync until server authorization is deployed. Never uninstall the old APK or erase student data."
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChamPro-Sync-QA-v14_7_3-debug-APK
+          path: _qa/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
