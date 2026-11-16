@@ -10,9 +10,9 @@
 - Mỗi phiên đồng bộ tồn tại tối đa 600 giây. Ứng dụng giữ khóa private non-extractable ở thiết bị, tự gia hạn token khi có mạng.
 - Bộ đồng bộ nền chỉ đọc/ghi sau khi máy chủ xác nhận chủ tài khoản, hỏi xác nhận một lần với dữ liệu cục bộ đã có; không đưa công việc mạng vào camera.
 
-## Bước kiểm tra trước khi triển khai
+## Bước kiểm tra trước khi triển khai (chỉ dành cho staging)
 1. Sao lưu dữ liệu D1 hiện có và WordPress; KHÔNG xóa app Android, dữ liệu website hoặc ảnh phiếu. JSON sao lưu cũ KHÔNG bao gồm ảnh phiếu.
-2. Kiểm tra bản sao lưu và toàn bộ cấu trúc D1. Dưới D1 Console `champro-platform-staging`, chỉ chạy file `schema_additive.sql` sau khi sao lưu. Không chạy lại các migrations 0001/0002 hoặc đụng bảng accounts/payments.
+2. Kiểm tra bản sao lưu và toàn bộ cấu trúc D1. Dưới D1 Console `champro-platform-staging`, chỉ chạy file `platform/migrations/0004_sync_records.sql` sau khi sao lưu. Không chạy lại các migrations 0001/0002 hoặc đụng bảng accounts/payments.
 3. Cài `champro-sync-device.zip` ở WordPress như plugin mới; mặc định tắt. Đừng thay thế Bridge, Checkout Gate, Direct Login hay SePay.
 4. Tạo một bí mật ngẫu nhiên mới ≥32 bytes. Lưu CHỈ trong wp-config.php qua `CHAMPRO_SYNC_HMAC_SECRET` và trong Cloudflare Secret binding cùng tên, KHÔNG đưa lên GitHub hoặc gửi trong chat.
 5. Tạo Worker MỚI, tên `champro-sync-staging`, từ `worker.zip`; gắn D1 `champro-platform-staging` thành `DB`, R2 `champro-photos-staging` thành `BUCKET`. Giữ `CHAMPRO_SYNC_ENABLED=0` trước QA.
@@ -28,4 +28,4 @@
 - Trước khi thực sự đưa lên máy chủ bán hàng, cần đối chiếu với Worker đang triển khai vì phiên bản GitHub main có thể không giống phiên bản Worker thật. Dùng Worker sync RIÊNG chính là cách tránh ghi đè mã thanh toán.
 
 ## Chữ ký Android
-Bản APK v14.6 trước đây được build `assembleDebug` trên GitHub Actions. Debug signing key không được lưu trong repo. Không thể khẳng định APK mới tương thích chữ ký để cập nhật tại chỗ. Không gỡ bản cũ khi chưa sao lưu cả ảnh phiếu.
+Một số bản APK QA trước đây được build `assembleDebug` trên GitHub Actions. Debug signing key không được lưu trong repo. Không thể khẳng định APK mới tương thích chữ ký để cập nhật tại chỗ. Không gỡ bản cũ khi chưa sao lưu cả ảnh phiếu.
