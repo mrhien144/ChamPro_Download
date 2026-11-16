@@ -99,16 +99,16 @@ jobs:
           sha256sum _qa_release/ChamPro-Sync-QA-v14.7.3.apk
           mkdir -p _qa_release/champro-direct-login
           cp platform/wordpress/champro-direct-login.php _qa_release/champro-direct-login/champro-direct-login.php
-          (cd _qa_release && zip -q ChamPro-Direct-Login-v0.5.2.zip champro-direct-login/champro-direct-login.php)
+          (cd _qa_release && zip -q ChamPro-Direct-Login-v0.5.3.zip champro-direct-login/champro-direct-login.php)
           TAG="champro-sync-qa-v14.7.3-20261116"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG" _qa_release/ChamPro-Sync-QA-v14.7.3.apk --clobber --repo "$GITHUB_REPOSITORY"
-            gh release upload "$TAG" _qa_release/ChamPro-Direct-Login-v0.5.2.zip --clobber --repo "$GITHUB_REPOSITORY"
+            gh release upload "$TAG" _qa_release/ChamPro-Direct-Login-v0.5.3.zip --clobber --repo "$GITHUB_REPOSITORY"
           else
-            gh release create "$TAG" _qa_release/ChamPro-Sync-QA-v14.7.3.apk _qa_release/ChamPro-Direct-Login-v0.5.2.zip \
+            gh release create "$TAG" _qa_release/ChamPro-Sync-QA-v14.7.3.apk _qa_release/ChamPro-Direct-Login-v0.5.3.zip \
               --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
               --title "ChấmPro Sync QA v14.7.3 – account & Android Back" \
-              --notes "Separate debug QA appId/signature. Does not replace installed ChấmPro APK. Sign-in and refresh require the matching WordPress Direct Login plugin to be installed. Does not enable D1/R2 data sync until server authorization is deployed. Never uninstall the old APK or erase student data."
+              --notes "Separate debug QA appId/signature. Does not replace installed ChấmPro APK. Sign-in and D1 subscription refresh require the matching WordPress Direct Login plugin v0.5.3 AND deployed updated ChấmPro D1 Worker. Do not install the WordPress plugin until Worker entitlement action is deployed. Does not enable D1/R2 data sync until server authorization is deployed. Never uninstall the old APK or erase student data."
           fi
       - uses: actions/upload-artifact@v4
         with:
