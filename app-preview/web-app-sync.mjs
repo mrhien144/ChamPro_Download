@@ -7,7 +7,7 @@ import {startSync} from './sync/start.mjs';
 import {platformOwner,getWebSyncToken,clearWebSyncToken} from './sync/web-token.mjs';
 import {getSheetPhoto,putSheetPhoto,listSheetPhotoIds} from './sheet-photo-store.mjs';
 const API='https://champro-sync-staging.luckylove1404.workers.dev';
-let active=null,starting=false,waiting=false,retryAfter=0;
+let active=null,starting=false,waiting=false,retryAfter=0,sessionEpoch=0;
 const byId=id=>document.getElementById(id);
 function status(message){
  let target=byId('cpWebAutoSyncStatus');
@@ -20,6 +20,7 @@ function status(message){
  target.textContent='Đồng bộ web ChấmPro: '+message;
 }
 function stop(){
+ sessionEpoch++;
  active?.stop();active=null;waiting=false;
  clearWebSyncToken();
 }
@@ -39,6 +40,7 @@ async function maybeStart(){
  const app=window.champroAppData;
  if(!app){status('Ứng dụng đang chuẩn bị dữ liệu cục bộ.');return;}
  starting=true;
+ const epoch=sessionEpoch;
  try{
   status('Đang kiểm tra quyền đồng bộ D1/R2 theo tài khoản…');
   const result=await startSync({
@@ -52,6 +54,7 @@ async function maybeStart(){
    },
    onEvent:report
   });
+  if(epoch!==sessionEpoch||platformOwner()!==owner){result?.stop?.();return;}
   if(result?.started){active=result;status('Đã kết nối. Tự đồng bộ khi có mạng và camera rảnh.');}
   else status('Dữ liệu cục bộ chưa được người dùng xác nhận, chưa tải lên đám mây.');
  }catch(e){
