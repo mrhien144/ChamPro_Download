@@ -9,7 +9,7 @@
  * Local dirtiness is tracked separately so a remote fetch cannot silently
  * overwrite unsent changes. Conflicts require explicit user resolution.
  */
-export const KINDS=Object.freeze(['exam','student','answer','result']);
+export const KINDS=Object.freeze(['exam','student','result']);
 const kinds=new Set(KINDS);
 export function validRecord(r){
  return Boolean(r && typeof r==='object' &&
