@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: ChấmPro Entitlement Recovery (QA)
- * Description: Verify completed paid WooCommerce orders and reconcile existing Direct Login device-license metadata. Does not alter scoring or login keys.
- * Version: 0.1.0
+ * Description: Verify paid WooCommerce orders (processing/completed) before reconciling Direct Login device-license metadata. Does not alter scoring or login keys.
+ * Version: 0.1.1
  * Requires PHP: 7.4
  */
 defined('ABSPATH') || exit;
@@ -24,22 +24,26 @@ function cper_verified_order_entitlement($user_id) {
     $lifetime=(int) CHAMPRO_LIFETIME_PRODUCT_ID;
     if (!$annual || !$lifetime || $annual===$lifetime) return null;
     $orders=wc_get_orders(array(
-        'customer_id'=>$user_id, 'status'=>array('completed'),
+        'customer_id'=>$user_id, 'status'=>array('processing','completed'),
         'orderby'=>'date', 'order'=>'ASC', 'limit'=>100
     ));
     if (!is_array($orders)) return null;
     $matches=array();
     foreach ($orders as $order) {
         if (!$order || (int) $order->get_user_id() !== $user_id ||
-            $order->get_status() !== 'completed' ||
+            !in_array($order->get_status(),array('processing','completed'),true) ||
             !$order->is_paid() || !$order->get_date_paid() ||
-            $order->get_currency() !== 'VND' || (float) $order->get_total() <= 0) continue;
+            $order->get_currency() !== 'VND') continue;
         $items=$order->get_items('line_item');
         if (count($items)!==1) continue; // no ambiguous carts/bundles
         $item=reset($items);
         if (!$item || (int) $item->get_quantity()!==1) continue;
         $product=(int) $item->get_product_id();
         if ($product!==$annual && $product!==$lifetime) continue;
+        $expected=$product===$annual?99000:299000;
+        // SePay may keep fully paid orders in Processing. Require the exact
+        // paid amount; a Processing order alone is NOT payment evidence.
+        if (abs((float)$order->get_total()-$expected)>0.001) continue;
         $matches[]=array(
             'id'=>(int)$order->get_id(),
             'plan'=>$product===$lifetime?'lifetime':'annual',
@@ -104,7 +108,7 @@ add_filter('get_user_metadata',function($pre,$user_id,$key,$single){
 
 // WooCommerce receipt event: update an already existing subscriber promptly;
 // no client side claim of payment can trigger this hook.
-add_action('woocommerce_order_status_completed',function($order_id){
+foreach (array('woocommerce_order_status_processing','woocommerce_order_status_completed') as $hook) add_action($hook,function($order_id){
     if (!function_exists('wc_get_order')) return;
     $order=wc_get_order($order_id);
     if (!$order || !$order->is_paid() || !(int)$order->get_user_id()) return;
