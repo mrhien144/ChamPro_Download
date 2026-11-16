@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {handleSync} from '../worker/src/sync.js';
+import {handleSync} from '../sync-worker/src/sync.js';
 import {SyncTransport} from '../sync/client.mjs';
 const read=async res=>({status:res.status,body:await res.json()});
 const db={prepare(sql){return {bind(...args){
