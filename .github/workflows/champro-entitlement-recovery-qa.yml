@@ -1,0 +1,27 @@
+name: ChấmPro WooCommerce entitlement recovery QA
+on:
+  push:
+    branches: [fix/champro-server-woocommerce-entitlement-v054-20261116]
+    paths:
+      - 'platform/wordpress/champro-entitlement-recovery.php'
+      - 'tests/champro-woocommerce-entitlement-recovery.test.mjs'
+      - '.github/workflows/champro-entitlement-recovery-qa.yml'
+  pull_request:
+    branches: [fix/champro-v1475-account-refresh-no-autoclose-20261116]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  php-and-entitlement-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate PHP and subscription recovery guards
+        run: |
+          php -l platform/wordpress/champro-entitlement-recovery.php
+          node --test tests/champro-woocommerce-entitlement-recovery.test.mjs
+          echo 'PASS: No app download, no data migration, no production deployment'
