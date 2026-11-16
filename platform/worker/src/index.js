@@ -72,7 +72,7 @@ async function internal(req,env){
   if(!['free','annual','lifetime'].includes(plan))return error('Dữ liệu gói sử dụng không hợp lệ',503);
   const paidUntil=account.expires_at?String(account.expires_at):null;
   if(plan==='annual'&&!paidUntil)return error('Gói 1 năm thiếu ngày hết hạn trên máy chủ',503);
-  const expiry=paidUntil?Date.parse(paidUntil.replace(' ','T')+'Z'):NaN;
+  const expiry=paidUntil?Date.parse(/[Zz]|[+-]\\d{2}:?\\d{2}$/.test(paidUntil)?paidUntil:paidUntil.replace(' ','T')+'Z'):NaN;
   if(plan==='annual'&&!Number.isFinite(expiry))return error('Ngày hết hạn gói 1 năm không hợp lệ',503);
   return send({ok:true,wpUserId:uid,
    plan:plan==='annual'&&expiry<=Date.now()?'expired':plan,
