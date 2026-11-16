@@ -1,4 +1,4 @@
-name: Package ChấmPro entitlement recovery PHP companion
+name: Package ChấmPro entitlement recovery PHP companion (server-only)
 on:
   push:
     branches: [fix/champro-server-woocommerce-entitlement-v054-20261116]
