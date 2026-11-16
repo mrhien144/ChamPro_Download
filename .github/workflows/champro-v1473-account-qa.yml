@@ -10,6 +10,8 @@ on:
       - 'tests/champro-v1473-account-back-and-refresh.test.mjs'
       - '.github/workflows/champro-v1473-account-qa.yml'
   workflow_dispatch:
+  pull_request:
+    branches: [fix/champro-syncqa-v1472-d1-entitlement-20261115]
 permissions:
   contents: write
 jobs:
@@ -90,6 +92,7 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
       - name: Publish QA artifacts after successful checks
+        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
