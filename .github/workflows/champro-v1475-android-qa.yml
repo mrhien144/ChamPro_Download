@@ -84,7 +84,7 @@ jobs:
           p=Path('_qa/android/app/build.gradle')
           s=p.read_text()
           s,n1=re.subn(r'versionCode\s+\d+','versionCode 14705',s,count=1)
-          s,n2=re.subn(r'versionName\s+"[^"]+"','versionName "14.7.4-syncqa"',s,count=1)
+          s,n2=re.subn(r'versionName\s+"[^"]+"','versionName "14.7.5-syncqa"',s,count=1)
           assert n1==1 and n2==1
           p.write_text(s)
           PY
