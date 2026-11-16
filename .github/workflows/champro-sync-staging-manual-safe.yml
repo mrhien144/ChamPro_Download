@@ -49,16 +49,11 @@ jobs:
           node platform/tests/sync-two-devices.test.mjs
           node platform/tests/sync-photo.test.mjs
       - name: Apply schema-only additive migration 0004 to STAGING D1
-        run: |
-          npx --yes wrangler@4 d1 execute champro-platform-staging --remote --yes \\
-            --config platform/sync-worker/wrangler.jsonc \\
-            --file platform/migrations/0004_sync_records.sql
+        run: npx --yes wrangler@4 d1 execute champro-platform-staging --remote --yes --config platform/sync-worker/wrangler.jsonc --file platform/migrations/0004_sync_records.sql
       - name: Deploy separate sync Worker - still OFF
         run: npx --yes wrangler@4 deploy --config platform/sync-worker/wrangler.jsonc
       - name: Set Worker scoped authentication secret (no stdout of its value)
-        run: |
-          printf '%s' "$CHAMPRO_SYNC_HMAC_SECRET" | npx --yes wrangler@4 secret put CHAMPRO_SYNC_HMAC_SECRET \\
-            --config platform/sync-worker/wrangler.jsonc
+        run: printf '%s' "$CHAMPRO_SYNC_HMAC_SECRET" | npx --yes wrangler@4 secret put CHAMPRO_SYNC_HMAC_SECRET --config platform/sync-worker/wrangler.jsonc
       - name: Report staging-only result
         run: |
           echo 'Deployed champro-sync-staging (CHAMPRO_SYNC_ENABLED=0).'
