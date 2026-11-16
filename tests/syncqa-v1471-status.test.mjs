@@ -6,7 +6,7 @@ const prep=get('android-build/prepare-preview-apk.py');
 const sync=get('android-build/app-sync.mjs');
 assert(a.includes("e.dataset.level=level"),"Login must set severity explicitly");
 assert(a.includes("const fail=s=>stamp(s,'error')"),"Actual errors retain red status");
-assert(a.includes("verifyLicense(saved).then(claim=>{")&&a.includes("unlock(claim);"),"Already-signed license stays offline");
+assert(a.includes("verifyLicense(saved).then(claim=>{")&&a.includes("unlock(claim,false,{dismissGate:true});"),"Already-signed license stays offline");
 assert(a.includes("if(identity)"),"Preserve account identity while offline");
 assert(prep.includes('#cpAuthStatus{color:#30557f'),"Normal auth text is neutral");
 assert(prep.includes('#cpAuthStatus[data-level="error"]{color:#b42318}'),"Real failures are visually distinct");
