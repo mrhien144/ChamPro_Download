@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import {validRecord,resolveRecord,planUpload,syncDecision} from '../sync/reconcile.mjs';
 const r=(revision,score)=>({kind:'result',id:'result-1001',revision,payload:{score}});
 assert(validRecord(r(0,8)));
+assert(!validRecord({kind:'answer',id:'key-1',revision:0,payload:{I:['A']}}),
+ 'separate answer-key records are unsupported; keys live inside exam payload');
 assert(!validRecord({...r(0,8),id:'../unsafe'}));
 assert.equal(resolveRecord({local:r(1,8),remote:r(2,9)}).action,'download');
 assert.equal(resolveRecord({local:r(1,8),remote:r(2,9),dirty:true}).action,'conflict');
