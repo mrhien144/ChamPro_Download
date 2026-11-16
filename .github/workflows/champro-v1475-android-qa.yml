@@ -12,7 +12,7 @@ on:
       - '.github/workflows/champro-v1475-android-qa.yml'
   workflow_dispatch:
   pull_request:
-    branches: [fix/champro-v1473-auth-back-clean-account-20261116]
+    branches: [fix/champro-v1474-android-qa-20261116]
 permissions:
   contents: write
 jobs:
