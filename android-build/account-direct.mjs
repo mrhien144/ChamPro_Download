@@ -53,11 +53,13 @@ function announceIdentity(claim){
  window.champroAccountIdentity=Object.freeze({wpUserId:uid,deviceId:deviceId()});
  window.dispatchEvent(new CustomEvent('champro-account-verified',{detail:window.champroAccountIdentity}));
 }
-function unlock(claim,onlineConfirmed=false){
+function unlock(claim,onlineConfirmed=false,{dismissGate=false}={}){
  verified=claim;
  announceIdentity(claim);
  document.documentElement.classList.remove('cp-license-pending');
- $('cpAccountGate').hidden=true;
+ // Refreshing an already open account is not a navigation action. Only
+ // initial activation or explicit Back may dismiss the account screen.
+ if(dismissGate)$('cpAccountGate').hidden=true;
  $('cpAccountClose').disabled=false;
  $('cpAccountLogout').hidden=false;
  $('cpCurrentPlan').textContent=(localStorage.getItem('cp-v14-account-name')||claim.sub||'Tài khoản')+' · '+(onlineConfirmed?planLabel(claim):navigator.onLine?'Đang xác minh gói với máy chủ…':'Gói đã lưu trên máy: '+planLabel(claim));
@@ -124,7 +126,11 @@ async function refreshPlan(force=false){
    localStorage.setItem(LICENSE_KEY,fresh.license);
    if(fresh.username)localStorage.setItem('cp-v14-account-name',String(fresh.username).slice(0,80));
    unlock(checked,true);lastRefreshAt=Date.now();
-   stamp('Đã xác minh tài khoản và cập nhật gói sử dụng.','success');
+   if(checked.plan==='free'){
+    stamp('Máy chủ hiện trả về gói Dùng thử. Nếu tài khoản đã mua gói 1 năm, quyền thanh toán chưa khớp giữa WordPress và Cloudflare D1. Không coi là đã đồng bộ gói.','error');
+   }else{
+    stamp('Đã xác minh gói sử dụng: '+planLabel(checked)+'.','success');
+   }
    return true;
   }catch(e){
    stamp('Chưa cập nhật được gói: '+describe(e)+' Giấy phép và dữ liệu cũ được giữ nguyên.', 'error');
@@ -174,7 +180,7 @@ async function exchange(ticket,state){
   else localStorage.removeItem('cp-v14-account-name');
   clearPending();
   try{await window.Capacitor?.Plugins?.Browser?.close?.();}catch{}
-  unlock(claim,true);lastRefreshAt=Date.now();
+  unlock(claim,true,{dismissGate:true});lastRefreshAt=Date.now();
  }catch(e){fail(describe(e));}
  finally{clearTimeout(timer);}
 }
@@ -256,7 +262,7 @@ function boot(){
  deviceId();
  const saved=localStorage.getItem(LICENSE_KEY);
  if(saved)void verifyLicense(saved).then(claim=>{
-  unlock(claim);
+  unlock(claim,false,{dismissGate:true});
   if(navigator.onLine)void refreshPlan(false);
  },async()=>{
   // A temporarily unavailable network does not sign the user out. If the
