@@ -53,14 +53,14 @@ function announceIdentity(claim){
  window.champroAccountIdentity=Object.freeze({wpUserId:uid,deviceId:deviceId()});
  window.dispatchEvent(new CustomEvent('champro-account-verified',{detail:window.champroAccountIdentity}));
 }
-function unlock(claim){
+function unlock(claim,onlineConfirmed=false){
  verified=claim;
  announceIdentity(claim);
  document.documentElement.classList.remove('cp-license-pending');
  $('cpAccountGate').hidden=true;
  $('cpAccountClose').disabled=false;
  $('cpAccountLogout').hidden=false;
- $('cpCurrentPlan').textContent=(localStorage.getItem('cp-v14-account-name')||claim.sub||'Tài khoản')+' · '+planLabel(claim);
+ $('cpCurrentPlan').textContent=(localStorage.getItem('cp-v14-account-name')||claim.sub||'Tài khoản')+' · '+(onlineConfirmed?planLabel(claim):navigator.onLine?'Đang xác minh gói với máy chủ…':'Gói đã lưu trên máy: '+planLabel(claim));
  setTimeout(addAccountMenu,150);
 }
 function lock(){
@@ -123,7 +123,7 @@ async function refreshPlan(force=false){
     throw Error('Máy chủ trả giấy phép không đúng tài khoản hoặc thiết bị.');
    localStorage.setItem(LICENSE_KEY,fresh.license);
    if(fresh.username)localStorage.setItem('cp-v14-account-name',String(fresh.username).slice(0,80));
-   unlock(checked);lastRefreshAt=Date.now();
+   unlock(checked,true);lastRefreshAt=Date.now();
    stamp('Đã xác minh tài khoản và cập nhật gói sử dụng.','success');
    return true;
   }catch(e){
@@ -174,7 +174,7 @@ async function exchange(ticket,state){
   else localStorage.removeItem('cp-v14-account-name');
   clearPending();
   try{await window.Capacitor?.Plugins?.Browser?.close?.();}catch{}
-  unlock(claim);lastRefreshAt=Date.now();
+  unlock(claim,true);lastRefreshAt=Date.now();
  }catch(e){fail(describe(e));}
  finally{clearTimeout(timer);}
 }
@@ -197,6 +197,7 @@ function showAccount(){
  $('cpAccountClose').disabled=!verified;
  $('cpAccountLogout').hidden=!verified;
  setView(verified?'plans':'login');
+ if(verified&&navigator.onLine)void refreshPlan(true);
 }
 // Hardware Back closes account the same way as the visible Back button.
 // Never dismiss an unverified first-use license gate or delete local data.
