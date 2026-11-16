@@ -6,6 +6,8 @@ on:
       - 'platform/wordpress/champro-entitlement-recovery.php'
       - 'tests/champro-woocommerce-entitlement-recovery.test.mjs'
       - '.github/workflows/champro-entitlement-recovery-package.yml'
+  pull_request:
+    branches: [fix/champro-v1475-account-refresh-no-autoclose-20261116]
 permissions:
   contents: write
 jobs:
@@ -31,6 +33,7 @@ jobs:
           name: ChấmPro-WooCommerce-entitlement-recovery-QA
           path: release/ChamPro-Entitlement-Recovery-QA-v0.1.0.zip
       - name: Publish QA-only server package
+        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
