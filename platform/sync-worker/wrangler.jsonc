@@ -19,6 +19,8 @@
   ],
   "vars": {
     "ALLOWED_ORIGINS": "https://champro.mrhien.com,https://mrhien.com,https://localhost",
-    "CHAMPRO_SYNC_ENABLED": "0"
+    "CHAMPRO_SYNC_ENABLED": "0",
+    "CHAMPRO_SYNC_QA_ONLY": "1",
+    "CHAMPRO_SYNC_QA_WP_IDS": ""
   }
 }
