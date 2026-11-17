@@ -129,7 +129,7 @@ export async function handleSync(req,env,who,path){
  // Worker verifies wpId from signed token; caller cannot override this value.
  if(env.CHAMPRO_SYNC_QA_ONLY==='1'){
   const permitted=new Set(String(env.CHAMPRO_SYNC_QA_WP_IDS||'').split(',')
-   .map(x=>x.trim()).filter(x=>/^[1-9]\\d*$/.test(x)));
+   .map(x=>x.trim()).filter(x=>/^[1-9]\d*$/.test(x)));
   if(!permitted.has(String(who?.wpId||'')))
    return fail('Tài khoản chưa được mở đồng bộ thử nghiệm',403);
  }
