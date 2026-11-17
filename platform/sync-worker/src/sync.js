@@ -124,6 +124,15 @@ async function photo(req,env,owner){
 }
 export async function handleSync(req,env,who,path){
  if(env.CHAMPRO_SYNC_ENABLED!=='1')return fail('Đồng bộ đang được kiểm thử; chưa kích hoạt',503);
+ // Staging safety gate: a global feature toggle must NEVER enable every paid
+ // account before two isolated test accounts and devices have been verified.
+ // Worker verifies wpId from signed token; caller cannot override this value.
+ if(env.CHAMPRO_SYNC_QA_ONLY==='1'){
+  const permitted=new Set(String(env.CHAMPRO_SYNC_QA_WP_IDS||'').split(',')
+   .map(x=>x.trim()).filter(x=>/^[1-9]\\d*$/.test(x)));
+  if(!permitted.has(String(who?.wpId||'')))
+   return fail('Tài khoản chưa được mở đồng bộ thử nghiệm',403);
+ }
  const owner=await account(env,who);
  if(!owner)return fail('Tài khoản chưa được phép đồng bộ',403);
  if(path==='/api/sync/status'&&req.method==='GET')return reply({ok:true,enabled:true,owner});
