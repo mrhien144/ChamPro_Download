@@ -52,6 +52,7 @@ test('All app script modules imported by isolated sync are committed',()=>{
 });
 test('Offline service worker precaches required extra modules',()=>{
  const sw=at('app/sw.js');
+ assert.match(sw,/caches\.match\(req,\{ignoreSearch:true\}\)/,'Offline script URLs with cache-bust query must resolve to precached file');
  for(const name of ['web-app-sync.mjs','sync/client.mjs','sync/reconcile.mjs','sync/legacy-adapter.mjs','sync/start.mjs','sync/web-token.mjs','sheet-photo-store.mjs','result-review.mjs']){
   assert.ok(sw.includes("./"+name),name+' missing from PWA cache');
  }
