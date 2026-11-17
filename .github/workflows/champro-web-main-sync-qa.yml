@@ -35,7 +35,10 @@ jobs:
           git cat-file -e c11a774a813417bb04fb427fc1aa16031b511e09^{commit}
           git diff --exit-code c11a774a813417bb04fb427fc1aa16031b511e09 HEAD -- \
             app/grader.mjs app/omr-native.mjs app/omr-printed-120.mjs \
-            app/omr-verified-paper.mjs app/advanced.mjs platform/worker/ \
+            app/omr-verified-paper.mjs platform/worker/ \
             platform/licensing/ android-build/
+          # advanced is unchanged except the matching module URL.
+          git show c11a774a813417bb04fb427fc1aa16031b511e09:app/advanced.mjs | sed 's|app.mjs?v=20261109-120-camera-r2|app.mjs?v=20261117-sync-qa-off|' > /tmp/advanced-expected.mjs
+          cmp /tmp/advanced-expected.mjs app/advanced.mjs
           # No file is allowed to alter the original web browser storage key.
           grep -Fq "const storedKey='champro-web-beta-v1'" app/app.mjs

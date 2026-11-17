@@ -375,7 +375,7 @@ async function autoScanOnce(){if(!stream||captureBusy||$('reviewDialog').open||!
 $('snap').onclick=async()=>{try{await readCanvas(captureVideo(),true);}catch(e){toast(e.message)}};
 $('openPhoto').onclick=async()=>{const file=$('photoFile').files[0];if(!file)return toast('Hãy chọn ảnh phiếu trước');const url=URL.createObjectURL(file),img=new Image();img.onload=async()=>{try{await readCanvas(imageCanvas(img),true,'photo');}catch(e){toast(e.message);}finally{URL.revokeObjectURL(url);}};img.onerror=()=>{URL.revokeObjectURL(url);toast('Không mở được ảnh')};img.src=url;};
 $('testEngine').onclick=async()=>{try{const geometry=await ensureLayouts();if(Object.keys(geometry).length<4)throw Error('Thiếu mẫu phiếu');toast('Bộ đọc ảnh nhẹ và 4 mẫu phiếu đã sẵn sàng');}catch(e){toast(e.message);}};
-function openReview(exam,omr,angle=0,frame=null){review={exam,omr,angle,frame};const student=findStudentForSbd(db.students,omr.sbd);const info=omr.uncertain?.length?`<p class="warning">Có ${omr.uncertain.length} ô chưa rõ. Hãy kiểm tra với ảnh phiếu trước khi lưu.</p>`:'<p class="success">Đã nhận dạng. Kiểm tra SBD, mã đề và đáp án trước khi lưu.</p>';
+function openReview(exam,omr,angle=0,frame=null){review={exam,omr,angle:0,frame:frame?copyReviewFrame(frame,angle):null};const student=findStudentForSbd(db.students,omr.sbd);const info=omr.uncertain?.length?`<p class="warning">Có ${omr.uncertain.length} ô chưa rõ. Hãy kiểm tra với ảnh phiếu trước khi lưu.</p>`:'<p class="success">Đã nhận dạng. Kiểm tra SBD, mã đề và đáp án trước khi lưu.</p>';
  const field=(p,num,val,opts)=>`<label>${p} ${num}<input data-p="${p}" data-q="${num-1}" ${opts||''} value="${esc(val)}"></label>`;
  $('reviewBody').innerHTML=info+(lastReviewImage?`<details><summary>Ảnh phiếu đang kiểm tra (không lưu vào kết quả)</summary><img src="${lastReviewImage}" alt="Ảnh phiếu để đối chiếu" style="display:block;width:100%;max-height:460px;object-fit:contain;background:#0b1724;margin:8px 0 15px"></details>`:'')+`<div class="review-data"><label>Học sinh<select id="reviewStudent"><option value="">-- Chọn học sinh --</option>${db.students.map(s=>`<option value="${esc(s.id)}" ${student?.id===s.id?'selected':''}>${esc(s.sbd)} - ${esc(s.name)}</option>`).join('')}</select></label><label>SBD đọc từ phiếu<input id="reviewSbd" value="${esc(omr.sbd)}" maxlength="12" inputmode="numeric"></label><label>Mã đề<input id="reviewCode" value="${esc(omr.examCode)}" maxlength="4" inputmode="numeric"></label></div><h3>Phần I</h3><div class="answeredit">${Array.from({length:exam.counts.I},(_,i)=>field('I',i+1,omr.I?.[i]||'', 'maxlength="3"')).join('')}</div>${exam.counts.II?'<h3>Phần II (Đ/S, 4 ý)</h3><div class="answeredit">'+Array.from({length:exam.counts.II},(_,i)=>field('II',i+1,omr.II?.[i]||'', 'maxlength="4"')).join('')+'</div>':''}${exam.counts.III?'<h3>Phần III</h3><div class="answeredit">'+Array.from({length:exam.counts.III},(_,i)=>field('III',i+1,omr.III?.[i]||'', '')).join('')+'</div>':''}`;
  $('saveReview').hidden=false;$('reviewDialog').showModal();}
@@ -403,22 +403,24 @@ $('saveReview').onclick=()=>{try{if(!review)return;const student=db.students.fin
  review=null;$('reviewDialog').close();toast('Đã chấm và lưu: '+done.score+'/'+done.max+' điểm');
  }catch(e){toast('Không lưu được: '+e.message);}};
 $('closeReview').onclick=()=>{review=null;$('reviewDialog').close();};
+function copyReviewFrame(frame,angle){
+ const oriented=rotatedCanvas(frame,angle);
+ const copy=document.createElement('canvas');
+ copy.width=oriented.width;copy.height=oriented.height;
+ copy.getContext('2d').drawImage(oriented,0,0);
+ return copy;
+}
 function queueSheetFrame(resultId,frame,markers,angle,exam){
  if(!frame||!Array.isArray(markers)||markers.length!==4)return;
- // Defer any extra canvas copies until AFTER the capture/scoring path settles.
- let retries=0;
- const enqueue=()=>{
-  if(captureBusy&&retries++<8){setTimeout(enqueue,450);return;}
-  if(captureBusy)return;
-  try{
-   enqueueSheetPhoto({
-    id:resultId,canvas:angle?rotatedCanvas(frame,angle):frame,markers,
-    angle:0,form:exam.form,digits:exam.digits,examId:exam.id
-   });
-  }catch(e){console.warn('Ảnh phiếu chưa lưu được:',e);}
- };
- if(typeof requestIdleCallback==='function')requestIdleCallback(enqueue,{timeout:1600});
- else setTimeout(enqueue,350);
+ // Snapshot the exact confirmed frame now, before the reused capture canvas
+ // can contain a different student's sheet. Encoding and IDB remain deferred.
+ try{
+  const accepted=enqueueSheetPhoto({
+   id:resultId,canvas:angle?rotatedCanvas(frame,angle):frame,markers,
+   angle:0,form:exam.form,digits:exam.digits,examId:exam.id
+  });
+  if(!accepted)console.warn('Ảnh phiếu chưa lưu được: hàng đợi ảnh đang đầy');
+ }catch(e){console.warn('Ảnh phiếu chưa lưu được:',e);}
 }
 // Offline PWA install prompt
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;$('installBtn').hidden=false;});

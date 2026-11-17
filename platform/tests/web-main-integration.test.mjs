@@ -8,7 +8,9 @@ test('Main site loads additional sync module without replacing known camera file
  const html=at('app/index.html');
  assert.match(html,/src="\.\/app\.mjs\?v=20261117-sync-qa-off"/);
  assert.match(html,/src="\.\/web-app-sync\.mjs\?v=20261117-sync-qa-off"/);
- assert.match(html,/src="\.\/advanced\.mjs/);
+ assert.match(html,/src="\.\/advanced\.mjs\?v=20261117-sync-qa-off"/);
+ const entry=html.match(/src="(\.\/app\.mjs\?[^"]+)"/)[1];
+ assert.ok(at('app/advanced.mjs').includes("from '"+entry+"'"),'Both modules must share a single app instance');
  assert.match(html,/src="\/platform\/licensing\/auth-session\.js"/);
  assert.match(html,/src="\/platform\/licensing\/quota-dashboard\.js(?:\?[^\"]*)?"/);
 });
@@ -18,7 +20,10 @@ test('Legacy browser data key and synchronous local save path remain untouched',
  assert.match(app,/function save\(\)\{try\{localStorage\.setItem\(storedKey,JSON\.stringify\(db\)\)/);
  assert.match(app,/window\.champroAppData=Object\.freeze/);
  assert.match(app,/getDb,applySyncDb,isCameraBusy/);
- assert.match(app,/if\(captureBusy&&retries\+\+<8\)/);
+ const capture=app.split('function queueSheetFrame(')[1].split('// Offline PWA install prompt')[0];
+ assert.doesNotMatch(capture,/requestIdleCallback|setTimeout/,'Confirmed frame must be copied before reuse');
+ assert.match(capture,/enqueueSheetPhoto\(/);
+ assert.match(app,/frame:frame\?copyReviewFrame\(frame,angle\):null/);
  assert.match(app,/enqueueSheetPhoto/);
  assert.match(app,/showSheetPhoto/);
 });
