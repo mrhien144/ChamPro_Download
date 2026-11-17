@@ -97,3 +97,23 @@ jobs:
           path: _qa/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+      - name: Build release APK and Android App Bundle without signing keys
+        working-directory: _qa/android
+        run: |
+          ./gradlew assembleRelease bundleRelease --no-daemon
+      - name: Verify and stage unsigned release files
+        run: |
+          set -euo pipefail
+          mkdir -p unsigned
+          test -s _qa/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          test -s _qa/android/app/build/outputs/bundle/release/app-release.aab
+          cp _qa/android/app/build/outputs/apk/release/app-release-unsigned.apk unsigned/ChamPro-v15.0-unsigned.apk
+          cp _qa/android/app/build/outputs/bundle/release/app-release.aab unsigned/ChamPro-v15.0-unsigned.aab
+          (cd unsigned && sha256sum *.apk *.aab > SHA256SUMS.txt)
+          echo "Unsigned release inputs only. Do not distribute or install."
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChamPro-v15-unsigned-release-APK-AAB
+          path: unsigned/
+          if-no-files-found: error
+          retention-days: 14
