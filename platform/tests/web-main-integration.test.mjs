@@ -10,7 +10,7 @@ test('Main site loads additional sync module without replacing known camera file
  assert.match(html,/src="\.\/web-app-sync\.mjs\?v=20261117-sync-qa-off"/);
  assert.match(html,/src="\.\/advanced\.mjs/);
  assert.match(html,/src="\/platform\/licensing\/auth-session\.js"/);
- assert.match(html,/src="\/platform\/licensing\/quota-dashboard\.js"/);
+ assert.match(html,/src="\/platform\/licensing\/quota-dashboard\.js(?:\?[^\"]*)?"/);
 });
 test('Legacy browser data key and synchronous local save path remain untouched',()=>{
  const app=at('app/app.mjs');
