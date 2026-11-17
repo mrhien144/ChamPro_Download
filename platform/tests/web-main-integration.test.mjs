@@ -17,13 +17,15 @@ test('Main site loads additional sync module without replacing known camera file
 test('Legacy browser data key and synchronous local save path remain untouched',()=>{
  const app=at('app/app.mjs');
  assert.match(app,/const storedKey='champro-web-beta-v1'/);
- assert.match(app,/function save\(\)\{try\{localStorage\.setItem\(storedKey,JSON\.stringify\(db\)\)/);
+ assert.match(app,/function save\(\)\{try\{localStorage\.setItem\(dataKey,JSON\.stringify\(db\)\)/);
+ assert.match(app,/const dataKey=qaMode\?storedKey\+'-sync-qa-wp8':storedKey/);
+ assert.match(app,/qaMode=platformOwner\(\)===qaOwner/);
  assert.match(app,/window\.champroAppData=Object\.freeze/);
  assert.match(app,/getDb,applySyncDb,isCameraBusy/);
  const capture=app.split('function queueSheetFrame(')[1].split('// Offline PWA install prompt')[0];
  assert.doesNotMatch(capture,/requestIdleCallback|setTimeout/,'Confirmed frame must be copied before reuse');
  assert.match(capture,/enqueueSheetPhoto\(/);
- assert.match(app,/frame:frame\?copyReviewFrame\(frame,angle\):null/);
+ assert.match(app,/frame:qaMode&&frame\?copyReviewFrame\(frame,angle\):null/);
  assert.match(app,/enqueueSheetPhoto/);
  assert.match(app,/showSheetPhoto/);
 });
@@ -35,6 +37,10 @@ test('Main auth integration uses existing session and verifies owner with Worker
  assert.match(sync,/champro-auth-logout/);
  assert.doesNotMatch(sync,/getAccount\?\./);
  assert.match(sync,/platformOwner\(\)/);
+ assert.match(sync,/const QA_OWNER='wp:8'/);
+ assert.match(sync,/app.syncOwner!==owner/);
+ assert.match(sync,/getToken:scopedToken/);
+ assert.match(sync,/metaKey:'champro-sync-web-qa-wp8-v1'/);
  assert.match(sync,/consent:async count/);
  assert.match(auth,/\/wp-json\/champro\/sync\/v1\/web-token/);
  assert.match(orchestrator,/result\.owner!==owner/);

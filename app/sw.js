@@ -1,4 +1,4 @@
-const CACHE='champro-web-v3-20261117-isolated-sync-qa';
+const CACHE='champro-web-v4-20261117-wp8-sync-qa';
 const CORE=['./','./index.html','./styles.css','./app.mjs','./advanced.mjs','./web-app-sync.mjs','./sync/client.mjs','./sync/reconcile.mjs','./sync/legacy-adapter.mjs','./sync/start.mjs','./sync/web-token.mjs','./sheet-photo-store.mjs','./result-review.mjs','./qr-compatible.mjs','./multisubject.mjs','./grader.mjs','./omr-native.mjs','./omr-verified-paper.mjs','./omr-printed-120.mjs','./answer-flex-editor.mjs','./student-identity.mjs','./layouts.json','./manifest.webmanifest','./icon.svg'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(names=>Promise.all(names.filter(n=>n.startsWith('champro-web-')&&n!==CACHE).map(n=>caches.delete(n)))).then(()=>self.clients.claim())));

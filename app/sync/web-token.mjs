@@ -3,7 +3,7 @@
  * Requires the separate WordPress Sync Device Auth plugin to be enabled.
  */
 const ENDPOINT='https://mrhien.com/wp-json/champro/sync/v1/web-token';
-let cached=null,pending=null;
+let cached=null,pending=null,generation=0;
 function expires(s){
  try{
   const part=s.split('.')[1];
@@ -22,13 +22,14 @@ export function platformOwner(){
   return 'wp:'+uid;
  }catch{return null;}
 }
-export function clearWebSyncToken(){cached=null;pending=null;}
+export function clearWebSyncToken(){generation++;cached=null;pending=null;}
 export async function getWebSyncToken(){
  const p=window.champroAuthSession?.getToken?.();
  if(!p)throw Error('Cần đăng nhập để đồng bộ');
  if(cached?.forToken===p&&cached.expires>Date.now()/1000+35)return cached.token;
- if(pending)return pending;
- pending=(async()=>{
+ if(pending?.forToken===p)return pending.promise;
+ const epoch=generation;
+ const promise=(async()=>{
   const response=await fetch(ENDPOINT,{
    method:'POST',mode:'cors',credentials:'omit',cache:'no-store',
    headers:{'Content-Type':'application/json'},body:JSON.stringify({platformToken:p})
@@ -38,8 +39,10 @@ export async function getWebSyncToken(){
    throw Object.assign(Error(data.message||'Không được cấp phiên đồng bộ'),{status:response.status});
   const until=expires(data.token);
   if(until<=Date.now()/1000)throw Error('Phiên đồng bộ sai thời hạn');
+  if(epoch!==generation||window.champroAuthSession?.getToken?.()!==p)throw Error('Phiên đăng nhập đã thay đổi');
   cached={forToken:p,token:data.token,expires:until};
   return data.token;
  })();
- try{return await pending;}finally{pending=null;}
+ pending={forToken:p,promise};
+ try{return await promise;}finally{if(pending?.promise===promise)pending=null;}
 }

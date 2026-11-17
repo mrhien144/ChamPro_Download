@@ -7,9 +7,11 @@ import {startSync} from './sync/start.mjs';
 import {platformOwner,getWebSyncToken,clearWebSyncToken} from './sync/web-token.mjs';
 import {getSheetPhoto,putSheetPhoto,listSheetPhotoIds} from './sheet-photo-store.mjs';
 const API='https://champro-sync-staging.luckylove1404.workers.dev';
+const QA_OWNER='wp:8';
 let active=null,starting=false,waiting=false,retryAfter=0,sessionEpoch=0;
 const byId=id=>document.getElementById(id);
 function status(message){
+ const home=byId('cpWebAutoSyncHome');if(home)home.textContent='Đồng bộ web ChấmPro: '+message;
  let target=byId('cpWebAutoSyncStatus');
  if(!target){
   const area=byId('page-backup');if(!area)return;
@@ -34,8 +36,9 @@ function report(event){
   status('Đã tải dữ liệu lên đám mây theo tài khoản.');
 }
 async function maybeStart(){
- if(active||starting||!navigator.onLine||Date.now()<retryAfter)return;
  const owner=platformOwner(),auth=window.champroAuthSession;
+ if(owner!==QA_OWNER){if(active||starting)stop();status('Chưa mở đồng bộ cho tài khoản này. Dữ liệu vẫn lưu cục bộ.');return;}
+ if(active||starting||!navigator.onLine||Date.now()<retryAfter)return;
  if(!owner||!auth?.getToken?.()){
   if(active){stop();status('Đã ngừng đồng bộ khi phiên đăng nhập thay đổi. Dữ liệu cục bộ vẫn còn.');}
   return;
@@ -45,21 +48,23 @@ async function maybeStart(){
  if(active&&active.owner!==owner){stop();}
  if(active)return;
  const app=window.champroAppData;
- if(!app){status('Ứng dụng đang chuẩn bị dữ liệu cục bộ.');return;}
+ if(!app||app.syncOwner!==owner){status('Ứng dụng đang chuẩn bị kho dữ liệu kiểm thử.');return;}
  starting=true;
  const epoch=sessionEpoch;
+ const assertSession=()=>{if(epoch!==sessionEpoch||platformOwner()!==owner||app.syncOwner!==owner)throw Error('Phiên đồng bộ đã thay đổi');};
+ const scopedToken=async()=>{assertSession();const token=await getWebSyncToken();assertSession();return token;};
  try{
   status('Đang kiểm tra quyền đồng bộ D1/R2 theo tài khoản…');
   const result=await startSync({
-   api:API,owner,getToken:getWebSyncToken,
-   getDb:app.getDb,saveDb:app.applySyncDb,
-   getPhoto:getSheetPhoto,putPhoto:putSheetPhoto,listPhotoIds:listSheetPhotoIds,
-   isBusy:app.isCameraBusy,metaKey:'champro-sync-web-v1',
+   api:API,owner,getToken:scopedToken,
+   getDb:()=>{assertSession();return app.getDb();},saveDb:next=>{assertSession();return app.applySyncDb(next);},
+   getPhoto:id=>{assertSession();return getSheetPhoto(id);},putPhoto:(id,photo)=>{assertSession();return putSheetPhoto(id,photo);},listPhotoIds:()=>{assertSession();return listSheetPhotoIds();},
+   isBusy:()=>epoch!==sessionEpoch||platformOwner()!==owner||app.isCameraBusy(),metaKey:'champro-sync-web-qa-wp8-v1',
    consent:async count=>{
     waiting=true;
     return confirm('Tài khoản '+owner+' có '+count+' bản ghi trên trình duyệt. Bạn xác nhận chúng thuộc tài khoản này để đồng bộ? Dữ liệu không bị xóa và xung đột sẽ không bị ghi đè.');
    },
-   onEvent:report
+   onEvent:event=>{if(epoch===sessionEpoch&&platformOwner()===owner)report(event);}
   });
   if(epoch!==sessionEpoch||platformOwner()!==owner){result?.stop?.();return;}
   if(result?.started){active=result;status('Đã kết nối. Tự đồng bộ khi có mạng và camera rảnh.');}
@@ -69,7 +74,7 @@ async function maybeStart(){
    retryAfter=Date.now()+300000;
    status('Máy chủ chưa bật đồng bộ. Dữ liệu web vẫn được lưu tại thiết bị.');
   }else status('Chưa kết nối: '+String(e.message||e).slice(0,160));
- }finally{starting=false;waiting=false;}
+ }finally{starting=false;waiting=false;if(epoch!==sessionEpoch&&platformOwner()===QA_OWNER)void maybeStart();}
 }
 // These are the auth events from main/platform/licensing/auth-session.js.
  // Never copy the preview account-bridge: main's quota UI already owns login.
