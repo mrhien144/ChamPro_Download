@@ -21,7 +21,7 @@ test('Legacy browser data key and synchronous local save path remain untouched',
  assert.match(app,/const dataKey=qaMode\?storedKey\+'-sync-qa-wp8':storedKey/);
  assert.match(app,/qaMode=platformOwner\(\)===qaOwner/);
  assert.match(app,/window\.champroAppData=Object\.freeze/);
- assert.match(app,/getDb,applySyncDb,isCameraBusy/);
+ assert.match(app,/getDb,applySyncDb,syncOwner:qaMode\?qaOwner:null,isCameraBusy/);
  const capture=app.split('function queueSheetFrame(')[1].split('// Offline PWA install prompt')[0];
  assert.doesNotMatch(capture,/requestIdleCallback|setTimeout/,'Confirmed frame must be copied before reuse');
  assert.match(capture,/enqueueSheetPhoto\(/);
