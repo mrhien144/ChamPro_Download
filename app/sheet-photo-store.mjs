@@ -1,3 +1,4 @@
+import {cropReviewPaper} from './paper-view.mjs';
 import {shortCellMarks} from './result-review.mjs';
 /**
  * ChấmPro optional photo archive. Independent from grade storage and OMR.
@@ -207,8 +208,14 @@ export async function showSheetPhoto(container,record,exam){
     }
    }
    note.textContent=map&&gradeDetails.length?'Xanh đậm: ô đúng · Đỏ: ô tô sai · Vàng: ô đáp án đúng tương ứng. Phần III chỉ tô viền từng ô số, không che nét tô của học sinh. Đáp án đúng bắt đầu ở cột đầu tiên.':'Ảnh phiếu gốc. Chưa đủ dữ liệu tọa độ hoặc đáp án để đánh dấu trực tiếp.';
-   c.className='champro-archived-photo';c.style.cssText='display:block;width:100%;height:auto;max-height:70vh;object-fit:contain;margin:10px 0;';
-   container.append(c);
+   // Match APK's paper-only view AFTER marking. The archived JPEG is unchanged.
+   let paper=null;
+   try{paper=cropReviewPaper(c,stored);}catch(error){console.warn('ChấmPro web paper view:',error);}
+   const view=paper||c;
+   view.className='champro-archived-photo';
+   view.style.cssText='display:block;width:100%;max-width:960px;height:auto;max-height:none;object-fit:contain;margin:10px auto;';
+   view.setAttribute('aria-label','Ảnh phiếu trả lời đã chấm');
+   container.append(view);
   }finally{URL.revokeObjectURL(url);}
  }catch(e){note.textContent='Không thể mở ảnh: '+e.message;}
 }
