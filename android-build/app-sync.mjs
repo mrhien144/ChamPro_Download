@@ -7,7 +7,7 @@ import {startSync} from './sync/start.mjs';
 import {isSyncRegistered,shortLivedSyncToken} from './sync-device.mjs';
 import {getSheetPhoto,putSheetPhoto,listSheetPhotoIds} from './sheet-photo-store.mjs';
 const API='https://champro-sync-staging.luckylove1404.workers.dev';
-let active=null,starting=false,identity=null;
+let active=null,starting=false,identity=null,sessionEpoch=0;
 let retryAfter=0;
 const CHECK_DELAY_MS=5*60*1000;
 function status(message){
@@ -39,6 +39,7 @@ async function maybeStart(){
  identity=window.champroAccountIdentity||identity;
  if(!identity?.wpUserId||!identity?.deviceId)return;
  starting=true;
+ const epoch=sessionEpoch;
  try{
   const {wpUserId,deviceId}=identity;
   if(!await isSyncRegistered(deviceId,wpUserId)){
@@ -58,6 +59,7 @@ async function maybeStart(){
     ' bản ghi hiện có trên điện thoại thuộc tài khoản đang đăng nhập. Dữ liệu không bị xóa và được lưu cục bộ ngay cả khi mất mạng. Tiếp tục?'),
    onEvent:eventLabel
   });
+  if(epoch!==sessionEpoch||identity?.wpUserId!==wpUserId||identity?.deviceId!==deviceId){started?.stop?.();return;}
   if(started?.started){active=started;status('Đã kết nối an toàn. Chấm bài offline; đồng bộ khi máy rảnh và có mạng.');}
   else status('Chưa liên kết dữ liệu hiện có; sẽ không tải lên máy chủ khi chưa xác nhận.');
  }catch(e){
@@ -72,6 +74,7 @@ async function maybeStart(){
  finally{starting=false;}
 }
 window.addEventListener('champro-account-verified',event=>{
+ sessionEpoch++;
  identity=event.detail||null;
  if(active&&active.owner!=='wp:'+identity?.wpUserId){
   active.stop();active=null;
@@ -79,6 +82,7 @@ window.addEventListener('champro-account-verified',event=>{
  void maybeStart();
 });
 window.addEventListener('champro-account-logout',()=>{
+ sessionEpoch++;
  active?.stop();active=null;identity=null;
  status('Đã ngừng đồng bộ trên thiết bị này; dữ liệu cục bộ được giữ nguyên.');
 });

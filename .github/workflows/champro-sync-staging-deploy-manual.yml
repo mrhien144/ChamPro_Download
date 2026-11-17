@@ -1,0 +1,51 @@
+name: ChấmPro Cloudflare sync — manual STAGING deploy (disabled)
+on:
+  workflow_dispatch:
+    inputs:
+      confirmed_backup:
+        description: 'Type BACKUP_CONFIRMED after backing up D1 and WordPress'
+        required: true
+        type: string
+      deploy_staging:
+        description: 'Deploy only the separate sync staging Worker (feature remains OFF)'
+        required: true
+        default: false
+        type: boolean
+permissions:
+  contents: read
+jobs:
+  deploy:
+    if: ${{ inputs.deploy_staging && inputs.confirmed_backup == 'BACKUP_CONFIRMED' && github.ref_name == 'feature/champro-sync-server-integration-20261116' }}
+    runs-on: ubuntu-latest
+    environment: champro-sync-staging-qa
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CHAMPRO_SYNC_HMAC_SECRET: ${{ secrets.CHAMPRO_SYNC_HMAC_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify staging restrictions and required credentials
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test "${#CHAMPRO_SYNC_HMAC_SECRET}" -ge 32
+          grep -F '"CHAMPRO_SYNC_ENABLED": "0"' platform/sync-worker/wrangler.jsonc
+          grep -F '"name": "champro-sync-staging"' platform/sync-worker/wrangler.jsonc
+          grep -F '"database_name": "champro-platform-staging"' platform/sync-worker/wrangler.jsonc
+          grep -F '"bucket_name": "champro-photos-staging"' platform/sync-worker/wrangler.jsonc
+          python3 platform/tests/sync-d1-sql-test.py
+      - name: Apply additive D1 sync tables (existing accounts/payments unchanged)
+        run: |
+          npx --yes wrangler@4 d1 execute champro-platform-staging --remote --config platform/sync-worker/wrangler.jsonc --file platform/migrations/0004_sync_records.sql
+      - name: Deploy dedicated STAGING worker with synchronization still disabled
+        run: |
+          npx --yes wrangler@4 deploy --config platform/sync-worker/wrangler.jsonc
+      - name: Set Worker token verification secret (never in repo or logs)
+        run: |
+          printf '%s' "$CHAMPRO_SYNC_HMAC_SECRET" | npx --yes wrangler@4 secret put CHAMPRO_SYNC_HMAC_SECRET --config platform/sync-worker/wrangler.jsonc
+      - name: State deployment result without activating real data sync
+        run: |
+          echo 'STAGING Worker deployed with CHAMPRO_SYNC_ENABLED=0.'
+          echo 'WordPress CHAMPRO_SYNC_DEVICE_ENABLED must remain false until synthetic two-device QA succeeds.'

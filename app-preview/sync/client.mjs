@@ -15,7 +15,7 @@ export class SyncTransport {
   this.applyRemote=applyRemote;this.getPhoto=getPhoto;this.putPhoto=putPhoto;this.onStatus=onStatus;this.isBusy=isBusy;
   this.enabled=Boolean(enabled);this.dirty=new Map();this.photos=new Set();this.blocked=new Set();
   this.running=false;this.lastError=null;this.account=null;this.retry=0;
-  this.scheduleId=null;
+  this.scheduleId=null;this.pollTimer=null;
  }
  key(kind,id){return kind+':'+id;}
  setAccount(account){
@@ -55,6 +55,11 @@ export class SyncTransport {
   this.onVisible=()=>{if(!document.hidden)this.schedule(400);};
   window.addEventListener('online',this.onOnline);
   document.addEventListener('visibilitychange',this.onVisible);
+  // Push-only synchronization misses edits made on the OTHER device while
+  // this app remains open. Poll only when visible and idle, never in OMR.
+  this.pollTimer=setInterval(()=>{
+   if(navigator.onLine&&!document.hidden&&!this.isBusy())this.schedule(500);
+  },30000);
   this.schedule(2000);
  }
  async request(path,method='GET',body=null,type='application/json',extraHeaders={}){
@@ -166,6 +171,13 @@ export class SyncTransport {
     if(!meta||!Array.isArray(meta.markers)||meta.markers.length!==4||
       response.blob.type!=='image/jpeg'||response.blob.size>PHOTO_LIMIT)
       throw Error('Ảnh phiếu đã tải không hợp lệ');
+    // Verify the downloaded bytes before persisting the photo or acknowledging
+    // its cloud revision. This runs in background sync, never in the grader.
+    if(!/^[a-f0-9]{64}$/.test(response.sha256))
+      throw Error('Ảnh phiếu thiếu checksum toàn vẹn hợp lệ');
+    const digest=await crypto.subtle.digest('SHA-256',await response.blob.arrayBuffer());
+    const actual=[...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');
+    if(actual!==response.sha256)throw Error('Ảnh phiếu không khớp checksum toàn vẹn');
     await this.putPhoto(id,{...meta,blob:response.blob,syncedSha256:response.sha256});
     await this.onStatus({kind:'photo-downloaded',record:id});
    }catch(e){if(e.status!==404)throw e;}
@@ -199,6 +211,7 @@ export class SyncTransport {
  }
  stop(){
   this.enabled=false;
+  if(this.pollTimer!==null){clearInterval(this.pollTimer);this.pollTimer=null;}
   if(this.scheduleId!==null){clearTimeout(this.scheduleId);this.scheduleId=null;}
   if(this.onOnline)window.removeEventListener('online',this.onOnline);
   if(this.onVisible)document.removeEventListener('visibilitychange',this.onVisible);

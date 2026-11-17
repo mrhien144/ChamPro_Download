@@ -1,0 +1,59 @@
+name: ChấmPro D1 R2 web APK two-way sync - isolated QA
+on:
+  push:
+    branches: [feature/champro-sync-server-integration-20261116]
+    paths:
+      - 'platform/sync/**'
+      - 'platform/sync-worker/**'
+      - 'platform/wordpress/champro-sync-device.php'
+      - 'platform/migrations/0004_sync_records.sql'
+      - 'platform/tests/sync*'
+      - 'app-preview/sync/**'
+      - 'app-preview/account-bridge.mjs'
+      - 'app-preview/web-app-sync.mjs'
+      - 'app-preview/index.html'
+      - '.github/workflows/champro-sync-server-integration-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check isolated backend and WordPress syntax
+        run: |
+          php -l platform/wordpress/champro-sync-device.php
+          node --check platform/sync-worker/src/index.js
+          node --check platform/sync-worker/src/sync.js
+          node --check app-preview/web-app-sync.mjs
+          node --check app-preview/account-bridge.mjs
+          node --check app-preview/sync/web-token.mjs
+          node --check app-preview/sync/web-token.mjs
+          node --check app-preview/sync/client.mjs
+          node --check android-build/app-sync.mjs
+      - name: Regression tests - no real student data
+        run: |
+          node --test platform/tests/sync-web-idle.test.mjs
+          node platform/tests/sync-reconcile.test.mjs
+          node platform/tests/sync-api.test.mjs
+          node platform/tests/sync-two-devices.test.mjs
+          node platform/tests/sync-legacy-adapter.test.mjs
+          node platform/tests/sync-start.test.mjs
+          node platform/tests/sync-worker-auth.test.mjs
+          node platform/tests/sync-photo.test.mjs
+          node --test platform/tests/sync-photo-browser.test.mjs
+          python3 platform/tests/sync-d1-sql-test.py
+      - name: Verify zero modifications to grading engine
+        run: |
+          # PR #35's verified base; fail if the base cannot be read or if a
+          # protected module changes. Do not turn a failed check into success.
+          git cat-file -e fda5e1af8ab30eb62d1144aaabce7099aefc947e^{commit}
+          git diff --exit-code fda5e1af8ab30eb62d1144aaabce7099aefc947e HEAD -- \
+            app-preview/grader.mjs app-preview/omr-native.mjs \
+            app-preview/omr-verified-paper.mjs platform/worker/
