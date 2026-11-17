@@ -4,10 +4,11 @@
  * enrolled device can obtain a fresh 10-minute account-scoped token.
  */
 import {startSync} from './sync/start.mjs';
+import {accountStore} from './apk-account-storage.mjs';
 import {isSyncRegistered,shortLivedSyncToken} from './sync-device.mjs';
 import {getSheetPhoto,putSheetPhoto,listSheetPhotoIds} from './sheet-photo-store.mjs';
 const API='https://champro-sync-staging.luckylove1404.workers.dev';
-let active=null,starting=false,identity=null;
+let active=null,starting=false,identity=null,epoch=0;
 let retryAfter=0;
 const CHECK_DELAY_MS=5*60*1000;
 function status(message){
@@ -36,9 +37,11 @@ function eventLabel(event){
 }
 async function maybeStart(){
  if(starting||active||!navigator.onLine||Date.now()<retryAfter)return;
- identity=window.champroAccountIdentity||identity;
- if(!identity?.wpUserId||!identity?.deviceId)return;
+ identity=window.champroAccountIdentity||null;
+ if(!identity?.wpUserId||!identity?.deviceId||accountStore.owner!=='wp:'+identity.wpUserId)return;
  starting=true;
+ const attempt=epoch;
+ const assertSession=()=>{const now=window.champroAccountIdentity;if(attempt!==epoch||!now||now.wpUserId!==identity?.wpUserId||now.deviceId!==identity?.deviceId||accountStore.owner!=='wp:'+now.wpUserId)throw Error('Phiên đồng bộ đã thay đổi');};
  try{
   const {wpUserId,deviceId}=identity;
   if(!await isSyncRegistered(deviceId,wpUserId)){
@@ -48,16 +51,17 @@ async function maybeStart(){
   const app=window.champroAppData;
   if(!app)return status('Ứng dụng đang khởi tạo kho bài chấm.');
   status('Đang xác minh máy chủ và khóa thiết bị…');
-  const token=()=>shortLivedSyncToken(deviceId,wpUserId);
+  if(app.syncOwner!==accountStore.owner)throw Error('Kho dữ liệu không cùng tài khoản');
+  const token=async()=>{assertSession();const t=await shortLivedSyncToken(deviceId,wpUserId);assertSession();return t;};
   const started=await startSync({
-   api:API,owner:'wp:'+wpUserId,getToken:token,getDb:app.getDb,saveDb:app.applySyncDb,
-   getPhoto:getSheetPhoto,putPhoto:putSheetPhoto,listPhotoIds:listSheetPhotoIds,
-   isBusy:app.isCameraBusy,
-   metaKey:'champro-sync-apk-v1',
-   consent:async(count)=>confirm('Để đồng bộ an toàn, xác nhận '+count+
-    ' bản ghi hiện có trên điện thoại thuộc tài khoản đang đăng nhập. Dữ liệu không bị xóa và được lưu cục bộ ngay cả khi mất mạng. Tiếp tục?'),
-   onEvent:eventLabel
+   api:API,owner:'wp:'+wpUserId,getToken:token,getDb:()=>{assertSession();return app.getDb();},saveDb:next=>{assertSession();return app.applySyncDb(next);},
+   getPhoto:id=>{assertSession();return getSheetPhoto(id);},putPhoto:(id,photo)=>{assertSession();return putSheetPhoto(id,photo);},listPhotoIds:()=>{assertSession();return listSheetPhotoIds();},
+   isBusy:()=>attempt!==epoch||app.isCameraBusy(),
+   metaKey:accountStore.meta,
+   consent:async count=>{assertSession();return app.syncOwner===accountStore.owner;},
+   onEvent:e=>{if(attempt===epoch)eventLabel(e);}
   });
+  try{assertSession();}catch{started?.stop?.();return;}
   if(started?.started){active=started;status('Đã kết nối an toàn. Chấm bài offline; đồng bộ khi máy rảnh và có mạng.');}
   else status('Chưa liên kết dữ liệu hiện có; sẽ không tải lên máy chủ khi chưa xác nhận.');
  }catch(e){
@@ -72,14 +76,16 @@ async function maybeStart(){
  finally{starting=false;}
 }
 window.addEventListener('champro-account-verified',event=>{
- identity=event.detail||null;
+ const next=event.detail||null;
+ if(identity?.wpUserId!==next?.wpUserId||identity?.deviceId!==next?.deviceId)epoch++;
+ identity=next;
  if(active&&active.owner!=='wp:'+identity?.wpUserId){
   active.stop();active=null;
  }
  void maybeStart();
 });
 window.addEventListener('champro-account-logout',()=>{
- active?.stop();active=null;identity=null;
+ epoch++;active?.stop();active=null;identity=null;
  status('Đã ngừng đồng bộ trên thiết bị này; dữ liệu cục bộ được giữ nguyên.');
 });
 window.addEventListener('online',()=>{retryAfter=0;void maybeStart()});

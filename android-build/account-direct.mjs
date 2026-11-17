@@ -2,6 +2,7 @@
    Camera, OMR, scoring, photo review and offline data unchanged.
    After one successful sign-in, validate signed ES256 license locally on each launch. */
 import {verifyLicense,pinPublicKey,inspectSignedIdentity} from './offline-license.mjs';
+import {accountStore} from './apk-account-storage.mjs';
 import {parseAuthReturn} from './auth-return.mjs';
 import {publicSyncKey,markSyncRegistered,refreshSignedLicense,markRefreshRegistered,clearSyncToken} from './sync-device.mjs';
 const LOGIN='https://mrhien.com/champro-login-app/';
@@ -54,6 +55,9 @@ function announceIdentity(claim){
  window.dispatchEvent(new CustomEvent('champro-account-verified',{detail:window.champroAccountIdentity}));
 }
 function unlock(claim,onlineConfirmed=false,{dismissGate=false}={}){
+ // The new signed license has already been persisted. Reinitialize the
+ // local namespace before exposing or editing the new account's data.
+ if(accountStore.owner!==claim.sub){lock();location.reload();return;}
  verified=claim;
  announceIdentity(claim);
  document.documentElement.classList.remove('cp-license-pending');
@@ -123,6 +127,7 @@ async function refreshPlan(force=false){
    const checked=await verifyLicense(fresh.license);
    if(checked.sub!==claim.sub||checked.deviceId!==deviceId())
     throw Error('Máy chủ trả giấy phép không đúng tài khoản hoặc thiết bị.');
+   if(localStorage.getItem(LICENSE_KEY)!==saved)throw Error('Tài khoản đã thay đổi trong khi cập nhật');
    localStorage.setItem(LICENSE_KEY,fresh.license);
    if(fresh.username)localStorage.setItem('cp-v14-account-name',String(fresh.username).slice(0,80));
    unlock(checked,true);lastRefreshAt=Date.now();
@@ -291,8 +296,9 @@ function boot(){
  $('cpAccountLogout').onclick=()=>{
   if(!confirm('Đăng xuất trên thiết bị này? Dữ liệu chấm bài vẫn được giữ nguyên.'))return;
   clearSyncToken();delete window.champroAccountIdentity;
-  window.dispatchEvent(new Event('champro-account-logout'));
   localStorage.removeItem(LICENSE_KEY);localStorage.removeItem('cp-v14-account-name');
+  window.dispatchEvent(new Event('champro-account-logout'));
+  lock();location.reload();
   verified=null;lastRefreshAt=0;lock();stamp('Đã đăng xuất. Dữ liệu chấm trên máy vẫn còn.');
  };
  registerAndroidBack();

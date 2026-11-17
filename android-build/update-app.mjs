@@ -3,9 +3,9 @@
  * Never downloads/installs without a user tap. Android itself validates package signature
  * and asks for installation confirmation. No developer signing key is bundled here.
  */
-export const CURRENT_VERSION_CODE=14500;
-export const PACKAGE_ID='com.champro.nativepreview.v145';
-export const MANIFEST_URL='https://champro.mrhien.com/updates/champro-android-preview.json';
+export const CURRENT_VERSION_CODE=15000;
+export const PACKAGE_ID='com.champro.app';
+export const MANIFEST_URL='https://champro.mrhien.com/updates/champro-android.json';
 const LAST_CHECK_KEY='cp-v145-updates-last-checked';
 const INTERVAL_MS=24*60*60*1000;
 const $=id=>document.getElementById(id);
@@ -40,7 +40,7 @@ function showUpdate(info){
   d.style.whiteSpace='pre-line';
   b.hidden=false;status('Có bản cập nhật ChấmPro mới: '+info.versionName);
  }else{
-  d.hidden=true;b.hidden=true;status('Đã là phiên bản mới nhất trong kênh thử nghiệm này.');
+  d.hidden=true;b.hidden=true;status('Đã là phiên bản mới nhất .');
  }
 }
 function isScanning(){return Boolean(document.querySelector('#page-scan.page.shown'));}

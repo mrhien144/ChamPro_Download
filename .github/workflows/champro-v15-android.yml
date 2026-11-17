@@ -1,0 +1,99 @@
+name: ChấmPro v15 – account isolation and Android build
+on:
+  push:
+    branches: [release/champro-v15]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Check source and PHP syntax
+        run: |
+          php -l platform/wordpress/champro-direct-login.php
+          node --check android-build/account-direct.mjs
+          node --test tests/champro-v1475-account-refresh.test.mjs tests/champro-v15-account-namespace.test.mjs
+          node --check android-build/apk-account-storage.mjs
+          node --check android-build/app-sync.mjs
+          node --check platform/worker/src/index.js
+          node --test tests/champro-v1473-authoritative-annual.test.mjs
+          node --check android-build/native-app.js
+          node --check android-build/sync-device.mjs
+          node --test tests/champro-v1473-account-back-and-refresh.test.mjs
+          node --test tests/champro-direct-php-sign.test.mjs
+          node --test tests/champro-wordpress-auto-key.test.mjs
+          node tests/syncqa-v1472-entitlement.test.mjs
+          node tests/syncqa-v1471-status.test.mjs
+          node --test tests/offline-license.test.mjs
+          node --test tests/native-network-indicator.test.mjs
+          node tests/visual-answer-ii.test.mjs
+      - name: Create isolated offline APK bundle
+        run: |
+          mkdir -p _qa/app
+          cp -a app-preview/. _qa/app/
+          cp android-build/native-app.css android-build/native-app.js \
+             android-build/photo-review-apk.mjs android-build/account-direct.mjs \
+             android-build/offline-license.mjs android-build/update-app.mjs \
+             android-build/auth-return.mjs android-build/app-sync.mjs \
+             android-build/sync-device.mjs android-build/account-namespace.mjs android-build/apk-account-storage.mjs _qa/app/
+          cp android-build/package.json _qa/package.json
+          cp android-build/preview-capacitor.config.json _qa/capacitor.config.json
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('_qa/capacitor.config.json')
+          j=json.loads(p.read_text())
+          j['appId']='com.champro.app'
+          j['appName']='ChấmPro'
+          p.write_text(json.dumps(j,ensure_ascii=False))
+          PY
+          python3 android-build/prepare-preview-apk.py _qa/app
+          node --check _qa/app/app.mjs
+          node --check _qa/app/sheet-photo-store.mjs
+          node --check _qa/app/local-data-store.mjs
+          grep -Fq 'const storedKey=accountStore.data;' _qa/app/app.mjs
+          grep -Fq 'DB_NAME=accountStore.photos' _qa/app/sheet-photo-store.mjs
+          grep -Fq 'DB_NAME=accountStore.mirror' _qa/app/local-data-store.mjs
+          cmp app-preview/grader.mjs _qa/app/grader.mjs
+          cmp app-preview/omr-native.mjs _qa/app/omr-native.mjs
+          cmp app-preview/omr-verified-paper.mjs _qa/app/omr-verified-paper.mjs
+      - name: Build debug APK
+        working-directory: _qa
+        run: |
+          npm install --no-audit --no-fund
+          npx cap add android
+          npx cap sync android
+      - name: Configure camera permissions and version
+        run: |
+          python3 android-build/enable-preview-camera.py _qa/android
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('_qa/android/app/build.gradle')
+          s=p.read_text()
+          s,n1=re.subn(r'versionCode\s+\d+','versionCode 15000',s,count=1)
+          s,n2=re.subn(r'versionName\s+"[^"]+"','versionName "15.0"',s,count=1)
+          assert n1==1 and n2==1
+          p.write_text(s)
+          PY
+      - name: Compile APK
+        working-directory: _qa/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChamPro-v15-internal-debug-APK-not-for-distribution
+          path: _qa/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14

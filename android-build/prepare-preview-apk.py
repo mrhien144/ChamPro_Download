@@ -32,6 +32,25 @@ original_import = "import {enqueueSheetPhoto,showSheetPhoto} from './sheet-photo
 assert original_import in app_code, "Photo import changed; do not silently patch"
 app_code = app_code.replace(original_import,
  "import {enqueueSheetPhoto,showSheetPhoto} from './photo-review-apk.mjs';", 1)
+# v15 APK-only owner-scoped records + photo archive + safety mirror.
+# The web preview source remains untouched. Never move legacy data implicitly.
+app_code = "import {accountStore} from './apk-account-storage.mjs';\n" + app_code
+for old,new in [
+ ("const storedKey='champro-app-preview-v1';", "const storedKey=accountStore.data;"),
+ ("function applySyncDb(next){", "function applySyncDb(next){\n if(!accountStore.owner||'wp:'+window.champroAccountIdentity?.wpUserId!==accountStore.owner)throw Error('Phiên đồng bộ đã thay đổi');"),
+ ("getDb,applySyncDb,isCameraBusy:()=>Boolean(captureBusy||stream)", "getDb,applySyncDb,syncOwner:accountStore.owner,isCameraBusy:()=>Boolean(captureBusy||stream||$('reviewDialog').open)")
+]:
+    assert old in app_code, old
+    app_code = app_code.replace(old,new,1)
+for filename,old,new in [
+ ("sheet-photo-store.mjs","const DB_NAME='champro-sheet-photos-preview-v1',STORE='photos';","const DB_NAME=accountStore.photos,STORE='photos';"),
+ ("local-data-store.mjs","const DB_NAME='champro-local-mirror-preview-v1',STORE='snapshots',KEY='latest';","const DB_NAME=accountStore.mirror,STORE='snapshots',KEY='latest';")
+]:
+    p=root/filename
+    code=p.read_text(encoding="utf-8")
+    assert old in code, filename
+    code="import {accountStore} from './apk-account-storage.mjs';\n"+code.replace(old,new,1)
+    p.write_text(code,encoding="utf-8")
 app_js.write_text(app_code, encoding="utf-8")
 
 # This app is already bundled in the APK. Never register a browser service worker
@@ -115,7 +134,7 @@ s = s.replace("</body>", """<section id="cpAccountGate" role="dialog" aria-modal
 <p id="cpAuthStatus" role="status">Đang kiểm tra quyền offline…</p>
 <button id="cpAccountClose" type="button">Quay lại ChấmPro</button>
 <button class="secondary" id="cpAccountLogout" type="button">Đăng xuất khỏi thiết bị</button>
-<details id="cpUpdaterPanel" class="cp-account-details"><summary>Cập nhật ứng dụng</summary><p id="cpUpdateStatus" role="status">Phiên bản thử nghiệm hiện tại v14.5. Ứng dụng vẫn chấm hoàn toàn offline.</p><button class="secondary" id="cpUpdateCheck" type="button">Kiểm tra phiên bản mới</button><button id="cpUpdateDownload" type="button" hidden>Tải bản cập nhật chính thức</button><p id="cpUpdateDetails" hidden></p></details>
+<details id="cpUpdaterPanel" class="cp-account-details"><summary>Cập nhật ứng dụng</summary><p id="cpUpdateStatus" role="status">ChấmPro v15.0. Hỗ trợ chấm bài offline.</p><button class="secondary" id="cpUpdateCheck" type="button">Kiểm tra phiên bản mới</button><button id="cpUpdateDownload" type="button" hidden>Tải bản cập nhật chính thức</button><p id="cpUpdateDetails" hidden></p></details>
 <p class="cp-account-help">Dữ liệu chấm được lưu trên thiết bị. Hãy sao lưu trước khi gỡ ứng dụng.</p>
 </div></section>
 <script type="module" src="./account-direct.mjs"></script><script type="module" src="./update-app.mjs"></script></body>""",1)
@@ -137,12 +156,12 @@ s = s.replace('Đồng bộ Cloudflare chưa tự động.',
 
 s = s.replace(
  'BẢN THỬ NGHIỆM /app-preview/: dữ liệu trong bản này tách riêng khỏi /app/. Không nhập dữ liệu học sinh thật. Hãy sao lưu thường xuyên. Không dùng chế độ ẩn danh hoặc xóa dữ liệu trang web nếu muốn giữ kết quả.',
- 'Dữ liệu học sinh, đáp án, kết quả và ảnh phiếu được lưu trên thiết bị để chấm offline. Đồng bộ giữa điện thoại và ChấmPro Web chưa kích hoạt. Hãy sao lưu dữ liệu trước khi gỡ hoặc cài lại ứng dụng.'
+ 'Dữ liệu học sinh, đáp án, kết quả và ảnh phiếu được lưu trên thiết bị để chấm offline. Đồng bộ tự động khi tài khoản và máy chủ được xác thực. Hãy sao lưu dữ liệu trước khi gỡ hoặc cài lại ứng dụng.'
 )
 s = s.replace('Kết nối tài khoản ChấmPro (thử nghiệm)', 'Tài khoản ChấmPro')
 s = s.replace(
  'Phiên bản thử nghiệm chưa có tài khoản, phân quyền, đồng bộ đa thiết bị, thanh toán hoặc hệ thống cấp phép. Những thành phần đó cần máy chủ bảo mật riêng, không thể triển khai an toàn bằng GitHub Pages tĩnh.',
- 'Tài khoản, gói sử dụng và thanh toán ChấmPro được xác minh qua mrhien.com. Dữ liệu chấm trên thiết bị chưa tự động đồng bộ với ChấmPro Web. Tính năng đó cần kết nối bảo mật riêng và sẽ chỉ được bật sau khi kiểm thử.'
+ 'Tài khoản, gói sử dụng và thanh toán ChấmPro được xác minh qua mrhien.com. Dữ liệu chấm được lưu riêng theo tài khoản và đồng bộ khi máy chủ cho phép.'
 )
 s = s.replace(
  'Phiên đăng nhập chỉ được giữ trong bộ nhớ của trang này, không ghi vào localStorage. Đóng trang sẽ cần đăng nhập lại.',
