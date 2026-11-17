@@ -26,6 +26,15 @@ let good=await call(url,await jwt());assert.equal(good.status,200);assert.equal(
 good=await call(url,await jwt('8','cp-12345678-1234-1234-1234-123456789abc'),'https://localhost');
 assert.equal(good.status,200);assert.equal(good.json.owner,'wp:8');
 assert.equal((await call(url,await jwt('9'))).status,403);
+const qaLocked={...env,CHAMPRO_SYNC_QA_ONLY:'1',CHAMPRO_SYNC_QA_WP_IDS:''};
+assert.equal((await call(url,await jwt(),'https://champro.mrhien.com',qaLocked)).status,403,
+ 'QA lock must default to deny all unlisted accounts');
+const qaOne={...qaLocked,CHAMPRO_SYNC_QA_WP_IDS:'8'};
+assert.equal((await call(url,await jwt('8'),'https://champro.mrhien.com',qaOne)).status,200,
+ 'only explicitly listed test account can access staged sync');
+assert.equal((await call(url,await jwt('9'),'https://champro.mrhien.com',qaOne)).status,403,
+ 'another account must remain blocked even with global flag enabled');
+
 assert.equal((await call(url,await jwt('8','web',{exp:now-2}))).status,401);
 assert.equal((await call(url,await jwt('8','web',{aud:'champro-platform'}))).status,401);
 assert.equal((await call(url,await jwt(),'https://untrusted.example')).status,403);
