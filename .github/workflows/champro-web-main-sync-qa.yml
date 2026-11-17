@@ -1,0 +1,41 @@
+name: ChấmPro web main sync integration - isolated QA
+on:
+  push:
+    branches:
+      - feature/champro-web-sync-main-qa-20261117
+    paths:
+      - 'app/**'
+      - 'platform/tests/web-main-*.test.mjs'
+      - '.github/workflows/champro-web-main-sync-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static syntax of live web app and isolated sync modules
+        run: |
+          node --check app/app.mjs
+          node --check app/web-app-sync.mjs
+          node --check app/sheet-photo-store.mjs
+          node --check app/result-review.mjs
+          for f in app/sync/*.mjs; do node --check "$f"; done
+          node --check app/sw.js
+      - name: Synthetic owner, offline, two-device and main-integration tests
+        run: node --test platform/tests/web-main-*.test.mjs
+      - name: Strict guard against modifying scoring, camera OMR, licensing, payments, and old backups
+        run: |
+          git cat-file -e c11a774a813417bb04fb427fc1aa16031b511e09^{commit}
+          git diff --exit-code c11a774a813417bb04fb427fc1aa16031b511e09 HEAD -- \
+            app/grader.mjs app/omr-native.mjs app/omr-printed-120.mjs \
+            app/omr-verified-paper.mjs app/advanced.mjs platform/worker/ \
+            platform/licensing/ android-build/
+          # No file is allowed to alter the original web browser storage key.
+          grep -Fq "const storedKey='champro-web-beta-v1'" app/app.mjs
