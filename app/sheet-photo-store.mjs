@@ -4,7 +4,9 @@ import {shortCellMarks} from './result-review.mjs';
  * ChấmPro optional photo archive. Independent from grade storage and OMR.
  * No network calls. All failures are non-fatal to grading.
  */
-const DB_NAME='champro-sheet-photos-web-v1',STORE='photos';
+import {platformOwner} from './sync/web-token.mjs';
+import {webAccountStorage} from './account-storage.mjs';
+const DB_NAME=webAccountStorage(platformOwner()).photos,STORE='photos';
 let opening=null,queue=[],busy=false;
 export function openPhotoDb(){
  if(!('indexedDB' in globalThis))return Promise.reject(Error('Thiết bị không hỗ trợ IndexedDB'));

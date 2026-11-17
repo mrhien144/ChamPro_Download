@@ -6,14 +6,16 @@ import {readPrinted120WithMarkers} from './omr-printed-120.mjs';
 import {preserveSbd,canonicalSbd,validSbd,findStudentForSbd} from './student-identity.mjs';
 import {enqueueSheetPhoto,showSheetPhoto} from './sheet-photo-store.mjs';
 import {platformOwner} from './sync/web-token.mjs';
+import {webAccountStorage} from './account-storage.mjs';
 const $=id=>document.getElementById(id);
 // Canvas-only OMR: no heavy OpenCV startup on Samsung browsers.
 
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const storedKey='champro-web-beta-v1';
-// QA only. Keep all pre-existing web users' local storage untouched.
-const qaOwner='wp:8',qaMode=platformOwner()===qaOwner;
-const dataKey=qaMode?storedKey+'-sync-qa-wp8':storedKey;
+// Keep every account's records in a separate persistent namespace. The old
+// anonymous key and the already-tested wp:8 namespace remain unchanged.
+const accountStore=webAccountStorage(platformOwner()),accountOwner=accountStore.owner;
+const dataKey=accountOwner?accountStore.data:storedKey;
 const fresh=()=>({schema:1,exams:[],students:[],results:[]});
 let db=fresh(),layouts=null,cvPromise=null,stream=null,autoTimer=null,captureBusy=false,review=null,lastAuto=null,lastSaved='',installPrompt=null,lastReviewImage='',cameraRotation=0;
 try{const old=JSON.parse(localStorage.getItem(dataKey)||'null');if(old&&Array.isArray(old.exams)&&Array.isArray(old.students)&&Array.isArray(old.results))db=old;}catch(e){console.warn('localStorage invalid',e)}
@@ -149,7 +151,7 @@ $('resultsTable').addEventListener('click',ev=>{
   '<button type="button" class="primary" data-assign-result="'+esc(r.id)+'">Lưu SBD / học sinh (giữ nguyên điểm)</button>';
  $('saveReview').hidden=true;dlg.showModal();
  // Draw the server-synced JPEG as a separate optional view, never in grader.
- if(qaMode){
+ if(accountOwner){
   const photoContainer=document.createElement('div');
   photoContainer.className='champro-cloud-photo-review';
   $('reviewBody').append(photoContainer);
@@ -381,7 +383,7 @@ async function autoScanOnce(){if(!stream||captureBusy||$('reviewDialog').open||!
 $('snap').onclick=async()=>{try{await readCanvas(captureVideo(),true);}catch(e){toast(e.message)}};
 $('openPhoto').onclick=async()=>{const file=$('photoFile').files[0];if(!file)return toast('Hãy chọn ảnh phiếu trước');const url=URL.createObjectURL(file),img=new Image();img.onload=async()=>{try{await readCanvas(imageCanvas(img),true,'photo');}catch(e){toast(e.message);}finally{URL.revokeObjectURL(url);}};img.onerror=()=>{URL.revokeObjectURL(url);toast('Không mở được ảnh')};img.src=url;};
 $('testEngine').onclick=async()=>{try{const geometry=await ensureLayouts();if(Object.keys(geometry).length<4)throw Error('Thiếu mẫu phiếu');toast('Bộ đọc ảnh nhẹ và 4 mẫu phiếu đã sẵn sàng');}catch(e){toast(e.message);}};
-function openReview(exam,omr,angle=0,frame=null){review={exam,omr,angle:0,frame:qaMode&&frame?copyReviewFrame(frame,angle):null};const student=findStudentForSbd(db.students,omr.sbd);const info=omr.uncertain?.length?`<p class="warning">Có ${omr.uncertain.length} ô chưa rõ. Hãy kiểm tra với ảnh phiếu trước khi lưu.</p>`:'<p class="success">Đã nhận dạng. Kiểm tra SBD, mã đề và đáp án trước khi lưu.</p>';
+function openReview(exam,omr,angle=0,frame=null){review={exam,omr,angle:0,frame:accountOwner&&frame?copyReviewFrame(frame,angle):null};const student=findStudentForSbd(db.students,omr.sbd);const info=omr.uncertain?.length?`<p class="warning">Có ${omr.uncertain.length} ô chưa rõ. Hãy kiểm tra với ảnh phiếu trước khi lưu.</p>`:'<p class="success">Đã nhận dạng. Kiểm tra SBD, mã đề và đáp án trước khi lưu.</p>';
  const field=(p,num,val,opts)=>`<label>${p} ${num}<input data-p="${p}" data-q="${num-1}" ${opts||''} value="${esc(val)}"></label>`;
  $('reviewBody').innerHTML=info+(lastReviewImage?`<details><summary>Ảnh phiếu đang kiểm tra (không lưu vào kết quả)</summary><img src="${lastReviewImage}" alt="Ảnh phiếu để đối chiếu" style="display:block;width:100%;max-height:460px;object-fit:contain;background:#0b1724;margin:8px 0 15px"></details>`:'')+`<div class="review-data"><label>Học sinh<select id="reviewStudent"><option value="">-- Chọn học sinh --</option>${db.students.map(s=>`<option value="${esc(s.id)}" ${student?.id===s.id?'selected':''}>${esc(s.sbd)} - ${esc(s.name)}</option>`).join('')}</select></label><label>SBD đọc từ phiếu<input id="reviewSbd" value="${esc(omr.sbd)}" maxlength="12" inputmode="numeric"></label><label>Mã đề<input id="reviewCode" value="${esc(omr.examCode)}" maxlength="4" inputmode="numeric"></label></div><h3>Phần I</h3><div class="answeredit">${Array.from({length:exam.counts.I},(_,i)=>field('I',i+1,omr.I?.[i]||'', 'maxlength="3"')).join('')}</div>${exam.counts.II?'<h3>Phần II (Đ/S, 4 ý)</h3><div class="answeredit">'+Array.from({length:exam.counts.II},(_,i)=>field('II',i+1,omr.II?.[i]||'', 'maxlength="4"')).join('')+'</div>':''}${exam.counts.III?'<h3>Phần III</h3><div class="answeredit">'+Array.from({length:exam.counts.III},(_,i)=>field('III',i+1,omr.III?.[i]||'', '')).join('')+'</div>':''}`;
  $('saveReview').hidden=false;$('reviewDialog').showModal();}
@@ -417,7 +419,7 @@ function copyReviewFrame(frame,angle){
  return copy;
 }
 function queueSheetFrame(resultId,frame,markers,angle,exam){
- if(!qaMode||platformOwner()!==qaOwner||!frame||!Array.isArray(markers)||markers.length!==4)return;
+ if(!accountOwner||!frame||!Array.isArray(markers)||markers.length!==4)return;
  // Snapshot the exact confirmed frame now, before the reused capture canvas
  // can contain a different student's sheet. Encoding and IDB remain deferred.
  try{
@@ -440,18 +442,18 @@ export {getDb,save,toast,spreadsheetRows,loadScript,sendFile};
 function getDb(){return db;}
 // Additive, offline-first sync bridge. Keep the historical data key untouched.
 function applySyncDb(next){
- if(!qaMode||platformOwner()!==qaOwner)throw Error('Phiên kiểm thử đồng bộ đã thay đổi');
+ if(!accountOwner||platformOwner()!==accountOwner)throw Error('Phiên đồng bộ đã thay đổi');
  if(next?.schema!==1||!Array.isArray(next.exams)||!Array.isArray(next.students)||!Array.isArray(next.results))
   throw Error('Không thể lưu dữ liệu đồng bộ không đúng định dạng');
  const previous=db;db=next;
  try{save();}catch(error){db=previous;throw error;}
 }
 window.champroAppData=Object.freeze({
- getDb,applySyncDb,syncOwner:qaMode?qaOwner:null,isCameraBusy:()=>Boolean(captureBusy||stream||$('reviewDialog').open)
+ getDb,applySyncDb,syncOwner:accountOwner,isCameraBusy:()=>Boolean(captureBusy||stream||$('reviewDialog').open)
 });
 
 // Re-open the correct local namespace when the login changes; never clear data.
-function checkQaNamespace(){if(qaMode!==(platformOwner()===qaOwner))location.reload();}
-window.addEventListener('champro-auth-updated',checkQaNamespace);
-window.addEventListener('champro-auth-logout',checkQaNamespace);
-window.addEventListener('focus',checkQaNamespace);
+function checkAccountNamespace(){if(accountOwner!==platformOwner())location.reload();}
+window.addEventListener('champro-auth-updated',checkAccountNamespace);
+window.addEventListener('champro-auth-logout',checkAccountNamespace);
+window.addEventListener('focus',()=>{const current=platformOwner();if(current&&current!==accountOwner)location.reload();});

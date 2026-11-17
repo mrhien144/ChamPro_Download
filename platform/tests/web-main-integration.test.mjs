@@ -18,14 +18,14 @@ test('Legacy browser data key and synchronous local save path remain untouched',
  const app=at('app/app.mjs');
  assert.match(app,/const storedKey='champro-web-beta-v1'/);
  assert.match(app,/function save\(\)\{try\{localStorage\.setItem\(dataKey,JSON\.stringify\(db\)\)/);
- assert.match(app,/const dataKey=qaMode\?storedKey\+'-sync-qa-wp8':storedKey/);
- assert.match(app,/qaMode=platformOwner\(\)===qaOwner/);
+ assert.match(app,/const dataKey=accountOwner\?accountStore.data:storedKey/);
+ assert.match(app,/webAccountStorage\(platformOwner\(\)\)/);
  assert.match(app,/window\.champroAppData=Object\.freeze/);
- assert.match(app,/getDb,applySyncDb,syncOwner:qaMode\?qaOwner:null,isCameraBusy/);
+ assert.match(app,/getDb,applySyncDb,syncOwner:accountOwner,isCameraBusy/);
  const capture=app.split('function queueSheetFrame(')[1].split('// Offline PWA install prompt')[0];
  assert.doesNotMatch(capture,/requestIdleCallback|setTimeout/,'Confirmed frame must be copied before reuse');
  assert.match(capture,/enqueueSheetPhoto\(/);
- assert.match(app,/frame:qaMode&&frame\?copyReviewFrame\(frame,angle\):null/);
+ assert.match(app,/frame:accountOwner&&frame\?copyReviewFrame\(frame,angle\):null/);
  assert.match(app,/enqueueSheetPhoto/);
  assert.match(app,/showSheetPhoto/);
 });
@@ -37,10 +37,10 @@ test('Main auth integration uses existing session and verifies owner with Worker
  assert.match(sync,/champro-auth-logout/);
  assert.doesNotMatch(sync,/getAccount\?\./);
  assert.match(sync,/platformOwner\(\)/);
- assert.match(sync,/const QA_OWNER='wp:8'/);
+ assert.doesNotMatch(sync,/QA_OWNER/);
  assert.match(sync,/app.syncOwner!==owner/);
  assert.match(sync,/getToken:scopedToken/);
- assert.match(sync,/metaKey:'champro-sync-web-qa-wp8-v1'/);
+ assert.match(sync,/metaKey:webAccountStorage\(owner\).meta/);
  assert.match(sync,/consent:async count/);
  assert.match(auth,/\/wp-json\/champro\/sync\/v1\/web-token/);
  assert.match(orchestrator,/result\.owner!==owner/);
@@ -54,7 +54,7 @@ test('No grading or image network call is required for core scoring',()=>{
  assert.doesNotMatch(fun,/\bfetch\(|\bawait\b|enqueueSheetPhoto/);
 });
 test('All app script modules imported by isolated sync are committed',()=>{
- for(const p of ['app/web-app-sync.mjs','app/sheet-photo-store.mjs','app/result-review.mjs','app/sync/start.mjs','app/sync/client.mjs','app/sync/reconcile.mjs','app/sync/legacy-adapter.mjs','app/sync/web-token.mjs']){
+ for(const p of ['app/web-app-sync.mjs','app/account-storage.mjs','app/sheet-photo-store.mjs','app/result-review.mjs','app/sync/start.mjs','app/sync/client.mjs','app/sync/reconcile.mjs','app/sync/legacy-adapter.mjs','app/sync/web-token.mjs']){
   const txt=at(p);
   for(const m of txt.matchAll(/(?:from\s+|import\s*\()['"]((?:\.\/|\.\.\/)[^'"]+)['"]/g)){
    assert.ok(existsSync(resolve(dirname(p),m[1])),p+' missing '+m[1]);
@@ -64,7 +64,7 @@ test('All app script modules imported by isolated sync are committed',()=>{
 test('Offline service worker precaches required extra modules',()=>{
  const sw=at('app/sw.js');
  assert.match(sw,/caches\.match\(req,\{ignoreSearch:true\}\)/,'Offline script URLs with cache-bust query must resolve to precached file');
- for(const name of ['web-app-sync.mjs','sync/client.mjs','sync/reconcile.mjs','sync/legacy-adapter.mjs','sync/start.mjs','sync/web-token.mjs','sheet-photo-store.mjs','result-review.mjs']){
+ for(const name of ['web-app-sync.mjs','account-storage.mjs','sync/client.mjs','sync/reconcile.mjs','sync/legacy-adapter.mjs','sync/start.mjs','sync/web-token.mjs','sheet-photo-store.mjs','result-review.mjs']){
   assert.ok(sw.includes("./"+name),name+' missing from PWA cache');
  }
 });
