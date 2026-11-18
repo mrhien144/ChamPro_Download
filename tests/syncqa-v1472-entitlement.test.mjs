@@ -9,7 +9,9 @@ assert(account.includes("await verifyLicense(fresh.license)"),'verify signature 
 assert(account.indexOf('await verifyLicense(fresh.license)')<account.indexOf('localStorage.setItem(LICENSE_KEY,fresh.license)'), 'signed token must be verified before overwriting offline license');
 assert(account.includes("if(checked.sub!==claim.sub||checked.deviceId!==deviceId())"),'must be same account and device');
 assert(account.includes("$('cpRefreshPlan').onclick=()=>void refreshPlan(true)"),'refresh button must actually call server');
-assert(account.includes("window.addEventListener('online',()=>void refreshPlan(false))"),'reconnect should refresh');
+assert(account.includes("window.addEventListener('online',refreshOnReturn)"),'reconnect should invoke the v16 refresh handler');
+assert(account.includes("function refreshOnReturn(){if(!document.hidden&&navigator.onLine&&localStorage.getItem(LICENSE_KEY))void refreshPlan(true);}"),'reconnect should refresh the existing account when visible and online');
+assert(account.includes("if(cameraBusy()){deferPlanRefresh(force);return;}"),'reconnect must defer network refresh while scanning');
 assert(account.includes("if(j.refreshDeviceRegistered===true)"),'device refresh key must be enrolled during verified login');
 assert(account.includes("localStorage.getItem('cp-v14-account-name')"),'show account name in app');
 assert(account.includes("Giấy phép và dữ liệu cũ được giữ nguyên"),'network error must not log out users');
