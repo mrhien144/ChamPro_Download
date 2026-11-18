@@ -14,6 +14,13 @@ const LICENSE_KEY='cp-v14-signed-license';
 const PENDING_KEY='cp-v144-pkce-pending';
 const $=id=>document.getElementById(id);
 let pending=null,verified=null,refreshing=null,lastRefreshAt=0;
+let deferredPlanTimer=null;
+function cameraBusy(){const app=window.champroAppData;return !app||app.isCameraBusy();}
+function deferPlanRefresh(force=true){
+ if(deferredPlanTimer!==null)clearTimeout(deferredPlanTimer);
+ deferredPlanTimer=setTimeout(()=>{deferredPlanTimer=null;if(!navigator.onLine||document.hidden||!localStorage.getItem(LICENSE_KEY))return;void refreshPlan(force);},15000);
+}
+function refreshOnReturn(){if(!document.hidden&&navigator.onLine&&localStorage.getItem(LICENSE_KEY))void refreshPlan(true);}
 // Authentication messages are neutral by default. Only real authentication
 // failures are shown in red; offline / previously verified account is NOT an error.
 const stamp=(s,level='info')=>{
@@ -112,6 +119,7 @@ async function refreshPlan(force=false){
  // Network failures never delete an offline license or any student data.
  if(!navigator.onLine)return stamp('Ngoại tuyến: tài khoản và dữ liệu chấm vẫn được giữ trên máy.');
  if(refreshing)return refreshing;
+ if(cameraBusy()){deferPlanRefresh(force);return;}
  if(!force&&Date.now()-lastRefreshAt<300000)return;
  const saved=localStorage.getItem(LICENSE_KEY);
  if(!saved)return stamp('Cần đăng nhập tài khoản mrhien.com lần đầu.');
@@ -127,6 +135,7 @@ async function refreshPlan(force=false){
    if(checked.sub!==claim.sub||checked.deviceId!==deviceId())
     throw Error('Máy chủ trả giấy phép không đúng tài khoản hoặc thiết bị.');
    if(localStorage.getItem(LICENSE_KEY)!==saved)throw Error('Tài khoản đã thay đổi trong khi cập nhật');
+   if(cameraBusy()){deferPlanRefresh(true);return false;}
    localStorage.setItem(LICENSE_KEY,fresh.license);
    if(fresh.username)localStorage.setItem('cp-v14-account-name',String(fresh.username).slice(0,80));
    unlock(checked,true);lastRefreshAt=Date.now();
@@ -285,6 +294,7 @@ function boot(){
  $('cpAccountClose').onclick=()=>{closeAccount();};
  $('cpAccountLogout').onclick=()=>{
   if(!confirm('Đăng xuất trên thiết bị này? Dữ liệu chấm bài vẫn được giữ nguyên.'))return;
+  if(deferredPlanTimer!==null){clearTimeout(deferredPlanTimer);deferredPlanTimer=null;}
   clearSyncToken();delete window.champroAccountIdentity;
   localStorage.removeItem(LICENSE_KEY);localStorage.removeItem('cp-v14-account-name');
   window.dispatchEvent(new Event('champro-account-logout'));
@@ -293,8 +303,10 @@ function boot(){
  };
  registerAndroidBack();
  void registerLinks().catch(e=>fail(describe(e)));
- window.addEventListener('online',()=>void refreshPlan(false));
- document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refreshPlan(false)});
+ window.addEventListener('online',refreshOnReturn);
+ document.addEventListener('visibilitychange',refreshOnReturn);
+ const nativeApp=window.Capacitor?.Plugins?.App;
+ if(nativeApp?.addListener)void Promise.resolve(nativeApp.addListener('appStateChange',e=>{if(e?.isActive)refreshOnReturn();})).catch(()=>{});
  setTimeout(addAccountMenu,250);
  if(!saved)stamp('Đăng nhập tài khoản mrhien.com một lần để kích hoạt ChấmPro offline.');
 }

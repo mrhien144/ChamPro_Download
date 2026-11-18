@@ -121,9 +121,10 @@ s = s.replace("</body>", """<section id="cpAccountGate" role="dialog" aria-modal
 <h2>Gói sử dụng</h2>
 <button class="secondary" type="button" id="cpRefreshPlan">Cập nhật quyền sử dụng</button>
 <details class="cp-account-details"><summary>Thông tin gói sử dụng</summary>
-<p class="cp-account-help">ChấmPro trên Google Play hỗ trợ sử dụng quyền đã được cấp cho tài khoản. Phiên bản này chưa hỗ trợ mua gói trực tiếp trong ứng dụng. Nếu quyền sử dụng đã thay đổi, chọn Cập nhật quyền sử dụng ở phía trên.</p>
-<div class="cp-plan"><strong>Gói 1 năm</strong><p>Quyền sử dụng theo thời hạn được máy chủ xác nhận.</p></div>
-<div class="cp-plan"><strong>Gói trọn đời</strong><p>Quyền sử dụng theo giấy phép đã cấp cho tài khoản.</p></div>
+
+<div class="cp-plan"><strong>Gói 1 năm</strong><p>Sử dụng đầy đủ tính năng trong 1 năm.</p></div>
+<div class="cp-plan"><strong>Gói trọn đời</strong><p>Sử dụng lâu dài, không cần gia hạn.</p></div>
+<div class="cp-plan" style="background:#eef5ff"><strong>Thông tin nâng cấp</strong><p>Bạn có thể nâng cấp quyền sử dụng tại website chính thức của ChấmPro.</p><p><strong>champro.mrhien.com</strong></p><p>Quyền sử dụng được tự động cập nhật theo tài khoản khi có mạng. Bạn cũng có thể chọn Cập nhật quyền sử dụng.</p></div>
 </details>
 <details class="cp-account-details"><summary>Đổi tài khoản</summary>
 <button class="secondary" type="button" id="cpReLogin">Đăng nhập tài khoản khác</button>
@@ -132,7 +133,7 @@ s = s.replace("</body>", """<section id="cpAccountGate" role="dialog" aria-modal
 <p id="cpAuthStatus" role="status">Đang kiểm tra quyền offline…</p>
 <button id="cpAccountClose" type="button">Quay lại ChấmPro</button>
 <button class="secondary" id="cpAccountLogout" type="button">Đăng xuất khỏi thiết bị</button>
-<details class="cp-account-details"><summary>Cập nhật ứng dụng</summary><p>ChấmPro v15.0.1. Cập nhật phiên bản qua Google Play.</p></details>
+<details class="cp-account-details"><summary>Cập nhật ứng dụng</summary><p>ChấmPro v16. Cập nhật phiên bản qua Google Play.</p></details>
 <p class="cp-account-help">Dữ liệu chấm được lưu trên thiết bị. Hãy sao lưu trước khi gỡ ứng dụng.</p>
 </div></section>
 <script type="module" src="./account-direct.mjs"></script></body>""",1)
