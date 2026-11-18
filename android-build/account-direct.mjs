@@ -6,13 +6,12 @@ import {accountStore} from './apk-account-storage.mjs';
 import {parseAuthReturn} from './auth-return.mjs';
 import {publicSyncKey,markSyncRegistered,refreshSignedLicense,markRefreshRegistered,clearSyncToken} from './sync-device.mjs';
 const LOGIN='https://mrhien.com/champro-login-app/';
-const SHOP='https://mrhien.com/champro-connect-app/';
+// Google Play build: access existing account entitlements, no external checkout.
 const EXCHANGE='https://mrhien.com/wp-json/champro/v2/exchange';
 const PUBLIC_KEY='https://mrhien.com/wp-json/champro/v2/public-key';
 const INSTALL_KEY='cp-v14-install-id';
 const LICENSE_KEY='cp-v14-signed-license';
 const PENDING_KEY='cp-v144-pkce-pending';
-const PENDING_PAYMENT='cp-v14-payment-pending';
 const $=id=>document.getElementById(id);
 let pending=null,verified=null,refreshing=null,lastRefreshAt=0;
 // Authentication messages are neutral by default. Only real authentication
@@ -252,16 +251,9 @@ function addAccountMenu(){
  const anchor=$('cpNativeClose');
  if(!anchor)return;
  const b=document.createElement('button');
- b.id='cpOpenAccount';b.type='button';b.textContent='Tài khoản & Nâng cấp';
+ b.id='cpOpenAccount';b.type='button';b.textContent='Tài khoản & Gói sử dụng';
  b.onclick=()=>{anchor.click();showAccount();};
  anchor.before(b);
-}
-function buy(plan){
- if(!navigator.onLine)return stamp('Cần Internet để thanh toán. Việc chấm bài vẫn hoạt động offline.');
- if(plan!=='annual'&&plan!=='lifetime')return;
- localStorage.setItem(PENDING_PAYMENT,plan);
- void openFirstParty(SHOP+'#plan='+plan).catch(e=>stamp(describe(e)));
- stamp('Đã mở trang mua gói. Quyền mới chỉ cập nhật sau khi máy chủ xác minh giao dịch.');
 }
 function boot(){
  deviceId();
@@ -289,8 +281,6 @@ function boot(){
  $('cpReLogin').onclick=()=>void startLogin();
  $('cpOpenWeb').onclick=()=>{if(pending)void startLogin();};
  $('cpPairCheck').onclick=()=>stamp('Chờ trang mrhien.com xác thực. Trình duyệt sẽ tự quay về ChấmPro.');
- $('cpBuyAnnual').onclick=()=>buy('annual');
- $('cpBuyLifetime').onclick=()=>buy('lifetime');
  $('cpRefreshPlan').onclick=()=>void refreshPlan(true);
  $('cpAccountClose').onclick=()=>{closeAccount();};
  $('cpAccountLogout').onclick=()=>{

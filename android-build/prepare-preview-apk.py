@@ -120,12 +120,10 @@ s = s.replace("</body>", """<section id="cpAccountGate" role="dialog" aria-modal
 <div id="cpViewPlans" hidden>
 <h2>Gói sử dụng</h2>
 <button class="secondary" type="button" id="cpRefreshPlan">Cập nhật quyền sử dụng</button>
-<details class="cp-account-details"><summary>Mua gói / Nâng cấp</summary>
-<p class="cp-account-help">Thanh toán trên mrhien.com. Gói mới được kích hoạt sau khi máy chủ xác nhận.</p>
-<div class="cp-plan"><strong>Gói 1 năm</strong><p>Giá hiển thị và xác nhận tại mrhien.com trước khi thanh toán.</p>
-<button id="cpBuyAnnual" type="button">Chọn gói 1 năm · Thanh toán QR</button></div>
-<div class="cp-plan"><strong>Gói trọn đời</strong><p>Chỉ thanh toán một lần theo chính sách gói.</p>
-<button id="cpBuyLifetime" type="button">Chọn gói trọn đời · Thanh toán QR</button></div>
+<details class="cp-account-details"><summary>Thông tin gói sử dụng</summary>
+<p class="cp-account-help">ChấmPro trên Google Play hỗ trợ sử dụng quyền đã được cấp cho tài khoản. Phiên bản này chưa hỗ trợ mua gói trực tiếp trong ứng dụng. Nếu quyền sử dụng đã thay đổi, chọn Cập nhật quyền sử dụng ở phía trên.</p>
+<div class="cp-plan"><strong>Gói 1 năm</strong><p>Quyền sử dụng theo thời hạn được máy chủ xác nhận.</p></div>
+<div class="cp-plan"><strong>Gói trọn đời</strong><p>Quyền sử dụng theo giấy phép đã cấp cho tài khoản.</p></div>
 </details>
 <details class="cp-account-details"><summary>Đổi tài khoản</summary>
 <button class="secondary" type="button" id="cpReLogin">Đăng nhập tài khoản khác</button>
@@ -134,10 +132,10 @@ s = s.replace("</body>", """<section id="cpAccountGate" role="dialog" aria-modal
 <p id="cpAuthStatus" role="status">Đang kiểm tra quyền offline…</p>
 <button id="cpAccountClose" type="button">Quay lại ChấmPro</button>
 <button class="secondary" id="cpAccountLogout" type="button">Đăng xuất khỏi thiết bị</button>
-<details id="cpUpdaterPanel" class="cp-account-details"><summary>Cập nhật ứng dụng</summary><p id="cpUpdateStatus" role="status">ChấmPro v15.0. Hỗ trợ chấm bài offline.</p><button class="secondary" id="cpUpdateCheck" type="button">Kiểm tra phiên bản mới</button><button id="cpUpdateDownload" type="button" hidden>Tải bản cập nhật chính thức</button><p id="cpUpdateDetails" hidden></p></details>
+<details class="cp-account-details"><summary>Cập nhật ứng dụng</summary><p>ChấmPro v15.0.1. Cập nhật phiên bản qua Google Play.</p></details>
 <p class="cp-account-help">Dữ liệu chấm được lưu trên thiết bị. Hãy sao lưu trước khi gỡ ứng dụng.</p>
 </div></section>
-<script type="module" src="./account-direct.mjs"></script><script type="module" src="./update-app.mjs"></script></body>""",1)
+<script type="module" src="./account-direct.mjs"></script></body>""",1)
 
 # APK-only product copy. No changes to camera, grader or stored records.
 # Use truthful local-storage warnings until production D1/R2 sync is deployed.

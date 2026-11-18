@@ -22,7 +22,7 @@ jobs:
         run: |
           php -l platform/wordpress/champro-direct-login.php
           node --check android-build/account-direct.mjs
-          node --test tests/champro-v1475-account-refresh.test.mjs tests/champro-v15-account-namespace.test.mjs
+          node --test tests/champro-v1475-account-refresh.test.mjs tests/champro-v15-account-namespace.test.mjs tests/champro-v1501-play-payment.test.mjs
           node --check android-build/apk-account-storage.mjs
           node --check android-build/app-sync.mjs
           node --check platform/worker/src/index.js
@@ -67,6 +67,8 @@ jobs:
           cmp app-preview/grader.mjs _qa/app/grader.mjs
           cmp app-preview/omr-native.mjs _qa/app/omr-native.mjs
           cmp app-preview/omr-verified-paper.mjs _qa/app/omr-verified-paper.mjs
+          ! grep -E 'cpBuyAnnual|cpBuyLifetime|champro-connect-app|champro-mua-goi|src="./update-app.mjs"' _qa/app/account-direct.mjs _qa/app/index.html
+          git diff --exit-code 885044b3943116c24f140f258c5bfead09849b78 HEAD -- app-preview/ android-build/app-sync.mjs android-build/photo-review-apk.mjs android-build/apk-account-storage.mjs android-build/offline-license.mjs
       - name: Build debug APK
         working-directory: _qa
         run: |
@@ -81,8 +83,8 @@ jobs:
           import re
           p=Path('_qa/android/app/build.gradle')
           s=p.read_text()
-          s,n1=re.subn(r'versionCode\s+\d+','versionCode 15000',s,count=1)
-          s,n2=re.subn(r'versionName\s+"[^"]+"','versionName "15.0"',s,count=1)
+          s,n1=re.subn(r'versionCode\s+\d+','versionCode 15001',s,count=1)
+          s,n2=re.subn(r'versionName\s+"[^"]+"','versionName "15.0.1"',s,count=1)
           assert n1==1 and n2==1
           p.write_text(s)
           PY
@@ -107,13 +109,13 @@ jobs:
           mkdir -p unsigned
           test -s _qa/android/app/build/outputs/apk/release/app-release-unsigned.apk
           test -s _qa/android/app/build/outputs/bundle/release/app-release.aab
-          cp _qa/android/app/build/outputs/apk/release/app-release-unsigned.apk unsigned/ChamPro-v15.0-unsigned.apk
-          cp _qa/android/app/build/outputs/bundle/release/app-release.aab unsigned/ChamPro-v15.0-unsigned.aab
+          cp _qa/android/app/build/outputs/apk/release/app-release-unsigned.apk unsigned/ChamPro-v15.0.1-unsigned.apk
+          cp _qa/android/app/build/outputs/bundle/release/app-release.aab unsigned/ChamPro-v15.0.1-unsigned.aab
           (cd unsigned && sha256sum *.apk *.aab > SHA256SUMS.txt)
           echo "Unsigned release inputs only. Do not distribute or install."
       - uses: actions/upload-artifact@v4
         with:
-          name: ChamPro-v15-unsigned-release-APK-AAB
+          name: ChamPro-v15.0.1-Play-unsigned-APK-AAB
           path: unsigned/
           if-no-files-found: error
           retention-days: 14
