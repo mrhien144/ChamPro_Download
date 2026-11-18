@@ -1,4 +1,5 @@
 import {grade,parseRows,toCsv,validateForSave} from './grader.mjs';
+import {AUTO_SCAN_INTERVAL_MS,autoSaveDecision} from './auto-scan-policy.mjs';
 import {allocateExamPoints} from './compact-points.mjs';
 import {initFlexibleKeyEditor,setFlexibleCounts,refreshFlexibleKeyEditor} from './answer-flex-editor.mjs';
 import {readSheet} from './omr-native.mjs';
@@ -278,11 +279,11 @@ async function startCamera(){if(stream)return;try{if(!navigator.mediaDevices?.ge
 let s;try{s=await navigator.mediaDevices.getUserMedia(cameraOptions);}catch(firstError){
  // Some browsers/cameras reject portrait constraints; fall back to rear camera.
  s=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'}}});
-}stream=s;$('video').srcObject=s;await $('video').play();fitGuideToVisibleVideo();$('cameraPlaceholder').hidden=true;$('scanMode').textContent='Camera đang mở';$('scanStatus').textContent='Đặt phiếu phẳng, đủ 4 ô đen trong hình';if($('autoScan').checked)autoTimer=setInterval(autoScanOnce,750);void ensureLayouts().catch(e=>{$('scanStatus').textContent='Không tải được tọa độ phiếu: '+e.message;});}catch(e){toast('Camera: '+e.message);$('scanStatus').textContent=e.message;}}
+}stream=s;$('video').srcObject=s;await $('video').play();fitGuideToVisibleVideo();$('cameraPlaceholder').hidden=true;$('scanMode').textContent='Camera đang mở';$('scanStatus').textContent='Đặt phiếu phẳng, đủ 4 ô đen trong hình';if($('autoScan').checked){autoTimer=setInterval(autoScanOnce,AUTO_SCAN_INTERVAL_MS);void autoScanOnce();}void ensureLayouts().catch(e=>{$('scanStatus').textContent='Không tải được tọa độ phiếu: '+e.message;});}catch(e){toast('Camera: '+e.message);$('scanStatus').textContent=e.message;}}
 function stopCamera(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;}if(stream){stream.getTracks().forEach(x=>x.stop());stream=null;}$('video').srcObject=null;$('cameraPlaceholder').hidden=false;$('scanMode').textContent='Đã dừng';lastAuto=null;}
 $('startCamera').onclick=startCamera;$('stopCamera').onclick=stopCamera;
 $('rotateCamera').onclick=()=>{cameraRotation=cameraRotation===0?270:cameraRotation===270?90:0;fitGuideToVisibleVideo();$('scanStatus').textContent=cameraRotation?'Đã xoay khung hình '+cameraRotation+'°; tiếp tục quét.':'Đã khôi phục hướng camera gốc.';};
-$('autoScan').onchange=()=>{if(autoTimer){clearInterval(autoTimer);autoTimer=null;}if(stream&&$('autoScan').checked)autoTimer=setInterval(autoScanOnce,750);};
+$('autoScan').onchange=()=>{if(autoTimer){clearInterval(autoTimer);autoTimer=null;}if(stream&&$('autoScan').checked){autoTimer=setInterval(autoScanOnce,AUTO_SCAN_INTERVAL_MS);void autoScanOnce();}};
 $('torch').onclick=async()=>{try{const t=stream?.getVideoTracks()[0];if(!t)throw Error('Camera chưa mở');const can=t.getCapabilities?.();if(!can?.torch)throw Error('Thiết bị hoặc trình duyệt không hỗ trợ đèn');await t.applyConstraints({advanced:[{torch:!Boolean(t.getSettings().torch)}]});}catch(e){toast(e.message);}};
 function captureVideo(){
  const v=$('video');if(!stream||!v.videoWidth)throw Error('Camera chưa sẵn sàng');
@@ -321,8 +322,9 @@ async function trySheetOrientations(c,layout,cv,exam,manual=false){
  const fullSearch=manual||lastGoodOrientation===null||(++scanDirectionAttempt%3===0&&!lastAuto);
  const directions=fullSearch?normal:normal.slice(0,1);
  for(const deg of directions){
-  // Yield before entering synchronous OpenCV: update the progress message on Samsung.
-  await new Promise(resolve=>requestAnimationFrame(resolve));
+  // The first orientation is attempted immediately during automatic scanning.
+  // Yield between expensive alternative orientations and during manual review.
+  if(manual||deg!==directions[0])await new Promise(resolve=>requestAnimationFrame(resolve));
   try{
    const rotated=rotatedCanvas(c,deg);
    // The existing reader locates the four outside fiducials. For the original
@@ -350,7 +352,7 @@ async function trySheetOrientations(c,layout,cv,exam,manual=false){
 async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;const exam=selectedExam();if(!exam){$('scanStatus').textContent='Chưa chọn môn/kỳ kiểm tra. Hãy tạo đề, nhập đáp án và chọn kỳ kiểm tra trước khi chấm.';if(manual)toast('Hãy tạo và chọn kỳ kiểm tra trước');return;}
  // Roster can be attached after scoring.
  if(!manual&&!Object.keys(exam.keys||{}).length){$('scanStatus').textContent='Chưa có bộ đáp án cho '+(exam.subject||exam.name)+'. Vào Đề & đáp án để nhập mã đề trước khi chấm.';return;}
- captureBusy=true;if(manual)lastReviewImage='';const t0=performance.now();$('scanStatus').textContent='Đang phân tích phiếu…';await new Promise(resolve=>requestAnimationFrame(resolve));try{
+ captureBusy=true;if(manual)lastReviewImage='';const t0=performance.now();if(manual){$('scanStatus').textContent='Đang phân tích phiếu…';await new Promise(resolve=>requestAnimationFrame(resolve));}try{
   const geometry=await ensureLayouts(),cv=null;
   const key='ChamPro_Phieu_'+(exam.form==='120'?'120Cau':'3Phan')+'_MaDe'+exam.digits;
   if(!geometry[key])throw Error('Không có tọa độ mẫu phiếu '+key);
@@ -390,8 +392,9 @@ async function readCanvas(c,manual=false,origin='camera'){if(captureBusy)return;
    return;
   }
   const fingerprint=JSON.stringify([exam.id,student?.id||'CHUA_GAN',result.examCode,result.I.slice(0,exam.counts.I),result.II.slice(0,exam.counts.II),result.III.slice(0,exam.counts.III)]);
-  if(lastAuto?.fingerprint!==fingerprint||Date.now()-lastAuto.time>7000){lastAuto={fingerprint,time:Date.now()};$('scanStatus').textContent='Đã đọc mã đề và đáp án. Giữ yên để xác nhận lần hai…';return;}
-  if(lastSaved===fingerprint){$('scanStatus').textContent='Phiếu này vừa chấm, hãy đổi phiếu tiếp theo';return;}
+  const decision=autoSaveDecision({fingerprint,lastSaved,lastAuto,result,knownCode:match.knownCode,knownStudent:Boolean(student),now:Date.now()});
+  if(decision==='duplicate'){$('scanStatus').textContent='Phiếu này vừa chấm, hãy đổi phiếu tiếp theo';return;}
+  if(decision==='confirm'){lastAuto={fingerprint,time:Date.now()};$('scanStatus').textContent='Đang xác nhận phiếu…';return;}
   const done=saveResult(exam,student,result,true);
    // Photo archiving is optional and never awaited by grading or camera.
    if(done)try{enqueueSheetPhoto({id:done.id,canvas:match.deg?rotatedCanvas(c,match.deg):c,markers:result.markers,angle:0,form:exam.form,digits:exam.digits,examId:exam.id,examCode:result.examCode});}catch(e){console.warn('Lưu ảnh không khả dụng',e);}

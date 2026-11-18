@@ -22,7 +22,7 @@ jobs:
         run: |
           php -l platform/wordpress/champro-direct-login.php
           node --check android-build/account-direct.mjs
-          node --test tests/champro-v1475-account-refresh.test.mjs tests/champro-v15-account-namespace.test.mjs tests/champro-v1501-play-payment.test.mjs
+          node --test tests/champro-v1475-account-refresh.test.mjs tests/champro-v15-account-namespace.test.mjs tests/champro-v1501-play-payment.test.mjs tests/champro-v1501-fast-camera.test.mjs
           node --check android-build/apk-account-storage.mjs
           node --check android-build/app-sync.mjs
           node --check platform/worker/src/index.js
@@ -59,6 +59,7 @@ jobs:
           PY
           python3 android-build/prepare-preview-apk.py _qa/app
           node --check _qa/app/app.mjs
+          node --check _qa/app/auto-scan-policy.mjs
           node --check _qa/app/sheet-photo-store.mjs
           node --check _qa/app/local-data-store.mjs
           grep -Fq 'const storedKey=accountStore.data;' _qa/app/app.mjs
@@ -68,7 +69,7 @@ jobs:
           cmp app-preview/omr-native.mjs _qa/app/omr-native.mjs
           cmp app-preview/omr-verified-paper.mjs _qa/app/omr-verified-paper.mjs
           ! grep -E 'cpBuyAnnual|cpBuyLifetime|champro-connect-app|champro-mua-goi|src="./update-app.mjs"' _qa/app/account-direct.mjs _qa/app/index.html
-          git diff --exit-code 885044b3943116c24f140f258c5bfead09849b78 HEAD -- app-preview/ android-build/app-sync.mjs android-build/photo-review-apk.mjs android-build/apk-account-storage.mjs android-build/offline-license.mjs
+          git diff --exit-code 885044b3943116c24f140f258c5bfead09849b78 HEAD -- app-preview/ ':!app-preview/app.mjs' ':!app-preview/auto-scan-policy.mjs' android-build/app-sync.mjs android-build/photo-review-apk.mjs android-build/apk-account-storage.mjs android-build/offline-license.mjs
       - name: Build debug APK
         working-directory: _qa
         run: |
