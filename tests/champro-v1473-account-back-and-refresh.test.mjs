@@ -12,7 +12,7 @@ test('Android back dismisses account without affecting offline data',()=>{
 test('account is compact and truthful',()=>{
  const prep=read('android-build/prepare-preview-apk.py');
  assert.match(prep,/cp-account-details/);
- assert.match(prep,/Mua gói \/ Nâng cấp/);
+ assert.match(prep,/Thông tin gói sử dụng/);
  assert.match(prep,/Cập nhật ứng dụng/);
  assert.match(prep,/id="cpCurrentPlan"/);
  assert.match(prep,/<h1>Tài khoản ChấmPro<\/h1>/);
