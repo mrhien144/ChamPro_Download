@@ -19,12 +19,12 @@ test('account refresh cannot start network or apply license while camera is busy
  assert.equal(calls,0);assert.equal(deferred,1);
  busy=false;
  const pending=context.refreshPlan(true);
- await Promise.resolve();assert.equal(calls,1);
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(calls,1);assert.equal(typeof resolveNetwork,'function');
  busy=true;resolveNetwork({license:'new'});
  await pending;assert.equal(applied,0);assert.equal(deferred,2);
  busy=false;
  const next=context.refreshPlan(true);
- await Promise.resolve();resolveNetwork({license:'new'});
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(calls,2);resolveNetwork({license:'new'});
  await next;assert.equal(applied,1);
 });
 test('resume and Internet reconnect trigger refresh, without recurring background polling',()=>{
