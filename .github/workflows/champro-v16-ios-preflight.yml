@@ -1,0 +1,91 @@
+name: ChamPro v16 iOS isolated unsigned preflight
+on:
+  push:
+    branches: [release/champro-v16-ios]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ios-preflight:
+    runs-on: macos-26
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify original Android and shared code
+        run: |
+          git diff --exit-code df706cdcf246dc41bcd17c356cf7abb5f0223211 HEAD -- app-preview/ android-build/ platform/ tests/
+          node --test tests/champro-v1501-fast-camera.test.mjs tests/champro-v16-account-qa.test.mjs tests/offline-license.test.mjs tests/native-network-indicator.test.mjs
+          node tests/visual-answer-ii.test.mjs
+      - name: Reproduce v16 offline bundle
+        run: |
+          mkdir -p _iosqa/app
+          cp -a app-preview/. _iosqa/app/
+          cp android-build/native-app.css android-build/native-app.js android-build/photo-review-apk.mjs android-build/account-direct.mjs android-build/offline-license.mjs android-build/update-app.mjs android-build/auth-return.mjs android-build/app-sync.mjs android-build/sync-device.mjs android-build/account-namespace.mjs android-build/apk-account-storage.mjs _iosqa/app/
+          cp android-build/package.json _iosqa/package.json
+          cp android-build/preview-capacitor.config.json _iosqa/capacitor.config.json
+          python3 android-build/prepare-preview-apk.py _iosqa/app
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('_iosqa/capacitor.config.json')
+          j=json.loads(p.read_text())
+          j.update(appId='com.champro.app',appName='ChấmPro')
+          j['server']={'iosScheme':'capacitor','hostname':'localhost'}
+          p.write_text(json.dumps(j,ensure_ascii=False))
+          p=Path('_iosqa/package.json')
+          j=json.loads(p.read_text())
+          j['devDependencies'].pop('@capacitor/android',None)
+          j['devDependencies']['@capacitor/ios']=j['devDependencies']['@capacitor/core']
+          p.write_text(json.dumps(j))
+          p=Path('_iosqa/app/index.html')
+          s=p.read_text()
+          p.write_text(s.replace('Cập nhật phiên bản qua Google Play.','Cập nhật phiên bản qua App Store.'))
+          PY
+          for f in grader.mjs omr-native.mjs omr-verified-paper.mjs auto-scan-policy.mjs; do cmp "app-preview/$f" "_iosqa/app/$f"; done
+      - name: Generate native iOS project
+        working-directory: _iosqa
+        run: |
+          xcodebuild -version
+          npm install --no-audit --no-fund
+          npx cap add ios --packagemanager SPM
+          npx cap sync ios
+      - name: Configure iOS camera, login callback and icon
+        run: |
+          python3 - <<'PY'
+          import plistlib
+          from pathlib import Path
+          p=Path('_iosqa/ios/App/App/Info.plist')
+          j=plistlib.loads(p.read_bytes())
+          j['NSCameraUsageDescription']='ChấmPro cần camera để đọc phiếu trả lời trắc nghiệm và chấm bài.'
+          j['CFBundleDisplayName']='ChấmPro'
+          j['CFBundleURLTypes']=[{'CFBundleURLName':'com.champro.app.auth','CFBundleURLSchemes':['champrotest145']}]
+          p.write_bytes(plistlib.dumps(j))
+          PY
+          icon="_iosqa/ios/App/App/Assets.xcassets/AppIcon.appiconset"
+          test -f app-preview/pwa-icon-512.png
+          mkdir -p "$icon"
+          sips -s format jpeg -z 1024 1024 app-preview/pwa-icon-512.png --out "$RUNNER_TEMP/champro-icon.jpg"
+          sips -s format png "$RUNNER_TEMP/champro-icon.jpg" --out "$icon/AppIcon.png"
+          printf '%s\n' '{"images":[{"filename":"AppIcon.png","idiom":"universal","platform":"ios","size":"1024x1024"}],"info":{"author":"xcode","version":1}}' > "$icon/Contents.json"
+      - name: Compile unsigned device archive (not for upload)
+        working-directory: _iosqa
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/ChamPro-v16-unsigned.xcarchive" MARKETING_VERSION=16.0 CURRENT_PROJECT_VERSION=16000 CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO archive
+      - name: Package unsigned archive and checksums
+        run: |
+          mkdir -p ios-preflight
+          test -d "$RUNNER_TEMP/ChamPro-v16-unsigned.xcarchive/Products/Applications/App.app"
+          ditto -c -k --sequesterRsrc --keepParent "$RUNNER_TEMP/ChamPro-v16-unsigned.xcarchive" ios-preflight/ChamPro-v16-unsigned-xcarchive.zip
+          (cd ios-preflight && shasum -a 256 ChamPro-v16-unsigned-xcarchive.zip > SHA256SUMS.txt)
+          git diff --exit-code df706cdcf246dc41bcd17c356cf7abb5f0223211 HEAD -- app-preview/ android-build/ platform/ tests/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChamPro-v16-iOS-unsigned-preflight
+          path: ios-preflight/
+          if-no-files-found: error
+          retention-days: 14
