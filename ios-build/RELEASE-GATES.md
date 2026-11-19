@@ -1,0 +1,11 @@
+# ChấmPro v16 iOS — điều kiện phát hành (chưa được xác nhận)
+- Khóa mã nguồn gốc AAB df706cdcf246dc41bcd17c356cf7abb5f0223211; giữ nguyên các mô-đun OMR, tính điểm và chính sách tự chấm; không chỉnh Android/web.
+- Build QA unsigned, tuyệt đối không nộp App Store hoặc đánh dấu production-ready.
+- Kiểm tra inventory.json và đối chiếu SHA-256 của thư viện vendored; bổ sung toàn bộ LICENSE/NOTICE kể cả thành phần được nhúng; xử lý các mục không khớp. Kiểm tra privacy manifest và required-reason API theo SDK thực tế.
+- Xác minh quyền logo HienSoft, bộ phiếu, nhãn hiệu ChấmPro tại thị trường phát hành. Không tuyên bố đã đăng ký.
+- WordPress / Worker: thử CORS origin capacitor://localhost với chính xác route và header hiện hữu; kiểm tra xác thực/ticket một lần, sync D1/R2, dữ liệu phân tách theo chủ tài khoản; không tự triển khai production.
+- StoreKit 2: gói năm và trọn đời, giá bản địa hóa từ Apple; xác thực JWS giao dịch từ máy chủ, liên kết tài khoản, xử lý hoàn tiền/thu hồi, restore purchases, đồng bộ quyền đã mua đa nền tảng; không cấp quyền chỉ dựa vào client.
+- Xóa tài khoản: thao tác khởi tạo ngay trong app, xác minh lại người dùng, xác nhận rõ phạm vi tài khoản mrhien.com dùng chung; xóa hoặc ẩn danh dữ liệu ChấmPro D1/R2, thu hồi phiên/giấy phép, thông báo thời hạn; không xóa dữ liệu các dịch vụ khác ngoài phạm vi đã xác nhận. Không nhầm đăng xuất với xóa tài khoản. Kiểm thử bằng tài khoản giả.
+- Chính sách quyền riêng tư: cập nhật theo luồng dữ liệu thực tế, thời hạn lưu, học sinh, ảnh phiếu, quyền truy cập, chia sẻ, xóa dữ liệu; khai báo App Privacy chính xác; không đưa phiếu thật vào ảnh reviewer.
+- Kiểm thử trên iPhone/iPad: camera, đủ 4 mốc, các loại phiếu, độ chính xác và tốc độ p50/p95 so với Android v16 trong cùng điều kiện; không quảng cáo parity khi chưa đo. QR, Excel, chia sẻ, offline/cold start, đăng nhập/deep link, online-sync, quay vòng app, quyền camera.
+- Apple Developer: xác nhận bundle ID, Team ID, cấu hình App Store Connect và signing; ký, TestFlight, tài khoản demo, mẫu phiếu giả và review notes.

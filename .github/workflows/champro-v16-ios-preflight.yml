@@ -47,11 +47,14 @@ jobs:
           p.write_text(s.replace('Cập nhật phiên bản qua Google Play.','Cập nhật phiên bản qua App Store.'))
           PY
           for f in grader.mjs omr-native.mjs omr-verified-paper.mjs auto-scan-policy.mjs; do cmp "app-preview/$f" "_iosqa/app/$f"; done
+      - name: Prepare iOS-only compliance and bundled QR fallback
+        run: python3 ios-build/prepare-compliance.py _iosqa
       - name: Generate native iOS project
         working-directory: _iosqa
         run: |
           xcodebuild -version
           npm install --no-audit --no-fund
+          node ../ios-build/collect-notices.mjs
           npx cap add ios --packagemanager SPM
           npx cap sync ios
       - name: Configure iOS camera, login callback and icon
@@ -82,6 +85,8 @@ jobs:
           test -d "$RUNNER_TEMP/ChamPro-v16-unsigned.xcarchive/Products/Applications/App.app"
           ditto -c -k --sequesterRsrc --keepParent "$RUNNER_TEMP/ChamPro-v16-unsigned.xcarchive" ios-preflight/ChamPro-v16-unsigned-xcarchive.zip
           (cd ios-preflight && shasum -a 256 ChamPro-v16-unsigned-xcarchive.zip > SHA256SUMS.txt)
+          cp -a _iosqa/app/third-party-notices ios-preflight/
+          cp ios-build/RELEASE-GATES.md ios-preflight/
           git diff --exit-code df706cdcf246dc41bcd17c356cf7abb5f0223211 HEAD -- app-preview/ android-build/ platform/ tests/
       - uses: actions/upload-artifact@v4
         with:
