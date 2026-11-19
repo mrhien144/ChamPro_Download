@@ -95,6 +95,30 @@ footer{background:#0d1b36;color:#bdcce5;padding:35px 0}
 .navlinks .hs-auth-home:hover,.navlinks .hs-auth-home:focus-visible{background:#d8eaff;border-color:#70a4df}
 .navlinks .hs-auth-home.hs-auth-connected{background:#edf8f1;color:#176340;border-color:#a4dcb9}
 @media(max-width:940px){.navlinks .hs-auth-home{font-size:12px;min-height:36px}}
+
+/* Closed Android testing announcement — homepage only. */
+#champro-beta{padding:32px 0 8px;scroll-margin-top:100px}
+#champro-beta .beta-card{background:#fff;border:1px solid #d9e6f8;border-radius:22px;padding:clamp(20px,3vw,34px);box-shadow:0 12px 36px #17365c0d}
+#champro-beta .beta-tag{display:inline-block;font-size:12px;font-weight:800;letter-spacing:.06em;color:#176247;background:#e9f8f1;border-radius:30px;padding:5px 12px}
+#champro-beta h2{font-size:clamp(25px,3vw,36px);margin:12px 0;letter-spacing:-.6px;color:#14386b}
+#champro-beta p{margin:9px 0;color:#516681}
+#champro-beta .beta-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;margin-top:23px;align-items:start}
+#champro-beta h3{font-size:19px;color:#173b6b;margin:0 0 12px}
+#champro-beta ul{padding:0;list-style:none;margin:0;display:grid;gap:8px}
+#champro-beta li{position:relative;padding-left:24px}
+#champro-beta li:before{content:"✓";position:absolute;left:0;color:#087f65;font-weight:850}
+#champro-beta .beta-steps{display:grid;gap:10px}
+#champro-beta .beta-step{display:flex;align-items:center;gap:12px;border:1px solid #dce7f8;border-radius:13px;padding:12px 15px;background:#f5f9ff;color:#174a9e;transition:background .15s}
+#champro-beta .beta-step:hover{background:#e6f0ff}
+#champro-beta .beta-step .num{flex-shrink:0}
+#champro-beta .beta-step strong{display:block;font-size:15px}
+#champro-beta .beta-step small{display:block;color:#506987;font-size:12px;line-height:1.5}
+#champro-beta .beta-step .beta-arrow{margin-left:auto;font-weight:800}
+#champro-beta .beta-note{background:#f2f7ff;border-radius:12px;padding:13px 16px;margin:20px 0 0;font-size:14px}
+#champro-beta .beta-note p{margin:0 0 6px}
+#champro-beta .beta-note p:last-child{margin:0}
+#champro-beta .beta-note a{color:#1755cd;text-decoration:underline;overflow-wrap:anywhere}
+@media(max-width:700px){#champro-beta{padding-top:20px}#champro-beta .beta-grid{grid-template-columns:1fr;gap:23px}}
 </style>
 <link rel="stylesheet" href="/site-refresh.css?v=20261104-01">
 </head>
@@ -118,6 +142,30 @@ footer{background:#0d1b36;color:#bdcce5;padding:35px 0}
 <div class="panel-foot">Thiết kế cho công việc kiểm tra, đánh giá của giáo viên.</div></div>
 </div></section>
 <div class="quickbar"><div class="container"><span>Chấm bài và quản lý kết quả</span><span>Trộn đề Word</span><span>Tạo mã QR từ Excel</span><span>Kênh hỗ trợ</span></div></div>
+
+<section id="champro-beta" aria-labelledby="champro-beta-title"><div class="container"><article class="beta-card">
+<span class="beta-tag">ANDROID · THỬ NGHIỆM KHÉP KÍN TRÊN GOOGLE PLAY</span>
+<h2 id="champro-beta-title">Trải nghiệm ChấmPro v16 – Chấm bài trắc nghiệm bằng camera điện thoại</h2>
+<p>Thầy cô có muốn chấm hàng trăm bài kiểm tra trắc nghiệm mà không phải dò đáp án thủ công? ChấmPro được phát triển nhằm giúp thầy cô tiết kiệm thời gian và nâng cao hiệu quả kiểm tra, đánh giá học sinh.</p>
+<p>ChấmPro v16 đã được phát hành trên kênh thử nghiệm khép kín của Google Play. Rất mong quý thầy cô tham gia trải nghiệm và đóng góp ý kiến để ứng dụng ngày càng hoàn thiện.</p>
+<div class="beta-grid">
+<div><h3>Những tính năng nổi bật</h3><ul>
+<li>Tự động nhận diện và chấm phiếu bằng camera.</li>
+<li>Tốc độ chấm bài nhanh chóng.</li>
+<li>Chấm bài ngay cả khi không có Internet sau khi xác thực tài khoản.</li>
+<li>Hỗ trợ trắc nghiệm nhiều lựa chọn, đúng/sai và trả lời ngắn.</li>
+<li>Hỗ trợ phiếu trắc nghiệm 120 câu.</li>
+<li>Quản lý danh sách học sinh, mã đề và đáp án.</li>
+<li>Lưu ảnh phiếu chấm, xem lại và chỉnh sửa kết quả.</li>
+<li>Thống kê và xuất bảng điểm Excel.</li>
+</ul></div>
+<div><h3>Hướng dẫn tham gia thử nghiệm</h3><div class="beta-steps">
+<a class="beta-step" href="https://groups.google.com/g/smartcube3d-testers" target="_blank" rel="noopener"><span class="num">1</span><span><strong>Tham gia nhóm Google Groups</strong><small>Nhóm kiểm thử ứng dụng HienSoft</small></span><span class="beta-arrow" aria-hidden="true">↗</span></a>
+<a class="beta-step" href="https://play.google.com/apps/testing/com.champro.app" target="_blank" rel="noopener"><span class="num">2</span><span><strong>Đăng ký trở thành người thử nghiệm</strong><small>Chọn tham gia chương trình thử nghiệm ChấmPro</small></span><span class="beta-arrow" aria-hidden="true">↗</span></a>
+<a class="beta-step" href="https://play.google.com/store/apps/details?id=com.champro.app" target="_blank" rel="noopener"><span class="num">3</span><span><strong>Tải ChấmPro trên CH Play</strong><small>Cài đặt hoặc cập nhật trên điện thoại Android</small></span><span class="beta-arrow" aria-hidden="true">↗</span></a>
+</div></div></div>
+<div class="beta-note"><p><strong>Lưu ý:</strong> Sử dụng cùng một tài khoản Google trong cả ba bước, trải nghiệm ứng dụng và duy trì tham gia thử nghiệm ít nhất 14 ngày liên tục. Nếu đang tham gia thử nghiệm nội bộ, hãy rời kênh nội bộ trước khi đăng ký kênh khép kín. Nên sử dụng dữ liệu học sinh giả lập.</p><p>Gửi ý kiến phản hồi: <a href="mailto:support@mrhien.com">support@mrhien.com</a>. Trân trọng cảm ơn sự đồng hành và đóng góp của quý thầy cô!</p></div>
+</article></div></section>
 <section class="section" id="cong-cu"><div class="container">
 <div class="sectionintro"><span class="kicker">Bộ công cụ ChấmPro</span><h2>Mọi thao tác trong tầm tay</h2><p>Chấm bài, tạo mã đề và chuẩn bị dữ liệu QR trong một giao diện gọn gàng, dễ sử dụng.</p></div>
 <div class="cardgrid">
