@@ -20,7 +20,8 @@ jobs:
         run: |
           php -l platform/wordpress/champro-direct-login.php
           php -l tests/fixtures/champro-gift-wp.php
-          node --test tests/champro-gift-entitlement.test.mjs tests/champro-gift-scope.test.mjs tests/champro-direct-php-sign.test.mjs tests/champro-wordpress-auto-key.test.mjs tests/champro-woocommerce-entitlement-recovery.test.mjs tests/offline-account-persistence-v146.test.mjs tests/champro-v1475-account-refresh.test.mjs
+          php -l platform/wordpress/qa/gift-preflight.php
+          node --test tests/champro-gift-entitlement.test.mjs tests/champro-gift-preflight.test.mjs tests/champro-gift-scope.test.mjs tests/champro-direct-php-sign.test.mjs tests/champro-wordpress-auto-key.test.mjs tests/champro-woocommerce-entitlement-recovery.test.mjs tests/offline-account-persistence-v146.test.mjs tests/champro-v1475-account-refresh.test.mjs
       - name: Package server plugin only
         run: |
           mkdir -p server-package/champro-direct-login
