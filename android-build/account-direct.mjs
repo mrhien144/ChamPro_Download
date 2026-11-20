@@ -39,7 +39,7 @@ function hex(bytes){return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).j
 function b64(bytes){return btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');}
 async function digest(str){return b64(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str))));}
 function setView(name){
- for(const id of ['Login','Waiting','Plans']){const el=$('cpView'+id);if(el)el.hidden=id.toLowerCase()!==name;}
+ for(const id of ['Login','Register','Waiting','Plans']){const el=$('cpView'+id);if(el)el.hidden=id.toLowerCase()!==name;}
 }
 function loadPending(){
  try{
@@ -114,6 +114,63 @@ async function startLogin(){
   await openFirstParty(url.toString());
  }catch(e){fail(describe(e));}
  finally{button.disabled=false;}
+}
+// Registration is invoked only by explicit user action in the locked account screen.
+const REG_API='https://mrhien.com/wp-json/champro-registration/v1';
+let registering=false;
+async function registrationRequest(path,data){
+ const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),30000);
+ try{
+  const r=await fetch(REG_API+path,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'omit',cache:'no-store',signal:ctrl.signal,body:JSON.stringify(data)});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok||!j.ok)throw Error(j.message||'Chưa hoàn tất yêu cầu đăng ký (HTTP '+r.status+').');
+  return j;
+ }finally{clearTimeout(timer);}
+}
+function openRegistration(){
+ if(verified)return;
+ if(!navigator.onLine)return stamp('Cần Internet để đăng ký tài khoản.');
+ $('cpRegForm').reset();setView('register');stamp('Nhập email và yêu cầu mã xác nhận.');
+}
+async function sendRegistrationCode(){
+ if(registering||verified)return;
+ if(!navigator.onLine)return fail('Cần Internet để gửi mã xác nhận.');
+ if(!$('cpRegEmail').reportValidity())return;
+ registering=true;$('cpSendCode').disabled=true;$('cpRegSubmit').disabled=true;
+ try{
+  await registrationRequest('/code',{email:$('cpRegEmail').value.trim()});
+  stamp('Nếu email đủ điều kiện, mã xác nhận sẽ được gửi. Kiểm tra cả thư rác; nếu đã có tài khoản, hãy đăng nhập.');
+ }catch(e){fail(describe(e));}
+ finally{registering=false;$('cpSendCode').disabled=false;$('cpRegSubmit').disabled=false;}
+}
+async function createRegistration(event){
+ event.preventDefault();
+ if(registering||verified)return;
+ if(!navigator.onLine)return fail('Cần Internet để đăng ký.');
+ const password=$('cpRegPassword').value;
+ if(password!==$('cpRegConfirm').value)return fail('Hai mật khẩu không khớp.');
+ registering=true;$('cpRegSubmit').disabled=true;$('cpSendCode').disabled=true;$('cpRegBack').disabled=true;
+ try{
+  const verifier=hex(crypto.getRandomValues(new Uint8Array(32))),state=hex(crypto.getRandomValues(new Uint8Array(16)));
+  const challenge=await digest(verifier),device=deviceId();
+  const data={email:$('cpRegEmail').value.trim(),code:$('cpRegCode').value.trim(),username:$('cpRegUsername').value.trim(),name:$('cpRegName').value.trim(),password,state,challenge,device};
+  const result=await registrationRequest('/complete',data);
+  if(!/^[a-f0-9]{48}$/.test(result.ticket||'')||result.state!==state)throw Error('Máy chủ chưa xác nhận phiên đăng ký.');
+  pending={verifier,state,device,expires:Date.now()+600_000};
+  localStorage.setItem(PENDING_KEY,JSON.stringify(pending));
+  $('cpRegForm').reset();
+  setView('waiting');stamp('Tài khoản đã được tạo. Đang kích hoạt ChấmPro…');
+  await exchange(result.ticket,state);
+ }catch(e){fail(describe(e));}
+ finally{
+  $('cpRegPassword').value='';$('cpRegConfirm').value='';
+  registering=false;$('cpRegSubmit').disabled=false;$('cpSendCode').disabled=false;$('cpRegBack').disabled=false;
+ }
+}
+async function forgotPassword(){
+ if(!navigator.onLine)return fail('Cần Internet để khôi phục mật khẩu.');
+ try{await openFirstParty('https://mrhien.com/wp-login.php?action=lostpassword');}
+ catch(e){fail(describe(e));}
 }
 async function refreshPlan(force=false){
  // Network failures never delete an offline license or any student data.
@@ -227,6 +284,8 @@ function closeAccount(){
   gate.hidden=true;
   return true;
  }
+ if(registering)return true;
+ if(!$('cpViewRegister')?.hidden){$('cpRegForm').reset();setView('login');return true;}
  if(!$('cpViewWaiting')?.hidden){
   setView('login');
   stamp('Bạn có thể thử đăng nhập lại. Dữ liệu chấm vẫn được giữ nguyên.');
@@ -286,6 +345,12 @@ function boot(){
  else lock();
  loadPending();
  $('cpSignIn').onclick=()=>void startLogin();
+ $('cpRegister').onclick=openRegistration;
+ $('cpForgot').onclick=()=>void forgotPassword();
+ $('cpSendCode').onclick=()=>void sendRegistrationCode();
+ $('cpRegForm').onsubmit=event=>void createRegistration(event);
+ $('cpRegBack').onclick=()=>{if(!registering){$('cpRegForm').reset();setView('login');}};
+ $('cpRegPrivacy').onclick=event=>{event.preventDefault();void openFirstParty('https://mrhien.com/champro-privacy-policy/').catch(e=>fail(describe(e)));};
  $('cpPairRetry').onclick=()=>void startLogin();
  $('cpReLogin').onclick=()=>void startLogin();
  $('cpOpenWeb').onclick=()=>{if(pending)void startLogin();};

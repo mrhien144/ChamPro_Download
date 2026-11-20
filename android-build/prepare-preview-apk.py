@@ -93,6 +93,9 @@ html.cp-license-pending body > :not(#cpAccountGate){display:none!important}
 .cp-account-card #cpAuthStatus[data-level="error"]{background:#fff1f0}
 .cp-account-card #cpAuthStatus[data-level="success"]{background:#e8f8ef}
 .cp-account-card [hidden]{display:none!important}
+#cpRegForm label{display:block;font-weight:650;font-size:13px;margin-top:10px}
+#cpRegForm input{display:block;width:100%;box-sizing:border-box;border:1px solid #b9cce1;border-radius:10px;padding:11px 12px;margin-top:4px;font:16px system-ui;background:white;color:#173453}
+#cpRegForm a{color:#1656ad;text-decoration:underline}
 #cpAuthStatus{color:#30557f;min-height:20px;font-size:13px;overflow-wrap:anywhere}
 #cpAuthStatus[data-level="error"]{color:#b42318}
 #cpAuthStatus[data-level="success"]{color:#087443}
@@ -106,8 +109,27 @@ s = s.replace("</body>", """<section id="cpAccountGate" role="dialog" aria-modal
 <div id="cpViewLogin">
 <h2>Đăng nhập</h2>
 <p>Đăng nhập một lần để kích hoạt ChấmPro trên điện thoại.</p>
-<button type="button" id="cpSignIn">Đăng ký / Đăng nhập</button>
+<button type="button" id="cpSignIn">Đăng nhập</button>
+<button type="button" id="cpRegister" class="secondary">Đăng ký tài khoản</button>
+<button type="button" id="cpForgot" class="secondary">Quên mật khẩu?</button>
 
+</div>
+<div id="cpViewRegister" hidden>
+<h2>Đăng ký tài khoản</h2>
+<p>Dùng chung tài khoản mrhien.com. Xác minh email để kích hoạt ChấmPro.</p>
+<form id="cpRegForm">
+<label>Email<input id="cpRegEmail" type="email" autocomplete="email" maxlength="200" required></label>
+<button type="button" id="cpSendCode" class="secondary">Gửi mã xác nhận email</button>
+<label>Mã xác nhận<input id="cpRegCode" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{8}" maxlength="8" required></label>
+<label>Tên đăng nhập<input id="cpRegUsername" type="text" autocomplete="username" maxlength="60" required></label>
+<label>Họ và tên<input id="cpRegName" type="text" autocomplete="name" maxlength="100" required></label>
+<label>Mật khẩu<input id="cpRegPassword" type="password" autocomplete="new-password" minlength="10" maxlength="128" required></label>
+<label>Nhập lại mật khẩu<input id="cpRegConfirm" type="password" autocomplete="new-password" minlength="10" maxlength="128" required></label>
+<p class="cp-account-help">Mật khẩu tối thiểu 10 ký tự. Không dùng lại mật khẩu của tài khoản khác. Nếu đã có tài khoản mrhien.com, hãy đăng nhập hoặc dùng chức năng quên mật khẩu.</p>
+<p class="cp-account-help"><a href="https://mrhien.com/champro-privacy-policy/" id="cpRegPrivacy">Chính sách bảo mật</a></p>
+<button type="submit" id="cpRegSubmit">Tạo tài khoản và đăng nhập</button>
+</form>
+<button type="button" class="secondary" id="cpRegBack">Quay lại đăng nhập</button>
 </div>
 <div id="cpViewWaiting" hidden>
 <h2>Đang xác thực</h2>
