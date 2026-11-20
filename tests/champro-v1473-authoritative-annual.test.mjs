@@ -2,18 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const read=path=>readFileSync(path,'utf8');
-test('D1 is authoritative: annual license cannot silently fall back to trial',()=>{
+test('cloud gift lookup is authenticated and failed lookups cannot silently issue a trial',()=>{
  const wp=read('platform/wordpress/champro-direct-login.php');
  const worker=read('platform/worker/src/index.js');
- assert.match(worker,/if\(b\.action==='entitlement'\)/);
- assert.match(worker,/FROM accounts WHERE wp_user_id=\?/);
- assert.match(worker,/account\.expires_at/);
- assert.match(wp,/cpd_authoritative_entitlement\(\$user_id\)/);
- assert.match(wp,/champro_bridge_request\(array\('action'=>'entitlement'/);
- assert.match(wp,/if\(is_wp_error\(\$entitlement\)\)return \$entitlement/);
+ assert.match(worker,/path==='\/api\/me'/);
+ assert.match(wp,/cpd_cloud_entitlement\(\$user\)/);
+ assert.match(wp,/champro_bridge_jwt\(\$user\)/);
+ assert.match(wp,/if\(is_wp_error\(\$cloud\)\)return \$cloud/);
  assert.match(wp,/\$plan==='annual'/);
- assert.match(wp,/\$exp=cpd_utc_timestamp\(\$entitlement\['expiresAt'\]/);
- assert.doesNotMatch(wp,/get_user_meta\(\$user_id,'cpd_verified_plan'/);
+ assert.match(wp,/cpd_cloud_expiry\(\$account\['expiresAt'\]/);
+ // Existing verified purchases stay compatible with the deployed 0.5.2 flow.
+ // Executable gift/authentication/expiry cases live in champro-gift-entitlement.
 });
 test('verified app header shows real user login, not static UI or cached session after logout',()=>{
  const native=read('android-build/native-app.js');

@@ -37,8 +37,12 @@ test('lifetime is preserved and annual cannot downgrade it',()=>{
  assert.equal(x.cpd_verified_plan,'lifetime');
 });
 test('a verified lifetime order upgrades annual',()=>{
- const x=run("$GLOBALS['meta'][42]=['cpd_verified_plan'=>'annual','cpd_verified_expires'=>1760000001];$GLOBALS['orders']=[new Order(306,42,1760000000,8920)];cper_reconcile_user(42);echo json_encode($GLOBALS['meta'][42]);");
+ const x=run("$GLOBALS['meta'][42]=['cpd_verified_plan'=>'annual','cpd_verified_expires'=>1760000001];$GLOBALS['orders']=[new Order(306,42,1760000000,8920,'completed','VND',299000)];cper_reconcile_user(42);echo json_encode($GLOBALS['meta'][42]);");
  assert.equal(x.cpd_verified_plan,'lifetime');
+});
+test('an underpaid lifetime order cannot upgrade an annual purchase',()=>{
+ const x=run("$GLOBALS['meta'][42]=['cpd_verified_plan'=>'annual','cpd_verified_expires'=>1760000001];$GLOBALS['orders']=[new Order(306,42,1760000000,8920,'completed','VND',99000)];cper_reconcile_user(42);echo json_encode($GLOBALS['meta'][42]);");
+ assert.equal(x.cpd_verified_plan,'annual');assert.equal(x.cpd_verified_expires,1760000001);
 });
 test('two annual paid orders extend, not shorten, entitlements',()=>{
  const x=run("$GLOBALS['orders']=[new Order(307,42,1700000000,8919),new Order(308,42,1730000000,8919)];$p=cper_verified_order_entitlement(42);echo json_encode($p);");
