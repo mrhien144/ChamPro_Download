@@ -2,7 +2,7 @@
 
 ## Trạng thái
 
-**Direct Login 0.5.4 đã triển khai lên mrhien.com ngày 20/11/2026. Kiểm tra trên điện thoại thật còn chờ người dùng.**
+**Direct Login 0.5.4 đã triển khai lên mrhien.com ngày 20/11/2026. Người dùng đã xác nhận ứng dụng đang cài hiển thị đúng gói được tặng sau khi bấm Cập nhật quyền sử dụng.**
 
 Mã đọc lại từ trình sửa plugin sau khi tải lại trang khớp hoàn toàn với `platform/wordpress/champro-direct-login.php` (22569 byte, SHA-256 `5578b3ce32fc75e10fc6cd45fc7aecd1e6d847da96aacbf3b318877d91d911c9`). Danh sách plugin xác nhận phiên bản 0.5.4 đang hoạt động. Chỉ cập nhật file Direct Login; không merge nhánh Android hoặc triển khai Worker.
 
@@ -43,9 +43,10 @@ Chỉ cập nhật Direct Login. Giữ nguyên mã ký, tên option chứa khóa
 4. WordPress gọi API thực tế cho 3 tài khoản có sẵn: trọn đời, 1 năm, miễn phí. Tất cả trả đúng tài khoản/gói; gói 1 năm khớp ngày hết hạn trong quản trị. Không tặng, đổi, xóa hoặc đặt lại gói của các tài khoản này.
 5. Chữ ký kiểm tra hợp lệ ở cả 3 ca. Sau đó thay bằng đúng file 0.5.4 đã kiểm thử và đọc lại để xác minh hash. Mã preflight tạm thời đã được gỡ khỏi plugin đang chạy.
 6. Sau cập nhật, API public-key vẫn hoạt động; public key, issuer và audience giống trước cập nhật. Đăng nhập quản trị mới thành công, 3 gói kiểm tra vẫn giữ nguyên.
+7. Ngày 20/11/2026, chủ dự án xác nhận trên ứng dụng đang cài: bấm **Cập nhật quyền sử dụng** đã hiển thị đúng gói được tặng. Đây là xác nhận thực tế của người dùng; chưa bao gồm kiểm thử chấm offline hoặc đồng bộ dữ liệu.
 
 ## Phần còn cần xác nhận
 
-- Người dùng mở ứng dụng đang cài bằng đúng tài khoản đã được tặng gói, bấm **Cập nhật quyền sử dụng** và kiểm tra tên gói/thời hạn; sau đó thử chấm khi ngắt mạng. Chưa có kết quả từ điện thoại thật, không coi kiểm thử giả lập là thay thế bước này.
+- Còn cần xác nhận chấm khi ngắt mạng trên điện thoại thật sau cập nhật quyền. Không coi kiểm thử giả lập là thay thế bước này.
 - Chưa bật hoặc xác nhận đồng bộ kỳ kiểm tra, học sinh, đáp án, điểm, ảnh phiếu. Không triển khai `champro-sync-staging`, không chạy migration D1 hay thay đổi R2 trong đợt sửa quyền này.
 - Hoàn tác khi cần bằng đúng mã Direct Login 0.5.2 đã sao lưu; giữ nguyên option khóa ký và dữ liệu người dùng. Không gỡ ứng dụng hoặc xóa dữ liệu điện thoại.
