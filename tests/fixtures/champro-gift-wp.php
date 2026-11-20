@@ -51,7 +51,17 @@ function license_summary($value){
 }
 require __DIR__.'/../../platform/wordpress/champro-direct-login.php';
 foreach($GLOBALS['actions']['rest_api_init']??[] as $callback)$callback();
-$key=openssl_pkey_new(['private_key_type'=>OPENSSL_KEYTYPE_EC,'curve_name'=>'prime256v1']);
+// Model an already-working 0.5.2 installation key. Its unchanged public-key
+// exporter requires OpenSSL to return 32-byte x/y coordinates. Some random
+// test keys have a leading zero that OpenSSL omits; those are outside this
+// gift-reconciliation fixture, not a reason to regenerate a production key.
+$key=false;
+for($attempt=0;$attempt<8;$attempt++){
+    $candidate=openssl_pkey_new(['private_key_type'=>OPENSSL_KEYTYPE_EC,'curve_name'=>'prime256v1']);
+    $details=openssl_pkey_get_details($candidate);
+    if(strlen($details['ec']['x']??'')===32&&strlen($details['ec']['y']??'')===32){$key=$candidate;break;}
+}
+if(!$key)throw new RuntimeException('Could not create the isolated compatibility test key');
 $pem='';openssl_pkey_export($key,$pem);$GLOBALS['options'][cpd_auto_key_option()]=$pem;
 $GLOBALS['device']='cp-12345678-1234-4234-8234-123456789abc';
 cloud_reply(42);

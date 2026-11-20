@@ -132,7 +132,8 @@ test('invalid devices and unknown accounts fail before the entitlement request',
 });
 test('signed device refresh returns the gift; replay, tampering and other accounts fail',()=>{
  const x=run(`
- $device=$GLOBALS['device'];$jwk=cpd_public_jwk();cpd_register_device_key(42,$device,$jwk);
+ $device=$GLOBALS['device'];$jwk=cpd_public_jwk();
+ if(!cpd_register_device_key(42,$device,$jwk))throw new RuntimeException('Fixture device key registration failed');
  $challenge=$GLOBALS['routes']['/champro/v2/refresh-challenge'];
  $refresh=$GLOBALS['routes']['/champro/v2/refresh-license'];
  $nonce=$challenge(new WP_REST_Request(['wpUserId'=>42,'deviceId'=>$device]))['nonce'];
