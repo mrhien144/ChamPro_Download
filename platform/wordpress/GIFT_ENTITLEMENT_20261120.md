@@ -2,7 +2,9 @@
 
 ## Trạng thái
 
-**Bản ứng viên 0.5.4 — chưa triển khai lên mrhien.com.**
+**Direct Login 0.5.4 đã triển khai lên mrhien.com ngày 20/11/2026. Kiểm tra trên điện thoại thật còn chờ người dùng.**
+
+Mã đọc lại từ trình sửa plugin sau khi tải lại trang khớp hoàn toàn với `platform/wordpress/champro-direct-login.php` (22569 byte, SHA-256 `5578b3ce32fc75e10fc6cd45fc7aecd1e6d847da96aacbf3b318877d91d911c9`). Danh sách plugin xác nhận phiên bản 0.5.4 đang hoạt động. Chỉ cập nhật file Direct Login; không merge nhánh Android hoặc triển khai Worker.
 
 Ngày 20/11/2026 đã đọc trực tiếp plugin đang hoạt động trong trình quản trị WordPress:
 
@@ -31,12 +33,19 @@ Chỉ cập nhật Direct Login. Giữ nguyên mã ký, tên option chứa khóa
 - `tests/champro-gift-entitlement.test.mjs`: thực thi PHP với các tài khoản và phản hồi HTTP giả lập, xác minh chữ ký bằng WebCrypto, thử gói tặng, thời hạn, quyền mua, trial, khóa tài khoản, lỗi mạng, tài khoản khác, PKCE và refresh bằng chữ ký thiết bị.
 - `tests/champro-gift-scope.test.mjs`: so sánh phần đăng nhập/ký/khóa/routes với bản 0.5.2 đã sao lưu; kiểm tra thư mục Android, camera/chấm, payment Worker và sync không thay đổi.
 - Workflow `champro-gift-entitlement-qa.yml` chạy thêm các kiểm thử hiện hữu cho chữ ký, khóa, quyền mua, offline và refresh; chỉ đóng gói plugin WordPress, không build hoặc phát hành Android.
+- [CI cho commit 7fe3322](https://github.com/mrhien144/ChamPro_Download/actions/runs/44686899650): PHP lint đạt; **45/45 kiểm thử đạt**, không bỏ qua, gồm 3 ca cho trang preflight tạm thời.
 
-## Điều kiện trước triển khai
+## Xác minh triển khai thực tế
 
-1. Mở lại được trang quản trị ChấmPro và kiểm tra tài khoản giả lập; bước này hiện bị giới hạn sử dụng của công cụ trình duyệt chặn, chưa thực hiện.
-2. Xác nhận Bridge đang cấu hình đúng Worker và `GET /api/me` thực tế trả đúng schema; không thay Worker để ép tương thích.
-3. Kiểm tra bản sao plugin vẫn khớp trước cập nhật. Nếu mã đã thay đổi, lấy bản sao mới và đối chiếu trước khi tiếp tục.
-4. Chỉ thay plugin Direct Login bằng bản kiểm thử đạt; không đổi khóa hoặc cấu hình. Có thể hoàn tác bằng bản Direct Login 0.5.2 đã sao lưu.
-5. Kiểm tra với hai tài khoản thử riêng: tặng annual/lifetime, refresh trên ứng dụng hiện có, không có quyền ở tài khoản khác, chữ ký và public key giữ nguyên, offline và camera hoạt động như trước.
-6. Chưa kết luận đã khắc phục trên thiết bị thật hoặc triển khai thành công khi chưa có kết quả các bước trên. Giữ đồng bộ dữ liệu thật ở trạng thái cũ/tắt như yêu cầu riêng của dự án.
+1. Đã mở lại trang quản trị và xác thực bằng phiên WordPress hiện có; giới hạn truy cập trước đó đã hết chặn thao tác.
+2. Đã đối chiếu mã Direct Login đang chạy với bản sao lưu 0.5.2 trước cập nhật: khớp byte.
+3. Trước khi thay logic cấp giấy phép, tạm thêm helper chỉ đọc và trang kiểm tra quản trị vào bản 0.5.2. Trang này yêu cầu `manage_options` và nonce, không ghi dữ liệu, không xuất token hoặc khóa riêng. Chữ ký kiểm tra dùng issuer/audience riêng, không phải giấy phép ứng dụng.
+4. WordPress gọi API thực tế cho 3 tài khoản có sẵn: trọn đời, 1 năm, miễn phí. Tất cả trả đúng tài khoản/gói; gói 1 năm khớp ngày hết hạn trong quản trị. Không tặng, đổi, xóa hoặc đặt lại gói của các tài khoản này.
+5. Chữ ký kiểm tra hợp lệ ở cả 3 ca. Sau đó thay bằng đúng file 0.5.4 đã kiểm thử và đọc lại để xác minh hash. Mã preflight tạm thời đã được gỡ khỏi plugin đang chạy.
+6. Sau cập nhật, API public-key vẫn hoạt động; public key, issuer và audience giống trước cập nhật. Đăng nhập quản trị mới thành công, 3 gói kiểm tra vẫn giữ nguyên.
+
+## Phần còn cần xác nhận
+
+- Người dùng mở ứng dụng đang cài bằng đúng tài khoản đã được tặng gói, bấm **Cập nhật quyền sử dụng** và kiểm tra tên gói/thời hạn; sau đó thử chấm khi ngắt mạng. Chưa có kết quả từ điện thoại thật, không coi kiểm thử giả lập là thay thế bước này.
+- Chưa bật hoặc xác nhận đồng bộ kỳ kiểm tra, học sinh, đáp án, điểm, ảnh phiếu. Không triển khai `champro-sync-staging`, không chạy migration D1 hay thay đổi R2 trong đợt sửa quyền này.
+- Hoàn tác khi cần bằng đúng mã Direct Login 0.5.2 đã sao lưu; giữ nguyên option khóa ký và dữ liệu người dùng. Không gỡ ứng dụng hoặc xóa dữ liệu điện thoại.
