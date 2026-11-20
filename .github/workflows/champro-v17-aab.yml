@@ -1,0 +1,118 @@
+name: ChấmPro v17 – AAB release for owner signing
+on:
+  push:
+    branches: [release/champro-v17-aab]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Check source and PHP syntax
+        run: |
+          php -l platform/wordpress/champro-direct-login.php
+          php -l platform/wordpress/champro-registration-companion.php
+          node --check android-build/account-direct.mjs
+          node --test tests/champro-v1475-account-refresh.test.mjs tests/champro-v15-account-namespace.test.mjs tests/champro-v1501-play-payment.test.mjs tests/champro-v1501-fast-camera.test.mjs
+          node --test tests/champro-v16-account-qa.test.mjs tests/champro-v17-registration.test.mjs
+          node --check android-build/apk-account-storage.mjs
+          node --check android-build/app-sync.mjs
+          node --check platform/worker/src/index.js
+          node --test tests/champro-v1473-authoritative-annual.test.mjs
+          node --check android-build/native-app.js
+          node --check android-build/sync-device.mjs
+          node --test tests/champro-v1473-account-back-and-refresh.test.mjs
+          node --test tests/champro-direct-php-sign.test.mjs
+          node --test tests/champro-wordpress-auto-key.test.mjs
+          node tests/syncqa-v1472-entitlement.test.mjs
+          node tests/syncqa-v1471-status.test.mjs
+          node --test tests/offline-license.test.mjs
+          node --test tests/native-network-indicator.test.mjs
+          node tests/visual-answer-ii.test.mjs
+      - name: Create isolated offline release bundle
+        run: |
+          mkdir -p _qa/app
+          cp -a app-preview/. _qa/app/
+          cp android-build/native-app.css android-build/native-app.js \
+             android-build/photo-review-apk.mjs android-build/account-direct.mjs \
+             android-build/offline-license.mjs android-build/update-app.mjs \
+             android-build/auth-return.mjs android-build/app-sync.mjs \
+             android-build/sync-device.mjs android-build/account-namespace.mjs android-build/apk-account-storage.mjs _qa/app/
+          cp android-build/package.json _qa/package.json
+          cp android-build/preview-capacitor.config.json _qa/capacitor.config.json
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('_qa/capacitor.config.json')
+          j=json.loads(p.read_text())
+          j['appId']='com.champro.app'
+          j['appName']='ChấmPro'
+          p.write_text(json.dumps(j,ensure_ascii=False))
+          PY
+          python3 android-build/prepare-preview-apk.py _qa/app
+          node --check _qa/app/app.mjs
+          node --check _qa/app/auto-scan-policy.mjs
+          node --check _qa/app/sheet-photo-store.mjs
+          node --check _qa/app/local-data-store.mjs
+          grep -Fq 'const storedKey=accountStore.data;' _qa/app/app.mjs
+          grep -Fq 'DB_NAME=accountStore.photos' _qa/app/sheet-photo-store.mjs
+          grep -Fq 'DB_NAME=accountStore.mirror' _qa/app/local-data-store.mjs
+          cmp app-preview/grader.mjs _qa/app/grader.mjs
+          cmp app-preview/omr-native.mjs _qa/app/omr-native.mjs
+          cmp app-preview/omr-verified-paper.mjs _qa/app/omr-verified-paper.mjs
+          ! grep -E 'cpBuyAnnual|cpBuyLifetime|champro-connect-app|champro-mua-goi|src="./update-app.mjs"' _qa/app/account-direct.mjs _qa/app/index.html
+          git diff --exit-code 8121ecc5a09db1f5530b5058fa0332be6e1688d4 HEAD -- app-preview/ android-build/native-app.js android-build/native-app.css android-build/app-sync.mjs android-build/photo-review-apk.mjs android-build/apk-account-storage.mjs android-build/offline-license.mjs android-build/enable-preview-camera.py
+      - name: Prepare Android project
+        working-directory: _qa
+        run: |
+          npm install --no-audit --no-fund
+          npx cap add android
+          npx cap sync android
+      - name: Configure camera permissions and version
+        run: |
+          python3 android-build/enable-preview-camera.py _qa/android
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('_qa/android/app/build.gradle')
+          s=p.read_text()
+          s,n1=re.subn(r'versionCode\s+\d+','versionCode 17000',s,count=1)
+          s,n2=re.subn(r'versionName\s+"[^"]+"','versionName "17"',s,count=1)
+          assert n1==1 and n2==1
+          p.write_text(s)
+          PY
+      - name: Guard against advertising SDK or ad configuration
+        working-directory: _qa
+        run: |
+          ! grep -Ei 'admob|play-services-ads|google.mobile.ads|ca-app-pub-' package.json android/app/build.gradle android/app/src/main/AndroidManifest.xml
+      - name: Compile release AAB
+        working-directory: _qa/android
+        run: |
+          chmod +x gradlew
+          ./gradlew bundleRelease --no-daemon
+      - name: Verify and stage AAB for owner signing
+        run: |
+          mkdir -p release
+          test -s _qa/android/app/build/outputs/bundle/release/app-release.aab
+          cp _qa/android/app/build/outputs/bundle/release/app-release.aab release/ChamPro-v17-unsigned.aab
+          unzip -tq release/ChamPro-v17-unsigned.aab
+          (cd release && sha256sum ChamPro-v17-unsigned.aab > SHA256SUMS.txt)
+          git diff --exit-code f017fa47c542995262cd5581e297e7dd4eb0579d HEAD -- app-preview/ android-build/ platform/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChamPro-v17-unsigned-AAB
+          path: release/
+          if-no-files-found: error
+          retention-days: 14
