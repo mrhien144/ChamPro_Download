@@ -1,0 +1,35 @@
+name: Export ChấmPro v17 full source backup
+on:
+  push:
+    branches: [backup/champro-v17-source-export-20261126]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  export-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Package exact v17 release snapshot, excluding .git metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="85950af3fdc53be7d024f2bffa3bd78da4e03dd9"
+          git cat-file -e "$SOURCE_SHA^{commit}"
+          mkdir -p backup
+          git archive --format=zip --prefix="ChamPro-v17-Source/" "$SOURCE_SHA" > backup/ChamPro-v17-Full-Source.zip
+          test -s backup/ChamPro-v17-Full-Source.zip
+          unzip -tq backup/ChamPro-v17-Full-Source.zip
+          git archive --format=tar "$SOURCE_SHA" | tar -tf - | grep -Fx 'android-build/prepare-preview-apk.py'
+          git archive --format=tar "$SOURCE_SHA" | tar -tf - | grep -Fx 'platform/wordpress/champro-registration-companion.php'
+          printf 'ChấmPro Android version: v17\nVersion code: 17000\nRepository: mrhien144/ChamPro_Download\nRelease branch: release/champro-v17-aab\nCommit: %s\nThis archive is the complete Git-tracked source snapshot, not an APK, AAB or signing key.\n' "$SOURCE_SHA" > backup/SOURCE-INFO.txt
+          (cd backup && sha256sum ChamPro-v17-Full-Source.zip > SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChamPro-v17-Full-Source-Backup
+          path: backup/
+          if-no-files-found: error
+          retention-days: 30
