@@ -259,6 +259,31 @@ $("createQR").addEventListener("click",async function(){
  }catch(e){qrResults.classList.add("hide");qrEmpty.classList.remove("hide");$("qrImage").replaceChildren();fail("Chưa thể xuất QR: "+(e&&e.message?e.message:String(e))+"\nNếu lỗi mạng, hãy đăng nhập lại nếu cần và chọn đúng tệp Excel cũ rồi bấm Tạo QR để xác nhận lại lượt, không đổi tệp.");}
  finally{button.disabled=false}
 });
+// One-time, same-tab handoff from the Word mixer. Reuse the regular Excel/QR flow.
+if(window.location.hash==="#from-mixer"){
+ var transferKey="champro.mix.answer-qr.v1";
+ try{
+  var saved=sessionStorage.getItem(transferKey);
+  sessionStorage.removeItem(transferKey);
+  try{history.replaceState(history.state,"",location.pathname+location.search)}catch(ignore){}
+  if(!saved)throw Error("Không tìm thấy bộ đáp án vừa trộn.");
+  var transfer=JSON.parse(saved);
+  if(transfer.v!==1||!Number.isFinite(transfer.createdAt)||Date.now()-transfer.createdAt>300000||transfer.createdAt>Date.now()+10000)throw Error("Bộ đáp án chuyển tiếp đã hết hạn.");
+  var counts=transfer.counts,rows=transfer.rows;
+  if(!Array.isArray(counts)||counts.length!==3||!counts.every(function(n){return Number.isInteger(n)&&n>=0})||!Array.isArray(rows)||rows.length!==1+counts.reduce(function(a,b){return a+b},0)||!Array.isArray(rows[0])||rows[0].length<2||!rows.every(function(r){return Array.isArray(r)&&r.length===rows[0].length&&r.every(function(v){return typeof v==="string"})}))throw Error("Dữ liệu đáp án chuyển tiếp không hợp lệ.");
+  changeMode("answers");
+  ["partI","partII","partIII"].forEach(function(id,i){$(id).value=String(counts[i])});
+  if(!window.XLSX)throw Error("Không tải được thư viện Excel.");
+  var book=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet(rows),"DapAn");
+  var bytes=XLSX.write(book,{bookType:"xlsx",type:"array"});
+  var imported=new File([bytes],"Bang_dap_an_vua_tron.xlsx",{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+  var files=new DataTransfer();files.items.add(imported);fileInput.files=files.files;
+  fileInput.dispatchEvent(new Event("change"));
+  $("createQR").click();
+ }catch(e){fail("Không thể nhận bộ đáp án từ trang trộn đề: "+e.message+" Hãy tải ZIP và chọn Bang_dap_an.xlsx thủ công.")}
+}
+
 })();
 </script>
 </body></html>
