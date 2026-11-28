@@ -944,8 +944,15 @@ $('#answerQR').addEventListener('click',()=>{
   for(const s of sections)for(let i=1;i<=plans[0].order[s].length;i++)
    rows.push([String(++number),...plans.map(p=>String(p.answer[s+'-'+i]??''))]);
   const transfer={v:1,createdAt:Date.now(),counts,rows};
-  sessionStorage.setItem('champro.mix.answer-qr.v1',JSON.stringify(transfer));
-  window.location.assign('/qr-excel.html#from-mixer');
+  // Open synchronously on the user's click; preserve the mixer and its ZIP in memory.
+  const qrTab=window.open('about:blank','_blank');
+  if(!qrTab)throw Error('Trình duyệt đang chặn tab mới. Hãy cho phép cửa sổ bật lên rồi bấm Tạo QR đáp án lại');
+  try{
+   // The new same-origin tab inherits the existing session; write the answer data only there.
+   qrTab.sessionStorage.setItem('champro.mix.answer-qr.v1',JSON.stringify(transfer));
+   qrTab.opener=null;
+   qrTab.location.replace('/qr-excel.html#from-mixer');
+  }catch(err){try{qrTab.close()}catch(ignore){}throw err}
  }catch(err){flash('Không thể chuyển đáp án sang trang QR: '+err.message+'. Bạn vẫn có thể tải ZIP và chọn Bang_dap_an.xlsx tại trang Tạo QR.','error')}
 });
 function calcScore(s){let score=0,max=0,correct=0,done=0,answers={};for(const sec of ['I','II','III'])for(const unit of s.plan.order[sec]){const k=`${sec}-${unit.n}`,key=unit.key;if(!key)continue;let v='';if(sec==='II'){v=[0,1,2,3].map(i=>document.querySelector(`input[name="${k}-${i}"]:checked`)?.value||'?').join('');let eq=[0,1,2,3].filter(i=>v[i]===key[i]).length;score+=eq===4?1:eq===3?.5:eq===2?.25:eq===1?.1:0;max+=1;correct+=eq===4?1:0;done+=!v.includes('?')?1:0}
